@@ -15,8 +15,11 @@
 	"icon": "assets/fortniteinminecraft/icon.png",
 	"environment": "*",
 	"entrypoints": {
+        "main": [
+          "com.github.brainage04.fortniteinminecraft.FortniteInMinecraft"
+        ],
 		"client": [
-			"com.github.brainage04.fortniteinminecraft.FortniteInMinecraft"
+          "com.github.brainage04.fortniteinminecraft.FortniteInMinecraftClient"
 		],
 		"fabric-datagen": [
 			"com.github.brainage04.fortniteinminecraft.datagen.DataGenerator"
