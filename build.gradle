@@ -1,76 +1,79 @@
 plugins {
-    id 'fabric-loom' version "${loom_version}"
-    id 'maven-publish'
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'maven-publish'
 }
 
 version = project.mod_version
 group = project.maven_group
 
 base {
-    archivesName = project.archives_base_name
+	archivesName = project.archives_base_name
 }
 
 repositories {
-    // Mod Menu
-    maven { url "https://maven.terraformersmc.com/releases/" }
-
-    // Polymer
-    maven { url 'https://maven.nucleoid.xyz' }
-}
-
-loom {
-    splitEnvironmentSourceSets()
-
-    mods {
-        "fortnite_in_minecraft" {
-            sourceSet sourceSets.main
-            sourceSet sourceSets.client
-        }
-    }
-
+	mavenCentral()
+	maven { url "https://libraries.minecraft.net" }
+	maven { url "https://maven.fabricmc.net/" }
+	maven { url "https://maven.nucleoid.xyz" }
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-    // Mod Menu
-    modApi "com.terraformersmc:modmenu:15.0.0-beta.3"
-
-    // Polymer
-    modImplementation include("eu.pb4:polymer-bundled:${project.polymer_version}")
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+	implementation include("eu.pb4:polymer-bundled:${project.polymer_version}")
 }
 
 processResources {
-    inputs.property "version", project.version
+	inputs.property "mod_id", project.properties.mod_id
+	inputs.property "mod_version", project.version
+	inputs.property "mod_name", project.properties.mod_name
+	inputs.property "loader_version", project.properties.loader_version
+	inputs.property "minecraft_version", project.properties.minecraft_version
+	inputs.property "java_version", project.properties.java_version
 
-    filesMatching("fabric.mod.json") {
-        expand "version": inputs.properties.version
-    }
+	filesMatching("fabric.mod.json") {
+		expand([
+				"mod_id": inputs.properties.mod_id,
+				"mod_version": inputs.properties.mod_version,
+				"mod_name": inputs.properties.mod_name,
+				"loader_version": inputs.properties.loader_version,
+				"minecraft_version": inputs.properties.minecraft_version,
+				"java_version": inputs.properties.java_version,
+		])
+	}
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+	it.options.release = project.java_version.toInteger()
 }
 
 java {
-    withSourcesJar()
+	withSourcesJar()
 
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+	sourceCompatibility = JavaVersion.toVersion(project.java_version)
+	targetCompatibility = JavaVersion.toVersion(project.java_version)
 }
 
 jar {
-    inputs.property "archivesName", project.base.archivesName
+	inputs.property "archivesName", project.base.archivesName
 
-    from("LICENSE") {
-        rename { "${it}_${inputs.properties.archivesName}" }
-    }
+	from("LICENSE") {
+		rename { "${it}_${inputs.properties.archivesName}" }
+	}
 }
 
+publishing {
+	publications {
+		create("mavenJava", MavenPublication) {
+			artifactId = project.archives_base_name
+			from components.java
+		}
+	}
+}
 
-loom {
-    accessWidenerPath = file("src/main/resources/fortnite_in_minecraft.accesswidener")
+test {
+	useJUnitPlatform()
+	systemProperty "fabric.side", "server"
 }

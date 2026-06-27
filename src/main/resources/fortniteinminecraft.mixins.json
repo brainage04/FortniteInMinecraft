@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"package": "io.github.brainage04.fortniteinminecraft.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"BlockDisplayAccessor",
+		"DisplayAccessor"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
