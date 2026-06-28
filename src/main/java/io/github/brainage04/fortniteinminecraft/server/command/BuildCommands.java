@@ -2,6 +2,7 @@ package io.github.brainage04.fortniteinminecraft.server.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
@@ -28,6 +29,7 @@ import io.github.brainage04.fortniteinminecraft.core.session.PreviewMode;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 import io.github.brainage04.fortniteinminecraft.server.PlayerFacingOrientation;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
+import io.github.brainage04.fortniteinminecraft.server.item.CombatSettings;
 import io.github.brainage04.fortniteinminecraft.server.player.PlayerPlacementRescue;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewRenderers;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
@@ -40,7 +42,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -100,6 +105,18 @@ public final class BuildCommands {
                                 .executes(context -> place(context, sessions, state, rules, materializer, previewRenderers))))
                 .then(Commands.literal("session")
                         .executes(context -> describeSession(context, sessions)))
+                .then(Commands.literal("kit")
+                        .executes(context -> giveKit(context, ModItems.ALL_ITEMS, "all Fortnite items"))
+                        .then(Commands.literal("build")
+                                .executes(context -> giveKit(context, ModItems.BUILD_PIECES, "build pieces")))
+                        .then(Commands.literal("combat")
+                                .executes(context -> giveKit(context, ModItems.COMBAT_ITEMS, "combat items")))
+                        .then(Commands.literal("all")
+                                .executes(context -> giveKit(context, ModItems.ALL_ITEMS, "all Fortnite items"))))
+                .then(Commands.literal("prevent-bullet-knockback")
+                        .executes(BuildCommands::describePreventBulletKnockback)
+                        .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                .executes(BuildCommands::setPreventBulletKnockback)))
                 .then(Commands.literal("clear")
                         .executes(context -> clearSession(context, sessions, state, materializer, previewRenderers))));
     }
@@ -217,6 +234,36 @@ public final class BuildCommands {
                         + "; last placement: " + lastPlacement + "."
         ), false);
         return 1;
+    }
+
+    private static int giveKit(
+            CommandContext<CommandSourceStack> context,
+            Collection<? extends Item> items,
+            String description
+    ) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        int added = 0;
+        for (Item item : items) {
+            if (player.addItem(new ItemStack(item))) {
+                added++;
+            }
+        }
+        int finalAdded = added;
+        context.getSource().sendSuccess(() -> Component.literal("Added " + finalAdded + " " + description + "."), false);
+        return added;
+    }
+
+    private static int describePreventBulletKnockback(CommandContext<CommandSourceStack> context) {
+        context.getSource().sendSuccess(() -> Component.literal("Prevent bullet knockback: "
+                + CombatSettings.preventBulletKnockback() + "."), false);
+        return CombatSettings.preventBulletKnockback() ? 1 : 0;
+    }
+
+    private static int setPreventBulletKnockback(CommandContext<CommandSourceStack> context) {
+        boolean enabled = BoolArgumentType.getBool(context, "enabled");
+        CombatSettings.setPreventBulletKnockback(enabled);
+        context.getSource().sendSuccess(() -> Component.literal("Prevent bullet knockback: " + enabled + "."), true);
+        return enabled ? 1 : 0;
     }
 
     private static int clearSession(

@@ -38,6 +38,15 @@ class BuildCommandsTest {
         assertFullyParses(dispatcher, "fim preview-mode particles");
         assertFullyParses(dispatcher, "fim preview-mode glass");
         assertLeavesUnparsed(dispatcher, "fim preview-mode glass extra", "extra");
+
+        assertFullyParses(dispatcher, "fim kit");
+        assertFullyParses(dispatcher, "fim kit build");
+        assertFullyParses(dispatcher, "fim kit combat");
+        assertFullyParses(dispatcher, "fim kit all");
+        assertFullyParses(dispatcher, "fim prevent-bullet-knockback");
+        assertFullyParses(dispatcher, "fim prevent-bullet-knockback true");
+        assertFullyParses(dispatcher, "fim prevent-bullet-knockback false");
+        assertLeavesUnparsed(dispatcher, "fim prevent-bullet-knockback maybe", "maybe");
     }
 
     private static CommandDispatcher<CommandSourceStack> dispatcher() {

@@ -1,14 +1,19 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
 import eu.pb4.polymer.core.api.item.SimplePolymerItem;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -17,12 +22,14 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -31,6 +38,8 @@ public final class WeaponItem extends SimplePolymerItem {
     private static final String NEXT_FIRE_TICK_KEY = "next_fire_tick";
     private static final double FORTNITE_TO_MINECRAFT_DAMAGE = 0.2D;
     private static final double ENTITY_HITBOX_INFLATE_BLOCKS = 0.3D;
+    private static final double BULLET_TRACE_STEP_BLOCKS = 1.25D;
+    private static final int MAX_TRACE_PARTICLES = 64;
 
     private final WeaponDefinition definition;
     private final Item clientItem;
@@ -43,6 +52,14 @@ public final class WeaponItem extends SimplePolymerItem {
 
     public WeaponDefinition definition() {
         return definition;
+    }
+
+    static UseCooldown cooldownComponent(WeaponDefinition definition) {
+        Objects.requireNonNull(definition, "definition");
+        return new UseCooldown(0.05F, Optional.of(Identifier.fromNamespaceAndPath(
+                FortniteInMinecraft.MOD_ID,
+                definition.path()
+        )));
     }
 
     @Override
@@ -78,30 +95,72 @@ public final class WeaponItem extends SimplePolymerItem {
         ItemStack stack = player.getItemInHand(hand);
         long tick = serverLevel.getGameTime();
         long nextFireTick = customData(stack).getLongOr(NEXT_FIRE_TICK_KEY, 0L);
-        if (tick < nextFireTick) {
+        if (tick < nextFireTick || player.getCooldowns().isOnCooldown(stack)) {
             serverPlayer.sendSystemMessage(Component.literal("Weapon cooling down."), true);
             return InteractionResult.SUCCESS_SERVER;
         }
 
         int magazine = magazine(stack);
         if (magazine <= 0) {
-            reload(stack, tick);
+            int reloadTicks = reloadTicks();
+            reload(stack, tick, reloadTicks);
+            player.getCooldowns().addCooldown(stack, reloadTicks);
+            playReloadSound(serverLevel, serverPlayer);
             serverPlayer.sendSystemMessage(Component.literal("Reloading " + definition.displayName() + "."), true);
             return InteractionResult.SUCCESS_SERVER;
         }
 
         magazine--;
-        setGunState(stack, magazine, tick + fireDelayTicks());
-        LivingEntity target = firstEntityHit(serverLevel, serverPlayer, definition.stats().rangeBlocks());
-        if (target != null) {
-            target.hurtServer(serverLevel, serverPlayer.damageSources().playerAttack(serverPlayer), minecraftDamage());
-            serverPlayer.sendSystemMessage(Component.literal("Hit " + target.getName().getString()
-                    + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
+        int fireDelayTicks = fireDelayTicks();
+        setGunState(stack, magazine, tick + fireDelayTicks);
+        player.getCooldowns().addCooldown(stack, fireDelayTicks);
+
+        ShotTrace trace = traceShot(serverLevel, serverPlayer, definition.stats().rangeBlocks());
+        playShotEffects(serverLevel, serverPlayer, trace);
+        if (trace.target() != null) {
+            DamageReport report = damageTarget(serverLevel, serverPlayer, trace.target());
+            playHitEffects(serverLevel, trace.hitLocation(), report.damage());
+            sendHitMarker(serverPlayer, trace.target(), report, magazine);
         } else {
             serverPlayer.sendSystemMessage(Component.literal("Fired " + definition.displayName()
                     + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
         }
         return InteractionResult.SUCCESS_SERVER;
+    }
+
+    private DamageReport damageTarget(ServerLevel level, ServerPlayer shooter, LivingEntity target) {
+        float before = target.getHealth() + target.getAbsorptionAmount();
+        Vec3 velocityBeforeHit = target.getDeltaMovement();
+        prepareBulletHit(target);
+        boolean damaged = target.hurtServer(level, shooter.damageSources().playerAttack(shooter), minecraftDamage());
+        if (damaged) {
+            reduceBulletInvulnerability(target);
+            if (CombatSettings.preventBulletKnockback() && !(target instanceof ServerPlayer)) {
+                target.setDeltaMovement(velocityBeforeHit);
+                target.hurtMarked = false;
+            }
+        }
+        float after = Math.max(0.0F, target.getHealth()) + target.getAbsorptionAmount();
+        return new DamageReport(damaged, Math.max(0.0F, before - after));
+    }
+
+    static void prepareBulletHit(LivingEntity target) {
+        Objects.requireNonNull(target, "target");
+        if (target instanceof ServerPlayer) {
+            return;
+        }
+        target.invulnerableTime = 0;
+        target.hurtTime = 0;
+    }
+
+    static void reduceBulletInvulnerability(LivingEntity target) {
+        Objects.requireNonNull(target, "target");
+        if (target instanceof ServerPlayer) {
+            return;
+        }
+        target.invulnerableTime = 0;
+        target.hurtTime = Math.min(target.hurtTime, 1);
+        target.hurtDuration = Math.min(target.hurtDuration, 1);
     }
 
     private float minecraftDamage() {
@@ -112,8 +171,8 @@ public final class WeaponItem extends SimplePolymerItem {
         return customData(stack).getIntOr(MAGAZINE_KEY, definition.stats().magazineSize());
     }
 
-    private void reload(ItemStack stack, long tick) {
-        setGunState(stack, definition.stats().magazineSize(), tick + reloadTicks());
+    private void reload(ItemStack stack, long tick, int reloadTicks) {
+        setGunState(stack, definition.stats().magazineSize(), tick + reloadTicks);
     }
 
     private void setGunState(ItemStack stack, int magazine, long nextFireTick) {
@@ -127,28 +186,29 @@ public final class WeaponItem extends SimplePolymerItem {
         return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
     }
 
-    private long fireDelayTicks() {
-        return Math.max(1L, Math.round(20.0D / definition.stats().fireRatePerSecond()));
+    int fireDelayTicks() {
+        return Math.max(1, (int) Math.round(20.0D / definition.stats().fireRatePerSecond()));
     }
 
-    private long reloadTicks() {
-        return Math.max(1L, Math.round(definition.stats().reloadSeconds() * 20.0D));
+    int reloadTicks() {
+        return Math.max(1, (int) Math.round(definition.stats().reloadSeconds() * 20.0D));
     }
 
-    private static LivingEntity firstEntityHit(ServerLevel level, ServerPlayer player, double rangeBlocks) {
+    private static ShotTrace traceShot(ServerLevel level, ServerPlayer player, double rangeBlocks) {
         Vec3 start = player.getEyePosition();
         Vec3 look = player.getLookAngle();
-        Vec3 end = start.add(look.scale(rangeBlocks));
+        Vec3 rayEnd = start.add(look.scale(rangeBlocks));
         HitResult blockHit = player.pick(rangeBlocks, 0.0F, false);
         if (blockHit.getType() != HitResult.Type.MISS) {
-            end = blockHit.getLocation();
+            rayEnd = blockHit.getLocation();
         }
 
-        AABB searchBox = player.getBoundingBox().expandTowards(end.subtract(start)).inflate(1.0D);
+        AABB searchBox = player.getBoundingBox().expandTowards(rayEnd.subtract(start)).inflate(1.0D);
         LivingEntity closest = null;
-        double closestDistance = start.distanceToSqr(end);
+        Vec3 closestHit = rayEnd;
+        double closestDistance = start.distanceToSqr(rayEnd);
         for (Entity entity : level.getEntities(player, searchBox, WeaponItem::canShoot)) {
-            Optional<Vec3> hit = entity.getBoundingBox().inflate(ENTITY_HITBOX_INFLATE_BLOCKS).clip(start, end);
+            Optional<Vec3> hit = entity.getBoundingBox().inflate(ENTITY_HITBOX_INFLATE_BLOCKS).clip(start, rayEnd);
             if (hit.isEmpty()) {
                 continue;
             }
@@ -156,19 +216,64 @@ public final class WeaponItem extends SimplePolymerItem {
             if (distance <= closestDistance) {
                 closestDistance = distance;
                 closest = (LivingEntity) entity;
+                closestHit = hit.get();
             }
         }
-        return closest;
+        return new ShotTrace(start, closest == null ? rayEnd : closestHit, closest, closestHit);
     }
 
     private static boolean canShoot(Entity entity) {
         return entity instanceof LivingEntity && entity.isAlive() && entity.isPickable() && !entity.isSpectator();
     }
 
+    private static void playShotEffects(ServerLevel level, ServerPlayer shooter, ShotTrace trace) {
+        Vec3 look = shooter.getLookAngle();
+        Vec3 muzzle = trace.start().add(look.scale(0.75D));
+        level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS, 1.2F, 0.55F);
+        level.sendParticles(ParticleTypes.ELECTRIC_SPARK, true, true, muzzle.x(), muzzle.y(), muzzle.z(), 3, 0.05D, 0.05D, 0.05D, 0.0D);
+        spawnBulletTrace(level, trace.start(), trace.end());
+    }
+
+    private static void playReloadSound(ServerLevel level, ServerPlayer player) {
+        level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.CROSSBOW_LOADING_START, SoundSource.PLAYERS, 0.8F, 0.75F);
+    }
+
+    private static void playHitEffects(ServerLevel level, Vec3 hitLocation, float damage) {
+        level.playSound(null, hitLocation.x(), hitLocation.y(), hitLocation.z(), SoundEvents.ARROW_HIT_PLAYER, SoundSource.PLAYERS, 0.8F, 1.2F);
+        int damageParticles = Math.max(1, Math.min(12, Math.round(damage)));
+        level.sendParticles(ParticleTypes.DAMAGE_INDICATOR, true, true, hitLocation.x(), hitLocation.y(), hitLocation.z(), damageParticles, 0.2D, 0.3D, 0.2D, 0.05D);
+    }
+
+    private static void spawnBulletTrace(ServerLevel level, Vec3 start, Vec3 end) {
+        Vec3 delta = end.subtract(start);
+        double length = delta.length();
+        if (length <= 0.0D) {
+            return;
+        }
+        int samples = Math.max(2, Math.min(MAX_TRACE_PARTICLES, (int) Math.ceil(length / BULLET_TRACE_STEP_BLOCKS)));
+        Vec3 step = delta.scale(1.0D / samples);
+        for (int i = 1; i <= samples; i++) {
+            Vec3 pos = start.add(step.scale(i));
+            level.sendParticles(ParticleTypes.CRIT, true, true, pos.x(), pos.y(), pos.z(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
+    }
+
+    private void sendHitMarker(ServerPlayer shooter, LivingEntity target, DamageReport report, int magazine) {
+        String damage = report.damaged() ? format(report.damage()) : "0";
+        shooter.sendSystemMessage(Component.literal("Hit " + target.getName().getString() + ": " + damage
+                + " damage (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
+    }
+
     private static String format(double value) {
         if (Math.rint(value) == value) {
             return Integer.toString((int) value);
         }
-        return String.format(java.util.Locale.ROOT, "%.2f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
+        return String.format(Locale.ROOT, "%.2f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
+    }
+
+    record DamageReport(boolean damaged, float damage) {
+    }
+
+    private record ShotTrace(Vec3 start, Vec3 end, LivingEntity target, Vec3 hitLocation) {
     }
 }

@@ -12,11 +12,14 @@ import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import io.github.brainage04.fortniteinminecraft.core.session.BuildSessionManager;
 import io.github.brainage04.fortniteinminecraft.core.session.PlayerBuildSession;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
+import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTabOutput;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -199,14 +202,45 @@ public final class ModItems {
                 .icon(() -> new ItemStack(WALL))
                 .displayItems((parameters, output) -> BUILD_PIECES.forEach(output::accept))
                 .build();
-        PolymerCreativeModeTabUtils.registerPolymerCreativeModeTab(id("build_pieces"), polymerBuildTab);
+        PolymerCreativeModeTabUtils.registerPolymerCreativeModeTab(id("polymer_build_pieces"), polymerBuildTab);
 
         CreativeModeTab polymerCombatTab = PolymerCreativeModeTabUtils.builder()
                 .title(Component.literal("Fortnite Items"))
                 .icon(() -> new ItemStack(WEAPONS.get(0)))
                 .displayItems((parameters, output) -> COMBAT_ITEMS.forEach(output::accept))
                 .build();
-        PolymerCreativeModeTabUtils.registerPolymerCreativeModeTab(id("items"), polymerCombatTab);
+        PolymerCreativeModeTabUtils.registerPolymerCreativeModeTab(id("polymer_items"), polymerCombatTab);
+
+        registerVanillaCreativeTabEntries();
+    }
+
+    private static void registerVanillaCreativeTabEntries() {
+        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("building_blocks")).register(
+                output -> acceptAll(output, BUILD_PIECES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS)
+        );
+        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("combat")).register(
+                output -> acceptAll(output, WEAPONS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS)
+        );
+        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("food_and_drinks")).register(
+                output -> acceptAll(output, CONSUMABLES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS)
+        );
+        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("search")).register(
+                output -> acceptAll(output, ALL_ITEMS, CreativeModeTab.TabVisibility.SEARCH_TAB_ONLY)
+        );
+    }
+
+    private static void acceptAll(
+            FabricCreativeModeTabOutput output,
+            List<? extends Item> items,
+            CreativeModeTab.TabVisibility visibility
+    ) {
+        for (Item item : items) {
+            output.accept(new ItemStack(item), visibility);
+        }
+    }
+
+    private static ResourceKey<CreativeModeTab> creativeTabKey(String path) {
+        return ResourceKey.create(Registries.CREATIVE_MODE_TAB, Identifier.withDefaultNamespace(path));
     }
 
     private static MaterialType selectedMaterialFor(PacketContext context) {
@@ -335,7 +369,7 @@ public final class ModItems {
         return Registry.register(
                 BuiltInRegistries.ITEM,
                 key,
-                new WeaponItem(definition, new Item.Properties().setId(key).stacksTo(1), clientItem)
+                new WeaponItem(definition, weaponProperties(key, definition), clientItem)
         );
     }
 
@@ -344,8 +378,22 @@ public final class ModItems {
         return Registry.register(
                 BuiltInRegistries.ITEM,
                 key,
-                new ConsumableItem(definition, new Item.Properties().setId(key).stacksTo(16), clientItem)
+                new ConsumableItem(definition, consumableProperties(key, definition), clientItem)
         );
+    }
+
+    private static Item.Properties weaponProperties(ResourceKey<Item> key, WeaponDefinition definition) {
+        return new Item.Properties()
+                .setId(key)
+                .stacksTo(1)
+                .component(DataComponents.USE_COOLDOWN, WeaponItem.cooldownComponent(definition));
+    }
+
+    private static Item.Properties consumableProperties(ResourceKey<Item> key, ConsumableDefinition definition) {
+        return new Item.Properties()
+                .setId(key)
+                .stacksTo(16)
+                .food(ConsumableItem.foodProperties(), ConsumableItem.consumableComponent(definition));
     }
 
     private static ResourceKey<Item> itemKey(String path) {

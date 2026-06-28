@@ -9,9 +9,11 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
+import net.minecraft.world.item.component.Consumable;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
@@ -31,6 +33,24 @@ public final class ConsumableItem extends SimplePolymerItem {
 
     public ConsumableDefinition definition() {
         return definition;
+    }
+
+    static FoodProperties foodProperties() {
+        return new FoodProperties(0, 0.0F, true);
+    }
+
+    static Consumable consumableComponent(ConsumableDefinition definition) {
+        Objects.requireNonNull(definition, "definition");
+        return Consumable.builder()
+                .consumeSeconds(useTicks(definition) / 20.0F)
+                .animation(definition.restoresShield() ? ItemUseAnimation.DRINK : ItemUseAnimation.EAT)
+                .hasConsumeParticles(true)
+                .build();
+    }
+
+    static int useTicks(ConsumableDefinition definition) {
+        Objects.requireNonNull(definition, "definition");
+        return Math.max(1, (int) Math.ceil(definition.castSeconds() * 20.0D));
     }
 
     @Override
@@ -66,7 +86,7 @@ public final class ConsumableItem extends SimplePolymerItem {
 
     @Override
     public int getUseDuration(ItemStack stack, LivingEntity entity) {
-        return Math.max(1, (int) Math.ceil(definition.castSeconds() * 20.0D));
+        return useTicks(definition);
     }
 
     @Override

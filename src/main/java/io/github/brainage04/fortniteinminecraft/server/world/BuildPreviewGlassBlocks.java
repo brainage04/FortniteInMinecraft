@@ -30,6 +30,7 @@ import java.util.UUID;
 
 public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
     static final float PREVIEW_OUTSET_BLOCKS = 0.01F;
+    private static final int CHUNK_SIZE_BLOCKS = 16;
 
     private static final BlockState VALID = Blocks.STAINED_GLASS.lightBlue().defaultBlockState();
     private static final BlockState INVALID = Blocks.STAINED_GLASS.red().defaultBlockState();
@@ -114,11 +115,12 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
         Objects.requireNonNull(materializer, "materializer");
         List<BlockPos> positions = materializer.blockPositions(footprint);
         PieceType pieceType = footprint.slot().pieceType();
-        return switch (pieceType) {
+        LinkedHashSet<PreviewVolume> volumes = switch (pieceType) {
             case WALL, FLOOR -> singleVolume(positions);
             case STAIR -> stairRowVolumes(positions);
             case ROOF -> unitVolumes(positions);
         };
+        return splitAtChunkBorders(volumes);
     }
 
     private static LinkedHashSet<PreviewVolume> singleVolume(Collection<BlockPos> positions) {
@@ -166,6 +168,47 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
             maxZ = Math.max(maxZ, pos.getZ());
         }
         return new PreviewVolume(new BlockPos(minX, minY, minZ), maxX - minX + 1, maxY - minY + 1, maxZ - minZ + 1);
+    }
+
+    static LinkedHashSet<PreviewVolume> splitAtChunkBorders(Collection<PreviewVolume> volumes) {
+        Objects.requireNonNull(volumes, "volumes");
+        LinkedHashSet<PreviewVolume> split = new LinkedHashSet<>();
+        for (PreviewVolume volume : volumes) {
+            split.addAll(splitAtChunkBorders(volume));
+        }
+        return split;
+    }
+
+    static LinkedHashSet<PreviewVolume> splitAtChunkBorders(PreviewVolume volume) {
+        Objects.requireNonNull(volume, "volume");
+        LinkedHashSet<PreviewVolume> split = new LinkedHashSet<>();
+        BlockPos origin = volume.origin();
+        List<AxisRange> xRanges = chunkRanges(origin.getX(), volume.sizeX());
+        List<AxisRange> zRanges = chunkRanges(origin.getZ(), volume.sizeZ());
+        for (AxisRange xRange : xRanges) {
+            for (AxisRange zRange : zRanges) {
+                split.add(new PreviewVolume(
+                        new BlockPos(xRange.start(), origin.getY(), zRange.start()),
+                        xRange.size(),
+                        volume.sizeY(),
+                        zRange.size()
+                ));
+            }
+        }
+        return split;
+    }
+
+    private static List<AxisRange> chunkRanges(int start, int size) {
+        ArrayList<AxisRange> ranges = new ArrayList<>();
+        int current = start;
+        int end = start + size;
+        while (current < end) {
+            int chunkEnd = Math.floorDiv(current, CHUNK_SIZE_BLOCKS) * CHUNK_SIZE_BLOCKS + CHUNK_SIZE_BLOCKS;
+            int next = Math.min(end, chunkEnd);
+            ranges.add(new AxisRange(current, next - current));
+            current = next;
+        }
+        return ranges;
     }
 
     private static Display.BlockDisplay spawnDisplay(ServerLevel level, PreviewVolume volume, BlockState state) {
@@ -227,6 +270,9 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
                 throw new IllegalArgumentException("preview volume dimensions must be positive");
             }
         }
+    }
+
+    private record AxisRange(int start, int size) {
     }
 
     private record ActivePreview(String dimension, Map<PreviewVolume, Display.BlockDisplay> displays) {
