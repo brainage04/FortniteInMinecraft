@@ -37,14 +37,14 @@ public final class BuildPieceItem extends SimplePolymerItem {
 
     @Override
     public Item getPolymerItem(ItemStack stack, PacketContext context) {
-        return clientItemFor(ModItems.selectedMaterialFor(context));
+        return clientItemFor(ModItems.selectedMaterialFor(stack, context));
     }
 
     @Override
     public void modifyClientTooltip(List<Component> tooltip, ItemStack stack, PacketContext context) {
-        tooltip.add(Component.literal("Material: " + label(ModItems.selectedMaterialFor(context))));
+        tooltip.add(Component.literal("Material: " + label(ModItems.selectedMaterialFor(stack, context))));
         tooltip.add(Component.literal("Right-click: place / hold turbo"));
-        tooltip.add(Component.literal("Left-click block: cycle material"));
+        tooltip.add(Component.literal("Left-click: cycle material"));
     }
 
     @Override

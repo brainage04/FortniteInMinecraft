@@ -20,6 +20,7 @@ public final class PlayerBuildSession {
     private long lastPlacementTick = NO_TURBO_PLACEMENT_TICK;
     private long nextTurboPlacementTick = NO_TURBO_PLACEMENT_TICK;
     private long turboPlacementUntilTick = NO_TURBO_PLACEMENT_TICK;
+    private long lastMaterialCycleTick = NO_TURBO_PLACEMENT_TICK;
 
     public PieceType selectedPiece() {
         return selectedPiece;
@@ -53,6 +54,10 @@ public final class PlayerBuildSession {
         return turboPlacementUntilTick;
     }
 
+    public long lastMaterialCycleTick() {
+        return lastMaterialCycleTick;
+    }
+
     public void selectPiece(PieceType piece) {
         Objects.requireNonNull(piece, "piece");
         if (selectedPiece != piece) {
@@ -73,6 +78,17 @@ public final class PlayerBuildSession {
         MaterialType[] materials = MaterialType.values();
         selectMaterial(materials[(selectedMaterial.ordinal() + 1) % materials.length]);
         return selectedMaterial;
+    }
+
+    public boolean markMaterialCycle(long tick) {
+        if (tick < 0) {
+            throw new IllegalArgumentException("tick cannot be negative");
+        }
+        if (lastMaterialCycleTick == tick) {
+            return false;
+        }
+        lastMaterialCycleTick = tick;
+        return true;
     }
 
     public void selectPreviewMode(PreviewMode previewMode) {

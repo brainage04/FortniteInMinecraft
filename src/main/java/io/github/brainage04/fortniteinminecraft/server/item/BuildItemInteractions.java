@@ -1,7 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
 import io.github.brainage04.fortniteinminecraft.core.model.BuildGridPos;
-import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.placement.PlacementCandidate;
@@ -16,6 +15,8 @@ import io.github.brainage04.fortniteinminecraft.core.session.PlayerBuildSession;
 import io.github.brainage04.fortniteinminecraft.core.session.ResourceWallet;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 import io.github.brainage04.fortniteinminecraft.server.PlayerFacingOrientation;
+import io.github.brainage04.fortniteinminecraft.server.player.PlayerMovementTuning;
+import io.github.brainage04.fortniteinminecraft.server.player.PlayerPlacementRescue;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewRenderers;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
@@ -40,6 +41,9 @@ import java.util.UUID;
 public final class BuildItemInteractions {
     static final long TURBO_PLACEMENT_INTERVAL_TICKS = 1L;
     static final long TURBO_INPUT_GRACE_TICKS = 8L;
+    private static BuildSessionManager registeredSessions;
+    private static BuildPreviewRenderers registeredPreviewRenderers;
+
 
     private BuildItemInteractions() {
     }
@@ -56,6 +60,9 @@ public final class BuildItemInteractions {
         Objects.requireNonNull(rules, "rules");
         Objects.requireNonNull(materializer, "materializer");
         Objects.requireNonNull(previewRenderers, "previewRenderers");
+        registeredSessions = sessions;
+        registeredPreviewRenderers = previewRenderers;
+
 
         UseItemCallback.EVENT.register((player, level, hand) -> place(
                 player,
@@ -86,6 +93,13 @@ public final class BuildItemInteractions {
         ));
     }
 
+    public static void handleBuildItemSwing(ServerPlayer player, InteractionHand hand) {
+        if (registeredSessions == null || registeredPreviewRenderers == null) {
+            return;
+        }
+        cycleMaterial(player, player.level(), hand, registeredSessions, registeredPreviewRenderers);
+    }
+
     public static void updatePreviewFromHeldItem(
             ServerPlayer player,
             BuildSessionManager sessions,
@@ -99,6 +113,7 @@ public final class BuildItemInteractions {
 
         BuildPieceItem item = ModItems.asBuildPiece(player.getMainHandItem());
         if (item == null) {
+            PlayerMovementTuning.clear(player);
             PlayerBuildSession session = sessions.get(player.getUUID());
             if (session != null) {
                 session.clearPreview();
@@ -107,6 +122,8 @@ public final class BuildItemInteractions {
             previewRenderers.clear(player);
             return;
         }
+
+        PlayerMovementTuning.apply(player);
 
         PlayerBuildSession session = sessions.getOrCreate(player.getUUID());
         session.selectPiece(item.pieceType());
@@ -154,7 +171,7 @@ public final class BuildItemInteractions {
             BuildSessionManager sessions,
             BuildPreviewRenderers previewRenderers
     ) {
-        if (!(player instanceof ServerPlayer serverPlayer) || !(level instanceof ServerLevel)) {
+        if (!(player instanceof ServerPlayer serverPlayer) || !(level instanceof ServerLevel serverLevel)) {
             return InteractionResult.PASS;
         }
 
@@ -164,6 +181,10 @@ public final class BuildItemInteractions {
         }
 
         PlayerBuildSession session = sessions.getOrCreate(serverPlayer.getUUID());
+        long tick = serverLevel.getGameTime();
+        if (!session.markMaterialCycle(tick)) {
+            return InteractionResult.SUCCESS_SERVER;
+        }
         session.selectPiece(item.pieceType());
         MaterialType material = session.cycleMaterial();
         previewRenderers.clear(serverPlayer);
@@ -260,6 +281,8 @@ public final class BuildItemInteractions {
             }
             return InteractionResult.FAIL;
         }
+
+        PlayerPlacementRescue.rescueAfterPlacement(player, level, rules, materializer, result.footprint());
 
         previewRenderers.clear(player);
         session.rememberPlacement(candidate.slot(), tick, tick + TURBO_PLACEMENT_INTERVAL_TICKS);

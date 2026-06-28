@@ -96,6 +96,16 @@ class PlayerBuildSessionTest {
     }
 
     @Test
+    void materialCycleMarkerDebouncesDuplicateSwingAndAttackPackets() {
+        PlayerBuildSession session = new PlayerBuildSession();
+
+        assertTrue(session.markMaterialCycle(42));
+        assertFalse(session.markMaterialCycle(42));
+        assertTrue(session.markMaterialCycle(43));
+        assertEquals(43, session.lastMaterialCycleTick());
+    }
+
+    @Test
     void turboPlacementWindowSkipsRepeatedSlotAndHonorsCadence() {
         PlayerBuildSession session = new PlayerBuildSession();
         BuildSlot first = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);

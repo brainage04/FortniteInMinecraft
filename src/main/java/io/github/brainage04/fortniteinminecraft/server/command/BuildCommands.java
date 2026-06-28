@@ -28,6 +28,7 @@ import io.github.brainage04.fortniteinminecraft.core.session.PreviewMode;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 import io.github.brainage04.fortniteinminecraft.server.PlayerFacingOrientation;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
+import io.github.brainage04.fortniteinminecraft.server.player.PlayerPlacementRescue;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewRenderers;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
@@ -194,6 +195,8 @@ public final class BuildCommands {
             source.sendFailure(Component.literal("Placement rolled back: " + writeResult.message() + "."));
             return 0;
         }
+
+        PlayerPlacementRescue.rescueAfterPlacement(player, level, rules, materializer, result.footprint());
 
         previewRenderers.clear(player);
         commandCandidate.session().rememberPlacement(candidate.slot(), tick, tick);

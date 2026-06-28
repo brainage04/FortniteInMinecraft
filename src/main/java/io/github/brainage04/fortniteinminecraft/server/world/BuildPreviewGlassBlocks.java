@@ -29,7 +29,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
-    static final float PREVIEW_INSET_BLOCKS = 0.01F;
+    static final float PREVIEW_OUTSET_BLOCKS = 0.01F;
 
     private static final BlockState VALID = Blocks.STAINED_GLASS.lightBlue().defaultBlockState();
     private static final BlockState INVALID = Blocks.STAINED_GLASS.red().defaultBlockState();
@@ -181,20 +181,20 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
     }
 
     private static void setTransformation(Display.BlockDisplay display, PreviewVolume volume) {
-        float inset = PREVIEW_INSET_BLOCKS;
-        Vector3f translation = new Vector3f(inset, inset, inset);
+        float outset = PREVIEW_OUTSET_BLOCKS;
+        Vector3f translation = new Vector3f(-outset, -outset, -outset);
         Vector3f scale = new Vector3f(
-                shrunkenScale(volume.sizeX(), inset),
-                shrunkenScale(volume.sizeY(), inset),
-                shrunkenScale(volume.sizeZ(), inset)
+                expandedScale(volume.sizeX(), outset),
+                expandedScale(volume.sizeY(), outset),
+                expandedScale(volume.sizeZ(), outset)
         );
         ((DisplayAccessor) display).fortniteinminecraft$setTransformation(
                 new Transformation(translation, new Quaternionf(), scale, new Quaternionf())
         );
     }
 
-    private static float shrunkenScale(int blocks, float inset) {
-        return Math.max(0.01F, blocks - inset * 2.0F);
+    private static float expandedScale(int blocks, float outset) {
+        return blocks + outset * 2.0F;
     }
 
     @SuppressWarnings("unchecked")

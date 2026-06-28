@@ -49,8 +49,8 @@ public final class PlacementService {
 
         BuildSlot slot = candidate.slot();
         BuildPieceState piece = BuildPieceState.placed(slot, candidate.material(), player.playerId(), tick);
-        if (!state.addIfAbsent(piece)) {
-            return PlacementResult.rejected(PlacementFailure.OCCUPIED, "build slot became occupied before commit");
+        if (!state.addIfGridAbsent(piece)) {
+            return PlacementResult.rejected(PlacementFailure.OCCUPIED, "build grid cell became occupied before commit");
         }
 
         if (!player.creative() && !player.resources().spend(candidate.material(), candidate.material().placementCost())) {
@@ -67,8 +67,8 @@ public final class PlacementService {
         BuildGridPos gridPos = slot.gridPos();
         BlockOffset origin = snapGrid.blockOrigin(gridPos);
 
-        if (state.contains(slot)) {
-            return Validation.rejected(footprint, PlacementFailure.OCCUPIED, "build slot is already occupied");
+        if (state.hasAnyAt(gridPos)) {
+            return Validation.rejected(footprint, PlacementFailure.OCCUPIED, "build grid cell is already occupied");
         }
 
         int obstructedBlocks = 0;
@@ -77,8 +77,8 @@ public final class PlacementService {
                 obstructedBlocks++;
             }
         }
-        if (obstructedBlocks > footprint.localBlocks().size() / 2) {
-            return Validation.rejected(footprint, PlacementFailure.OBSTRUCTED, "footprint is mostly obstructed");
+        if (obstructedBlocks > 0) {
+            return Validation.rejected(footprint, PlacementFailure.OBSTRUCTED, "footprint intersects a solid world block");
         }
 
         if (!player.creative() && !supportValidator.isSupported(state, footprint, origin, obstruction)) {

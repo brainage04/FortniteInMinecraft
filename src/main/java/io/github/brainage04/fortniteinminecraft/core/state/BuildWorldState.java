@@ -26,6 +26,15 @@ public final class BuildWorldState {
         return piecesBySlot.putIfAbsent(piece.slot(), piece) == null;
     }
 
+    public boolean addIfGridAbsent(BuildPieceState piece) {
+        Objects.requireNonNull(piece, "piece");
+        if (hasAnyAt(piece.slot().gridPos())) {
+            return false;
+        }
+        piecesBySlot.put(piece.slot(), piece);
+        return true;
+    }
+
     public BuildPieceState remove(BuildSlot slot) {
         return piecesBySlot.remove(Objects.requireNonNull(slot, "slot"));
     }

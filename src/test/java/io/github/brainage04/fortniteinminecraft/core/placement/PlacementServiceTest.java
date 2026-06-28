@@ -51,6 +51,39 @@ class PlacementServiceTest {
     }
 
     @Test
+    void differentPieceTypeAtSameGridRejectsWithoutDoubleSpend() {
+        BuildWorldState state = new BuildWorldState();
+        ResourceWallet wallet = ResourceWallet.with(MaterialType.WOOD, 50);
+        PlacementService service = new PlacementService(state, BuildRules.defaults(), WorldObstruction.none());
+        BuildSlot floor = BuildSlot.of("overworld", 1, 0, 1, PieceType.FLOOR, Orientation.NORTH);
+        BuildSlot stair = BuildSlot.of("overworld", 1, 0, 1, PieceType.STAIR, Orientation.EAST);
+        PlayerBuildContext player = PlayerBuildContext.survival(PLAYER, wallet);
+
+        PlacementResult first = service.place(new PlacementCandidate(floor, MaterialType.WOOD), player, 1);
+        PlacementResult duplicateCell = service.place(new PlacementCandidate(stair, MaterialType.WOOD), player, 2);
+
+        assertTrue(first.placed(), first.message());
+        assertEquals(PlacementFailure.OCCUPIED, duplicateCell.failure());
+        assertEquals(40, wallet.get(MaterialType.WOOD));
+        assertEquals(1, state.size());
+    }
+
+    @Test
+    void differentStairOrientationAtSameGridRejects() {
+        BuildWorldState state = new BuildWorldState();
+        PlacementService service = new PlacementService(state, BuildRules.defaults(), WorldObstruction.none());
+        BuildSlot north = BuildSlot.of("overworld", 1, 0, 1, PieceType.STAIR, Orientation.NORTH);
+        BuildSlot east = BuildSlot.of("overworld", 1, 0, 1, PieceType.STAIR, Orientation.EAST);
+
+        PlacementResult first = service.place(new PlacementCandidate(north, MaterialType.WOOD), PlayerBuildContext.creative(PLAYER), 1);
+        PlacementResult duplicateCell = service.place(new PlacementCandidate(east, MaterialType.WOOD), PlayerBuildContext.creative(PLAYER), 2);
+
+        assertTrue(first.placed(), first.message());
+        assertEquals(PlacementFailure.OCCUPIED, duplicateCell.failure());
+        assertEquals(1, state.size());
+    }
+
+    @Test
     void canonicalWallSlotsRejectApproachSideDuplicates() {
         BuildWorldState state = new BuildWorldState();
         PlacementService service = new PlacementService(state, BuildRules.defaults(), WorldObstruction.none());
@@ -119,7 +152,7 @@ class PlacementServiceTest {
     }
 
     @Test
-    void minoritySolidWorldBlocksDoNotObstructPlacement() {
+    void anySolidWorldBlockObstructsPlacement() {
         BuildWorldState state = new BuildWorldState();
         ResourceWallet wallet = ResourceWallet.with(MaterialType.WOOD, 50);
         WorldObstruction obstruction = (dimension, x, y, z) -> x == -1 && y == -1 && z == -1;
@@ -128,9 +161,9 @@ class PlacementServiceTest {
 
         PlacementResult result = service.place(new PlacementCandidate(slot, MaterialType.WOOD), PlayerBuildContext.survival(PLAYER, wallet), 1);
 
-        assertTrue(result.placed(), result.message());
-        assertEquals(40, wallet.get(MaterialType.WOOD));
-        assertEquals(1, state.size());
+        assertEquals(PlacementFailure.OBSTRUCTED, result.failure());
+        assertEquals(50, wallet.get(MaterialType.WOOD));
+        assertEquals(0, state.size());
     }
 
     @Test

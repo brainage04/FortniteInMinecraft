@@ -36,6 +36,7 @@ class BuildPieceItemTest {
         assertSame(Items.CUT_COPPER_STAIRS.weathering().unaffected(), item.clientItemFor(MaterialType.METAL));
     }
 
+
     private static Item.Properties properties(String path) {
         ResourceKey<Item> key = ResourceKey.create(
                 BuiltInRegistries.ITEM.key(),

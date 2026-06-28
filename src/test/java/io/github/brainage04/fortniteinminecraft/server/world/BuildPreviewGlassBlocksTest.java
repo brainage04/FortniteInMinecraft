@@ -62,9 +62,9 @@ class BuildPreviewGlassBlocksTest {
     }
 
     @Test
-    void previewDisplaysAreInsetToAvoidCoplanarZFighting() {
-        assertTrue(BuildPreviewGlassBlocks.PREVIEW_INSET_BLOCKS > 0.0F);
-        assertTrue(BuildPreviewGlassBlocks.PREVIEW_INSET_BLOCKS < 0.5F);
+    void previewDisplaysAreOutsetSlightlySoTheyReadBiggerThanBlocks() {
+        assertTrue(BuildPreviewGlassBlocks.PREVIEW_OUTSET_BLOCKS > 0.0F);
+        assertTrue(BuildPreviewGlassBlocks.PREVIEW_OUTSET_BLOCKS < 0.5F);
     }
 
     private static BuildPreviewGlassBlocks.PreviewVolume onlyVolume(
