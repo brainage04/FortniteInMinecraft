@@ -11,6 +11,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.Consumable;
 import net.minecraft.world.item.component.UseCooldown;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -43,12 +45,13 @@ class BuildPieceItemTest {
     }
 
     @Test
-    void weaponItemsExposeCooldownComponentForClientOverlay() {
+    void weaponItemsExposeAccurateCooldownComponentForClientOverlay() {
         WeaponItem item = ModItems.WEAPONS.get(0);
         UseCooldown cooldown = WeaponItem.cooldownComponent(item.definition());
 
         assertNotNull(cooldown);
         assertTrue(cooldown.cooldownGroup().isPresent());
+        assertEquals(item.fireDelayTicks(), cooldown.ticks());
     }
 
     @Test
@@ -59,6 +62,35 @@ class BuildPieceItemTest {
         assertNotNull(ConsumableItem.foodProperties());
         assertNotNull(consumable);
         assertEquals((int) Math.ceil(item.definition().castSeconds() * 20.0D), consumable.consumeTicks());
+    }
+
+    @Test
+    void consumableClientItemsAvoidVanillaRightClickUseOverrides() {
+        assertSame(Items.PAPER, ModItems.CONSUMABLES.get(0).clientItem());
+        assertSame(Items.IRON_INGOT, ModItems.CONSUMABLES.get(1).clientItem());
+        assertSame(Items.AMETHYST_SHARD, ModItems.CONSUMABLES.get(2).clientItem());
+        assertSame(Items.PRISMARINE_SHARD, ModItems.CONSUMABLES.get(3).clientItem());
+        assertSame(Items.ECHO_SHARD, ModItems.CONSUMABLES.get(4).clientItem());
+    }
+
+    @Test
+    void bulletRaycastUsesColliderShapesSoGrassDoesNotBlockShots() {
+        assertSame(ClipContext.Block.COLLIDER, WeaponItem.BULLET_BLOCK_MODE);
+    }
+
+    @Test
+    void heldWeaponInputGraceCanOutrunVanillaRightClickDelay() {
+        assertTrue(WeaponAutoFire.HELD_USE_GRACE_TICKS > 4L);
+    }
+
+    @Test
+    void muzzleParticleOriginMovesDownAndRightFromView() {
+        Vec3 start = new Vec3(0.0D, 64.0D, 0.0D);
+        Vec3 muzzle = WeaponItem.muzzlePosition(start, new Vec3(0.0D, 0.0D, -1.0D));
+
+        assertTrue(muzzle.x() > start.x());
+        assertTrue(muzzle.y() < start.y());
+        assertTrue(muzzle.z() < start.z());
     }
 
     @Test

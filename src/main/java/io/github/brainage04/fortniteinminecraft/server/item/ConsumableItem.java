@@ -3,6 +3,8 @@ package io.github.brainage04.fortniteinminecraft.server.item;
 import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import io.github.brainage04.fortniteinminecraft.core.item.ConsumableDefinition;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -31,6 +33,10 @@ public final class ConsumableItem extends SimplePolymerItem {
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
     }
 
+    Item clientItem() {
+        return clientItem;
+    }
+
     public ConsumableDefinition definition() {
         return definition;
     }
@@ -56,6 +62,17 @@ public final class ConsumableItem extends SimplePolymerItem {
     @Override
     public Item getPolymerItem(ItemStack stack, PacketContext context) {
         return clientItem;
+    }
+
+    @Override
+    public void modifyBasePolymerItemStack(
+            ItemStack out,
+            ItemStack stack,
+            PacketContext context,
+            HolderLookup.Provider registries
+    ) {
+        out.set(DataComponents.FOOD, foodProperties());
+        out.set(DataComponents.CONSUMABLE, consumableComponent(definition));
     }
 
     @Override

@@ -124,10 +124,10 @@ public final class ModItems {
 
     public static final List<ConsumableItem> CONSUMABLES = List.of(
             consumable("bandage", "Bandage", 3.53, 15, 75, 0, 0, true, "bandage", Items.PAPER),
-            consumable("medkit", "Medkit", 10.03, 100, 100, 0, 0, true, "medkit", Items.REDSTONE),
-            consumable("small_shield", "Small Shield Potion", 2.03, 0, 0, 25, 50, true, "small_shield", Items.HONEY_BOTTLE),
-            consumable("shield_potion", "Shield Potion", 5.03, 0, 0, 50, 100, true, "shield_potion", Items.POTION),
-            consumable("full_restore_jug", "Full Restore Jug", 15.03, 100, 100, 100, 100, true, "full_restore_jug", Items.EXPERIENCE_BOTTLE)
+            consumable("medkit", "Medkit", 10.03, 100, 100, 0, 0, true, "medkit", Items.IRON_INGOT),
+            consumable("small_shield", "Small Shield Potion", 2.03, 0, 0, 25, 50, true, "small_shield", Items.AMETHYST_SHARD),
+            consumable("shield_potion", "Shield Potion", 5.03, 0, 0, 50, 100, true, "shield_potion", Items.PRISMARINE_SHARD),
+            consumable("full_restore_jug", "Full Restore Jug", 15.03, 100, 100, 100, 100, true, "full_restore_jug", Items.ECHO_SHARD)
     );
 
     public static final List<Item> COMBAT_ITEMS = combatItems();

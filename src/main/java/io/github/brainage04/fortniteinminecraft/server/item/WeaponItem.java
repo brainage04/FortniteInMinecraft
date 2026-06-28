@@ -4,7 +4,9 @@ import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
+import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -24,6 +26,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -40,6 +43,7 @@ public final class WeaponItem extends SimplePolymerItem {
     private static final double ENTITY_HITBOX_INFLATE_BLOCKS = 0.3D;
     private static final double BULLET_TRACE_STEP_BLOCKS = 1.25D;
     private static final int MAX_TRACE_PARTICLES = 64;
+    static final ClipContext.Block BULLET_BLOCK_MODE = ClipContext.Block.COLLIDER;
 
     private final WeaponDefinition definition;
     private final Item clientItem;
@@ -56,7 +60,7 @@ public final class WeaponItem extends SimplePolymerItem {
 
     static UseCooldown cooldownComponent(WeaponDefinition definition) {
         Objects.requireNonNull(definition, "definition");
-        return new UseCooldown(0.05F, Optional.of(Identifier.fromNamespaceAndPath(
+        return new UseCooldown(fireDelayTicks(definition) / 20.0F, Optional.of(Identifier.fromNamespaceAndPath(
                 FortniteInMinecraft.MOD_ID,
                 definition.path()
         )));
@@ -65,6 +69,16 @@ public final class WeaponItem extends SimplePolymerItem {
     @Override
     public Item getPolymerItem(ItemStack stack, PacketContext context) {
         return clientItem;
+    }
+
+    @Override
+    public void modifyBasePolymerItemStack(
+            ItemStack out,
+            ItemStack stack,
+            PacketContext context,
+            HolderLookup.Provider registries
+    ) {
+        out.set(DataComponents.USE_COOLDOWN, cooldownComponent(definition));
     }
 
     @Override
@@ -92,11 +106,20 @@ public final class WeaponItem extends SimplePolymerItem {
             return InteractionResult.PASS;
         }
 
+        WeaponAutoFire.rememberInput(serverPlayer, hand, this, serverLevel.getGameTime());
+        return fireFromHeldItem(serverLevel, serverPlayer, hand);
+    }
+
+    InteractionResult fireFromHeldItem(ServerLevel level, ServerPlayer player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        long tick = serverLevel.getGameTime();
+        if (stack.getItem() != this) {
+            return InteractionResult.PASS;
+        }
+
+        long tick = level.getGameTime();
         long nextFireTick = customData(stack).getLongOr(NEXT_FIRE_TICK_KEY, 0L);
         if (tick < nextFireTick || player.getCooldowns().isOnCooldown(stack)) {
-            serverPlayer.sendSystemMessage(Component.literal("Weapon cooling down."), true);
+            resyncCooldownOverlay(player, stack);
             return InteractionResult.SUCCESS_SERVER;
         }
 
@@ -105,8 +128,8 @@ public final class WeaponItem extends SimplePolymerItem {
             int reloadTicks = reloadTicks();
             reload(stack, tick, reloadTicks);
             player.getCooldowns().addCooldown(stack, reloadTicks);
-            playReloadSound(serverLevel, serverPlayer);
-            serverPlayer.sendSystemMessage(Component.literal("Reloading " + definition.displayName() + "."), true);
+            playReloadSound(level, player);
+            player.sendSystemMessage(Component.literal("Reloading " + definition.displayName() + "."), true);
             return InteractionResult.SUCCESS_SERVER;
         }
 
@@ -115,17 +138,28 @@ public final class WeaponItem extends SimplePolymerItem {
         setGunState(stack, magazine, tick + fireDelayTicks);
         player.getCooldowns().addCooldown(stack, fireDelayTicks);
 
-        ShotTrace trace = traceShot(serverLevel, serverPlayer, definition.stats().rangeBlocks());
-        playShotEffects(serverLevel, serverPlayer, trace);
+        ShotTrace trace = traceShot(level, player, definition.stats().rangeBlocks());
+        playShotEffects(level, player, trace);
         if (trace.target() != null) {
-            DamageReport report = damageTarget(serverLevel, serverPlayer, trace.target());
-            playHitEffects(serverLevel, trace.hitLocation(), report.damage());
-            sendHitMarker(serverPlayer, trace.target(), report, magazine);
+            DamageReport report = damageTarget(level, player, trace.target());
+            playHitEffects(level, player, trace.hitLocation(), report.damage());
+            HitMarkerDisplays.show(level, player, trace.target(), report.damage());
         } else {
-            serverPlayer.sendSystemMessage(Component.literal("Fired " + definition.displayName()
+            player.sendSystemMessage(Component.literal("Fired " + definition.displayName()
                     + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
         }
         return InteractionResult.SUCCESS_SERVER;
+    }
+
+    public static void resyncCooldownOverlay(ServerPlayer player, ItemStack stack) {
+        Objects.requireNonNull(player, "player");
+        if (!(stack.getItem() instanceof WeaponItem item)) {
+            return;
+        }
+        int remainingTicks = item.remainingCooldownTicks(stack, player.level().getGameTime());
+        if (remainingTicks > 0) {
+            player.getCooldowns().addCooldown(stack, remainingTicks);
+        }
     }
 
     private DamageReport damageTarget(ServerLevel level, ServerPlayer shooter, LivingEntity target) {
@@ -187,6 +221,11 @@ public final class WeaponItem extends SimplePolymerItem {
     }
 
     int fireDelayTicks() {
+        return fireDelayTicks(definition);
+    }
+
+    static int fireDelayTicks(WeaponDefinition definition) {
+        Objects.requireNonNull(definition, "definition");
         return Math.max(1, (int) Math.round(20.0D / definition.stats().fireRatePerSecond()));
     }
 
@@ -194,11 +233,19 @@ public final class WeaponItem extends SimplePolymerItem {
         return Math.max(1, (int) Math.round(definition.stats().reloadSeconds() * 20.0D));
     }
 
+    int remainingCooldownTicks(ItemStack stack, long tick) {
+        long nextFireTick = customData(stack).getLongOr(NEXT_FIRE_TICK_KEY, 0L);
+        if (nextFireTick <= tick) {
+            return 0;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, nextFireTick - tick);
+    }
+
     private static ShotTrace traceShot(ServerLevel level, ServerPlayer player, double rangeBlocks) {
         Vec3 start = player.getEyePosition();
         Vec3 look = player.getLookAngle();
         Vec3 rayEnd = start.add(look.scale(rangeBlocks));
-        HitResult blockHit = player.pick(rangeBlocks, 0.0F, false);
+        HitResult blockHit = level.clip(new ClipContext(start, rayEnd, BULLET_BLOCK_MODE, ClipContext.Fluid.NONE, player));
         if (blockHit.getType() != HitResult.Type.MISS) {
             rayEnd = blockHit.getLocation();
         }
@@ -227,19 +274,32 @@ public final class WeaponItem extends SimplePolymerItem {
     }
 
     private static void playShotEffects(ServerLevel level, ServerPlayer shooter, ShotTrace trace) {
-        Vec3 look = shooter.getLookAngle();
-        Vec3 muzzle = trace.start().add(look.scale(0.75D));
-        level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS, 1.2F, 0.55F);
+        Vec3 muzzle = muzzlePosition(shooter, trace.start());
+        level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.PLAYERS, 1.2F, 0.65F);
         level.sendParticles(ParticleTypes.ELECTRIC_SPARK, true, true, muzzle.x(), muzzle.y(), muzzle.z(), 3, 0.05D, 0.05D, 0.05D, 0.0D);
         spawnBulletTrace(level, trace.start(), trace.end());
+    }
+
+    static Vec3 muzzlePosition(ServerPlayer shooter, Vec3 start) {
+        return muzzlePosition(start, shooter.getLookAngle());
+    }
+
+    static Vec3 muzzlePosition(Vec3 start, Vec3 look) {
+        Vec3 right = look.cross(Vec3.Y_AXIS);
+        if (right.lengthSqr() < 1.0E-6D) {
+            right = Vec3.X_AXIS;
+        } else {
+            right = right.normalize();
+        }
+        return start.add(look.normalize().scale(0.75D)).add(right.scale(0.28D)).add(0.0D, -0.22D, 0.0D);
     }
 
     private static void playReloadSound(ServerLevel level, ServerPlayer player) {
         level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.CROSSBOW_LOADING_START, SoundSource.PLAYERS, 0.8F, 0.75F);
     }
 
-    private static void playHitEffects(ServerLevel level, Vec3 hitLocation, float damage) {
-        level.playSound(null, hitLocation.x(), hitLocation.y(), hitLocation.z(), SoundEvents.ARROW_HIT_PLAYER, SoundSource.PLAYERS, 0.8F, 1.2F);
+    private static void playHitEffects(ServerLevel level, ServerPlayer shooter, Vec3 hitLocation, float damage) {
+        level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 0.7F, 1.35F);
         int damageParticles = Math.max(1, Math.min(12, Math.round(damage)));
         level.sendParticles(ParticleTypes.DAMAGE_INDICATOR, true, true, hitLocation.x(), hitLocation.y(), hitLocation.z(), damageParticles, 0.2D, 0.3D, 0.2D, 0.05D);
     }
@@ -258,11 +318,6 @@ public final class WeaponItem extends SimplePolymerItem {
         }
     }
 
-    private void sendHitMarker(ServerPlayer shooter, LivingEntity target, DamageReport report, int magazine) {
-        String damage = report.damaged() ? format(report.damage()) : "0";
-        shooter.sendSystemMessage(Component.literal("Hit " + target.getName().getString() + ": " + damage
-                + " damage (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
-    }
 
     private static String format(double value) {
         if (Math.rint(value) == value) {

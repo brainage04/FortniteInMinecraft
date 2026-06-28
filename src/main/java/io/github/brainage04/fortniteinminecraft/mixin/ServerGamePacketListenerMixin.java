@@ -1,7 +1,9 @@
 package io.github.brainage04.fortniteinminecraft.mixin;
 
 import io.github.brainage04.fortniteinminecraft.server.item.BuildItemInteractions;
+import io.github.brainage04.fortniteinminecraft.server.item.WeaponItem;
 import net.minecraft.network.protocol.game.ServerboundSwingPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,5 +20,10 @@ public abstract class ServerGamePacketListenerMixin {
     @Inject(method = "handleAnimate", at = @At("TAIL"))
     private void fortniteinminecraft$cycleBuildMaterialOnSwing(ServerboundSwingPacket packet, CallbackInfo ci) {
         BuildItemInteractions.handleBuildItemSwing(player, packet.getHand());
+    }
+
+    @Inject(method = "handleUseItem", at = @At("TAIL"))
+    private void fortniteinminecraft$resyncWeaponCooldown(ServerboundUseItemPacket packet, CallbackInfo ci) {
+        WeaponItem.resyncCooldownOverlay(player, player.getItemInHand(packet.getHand()));
     }
 }
