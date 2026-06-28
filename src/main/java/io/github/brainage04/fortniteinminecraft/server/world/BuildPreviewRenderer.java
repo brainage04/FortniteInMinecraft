@@ -12,5 +12,8 @@ public interface BuildPreviewRenderer {
 
     void clear(ServerPlayer player);
 
+    default void clearAll() {
+    }
+
     String renderedUnit(boolean valid);
 }

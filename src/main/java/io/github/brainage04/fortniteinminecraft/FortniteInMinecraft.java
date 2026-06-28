@@ -12,6 +12,8 @@ import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewRendere
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewTicker;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,8 @@ public final class FortniteInMinecraft implements ModInitializer {
         BuildCommands.register(sessions, buildWorld, buildRules, materializer, previewRenderers);
         BuildItemInteractions.register(sessions, buildWorld, buildRules, materializer, previewRenderers);
         previewTicker.register();
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> previewRenderers.clear(handler.player));
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> previewRenderers.clearAll());
         LOGGER.info("{} server core initialized.", MOD_NAME);
     }
 }

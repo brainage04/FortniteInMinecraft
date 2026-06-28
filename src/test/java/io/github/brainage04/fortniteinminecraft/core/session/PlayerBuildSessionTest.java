@@ -122,17 +122,18 @@ class PlayerBuildSessionTest {
     }
 
     @Test
-    void previewModeDefaultsToParticlesAndClearsOnlyPreview() {
+    void previewModeDefaultsToGlassAndClearsOnlyPreview() {
         PlayerBuildSession session = new PlayerBuildSession();
+        assertEquals(PreviewMode.GLASS, session.previewMode());
         BuildGridPos gridPos = new BuildGridPos("overworld", 0, 0, 0);
         PlacementCandidate preview = session.candidateAt(gridPos, Orientation.NORTH);
         session.rememberPreview(preview);
         session.rememberPlacement(preview.slot(), 10, 14);
         session.rememberPreview(preview);
 
-        session.selectPreviewMode(PreviewMode.GLASS);
+        session.selectPreviewMode(PreviewMode.PARTICLES);
 
-        assertEquals(PreviewMode.GLASS, session.previewMode());
+        assertEquals(PreviewMode.PARTICLES, session.previewMode());
         assertNull(session.previewCandidate());
         assertEquals(preview.slot(), session.lastPlacedSlot());
         assertEquals(10, session.lastPlacementTick());
@@ -162,7 +163,7 @@ class PlayerBuildSessionTest {
         session.selectMaterial(MaterialType.STONE);
         PlacementCandidate candidate = session.candidateAt(new BuildGridPos("overworld", 0, 0, 0), Orientation.SOUTH);
         BuildWorldState state = new BuildWorldState();
-        PlacementService service = new PlacementService(state, BuildRules.defaults(), WorldObstruction.none());
+        PlacementService service = new PlacementService(state, BuildRules.defaults(), (dimension, x, y, z) -> x == -1 && y == -2 && z == -1);
         ResourceWallet wallet = ResourceWallet.with(MaterialType.STONE, 50);
 
         PlacementResult result = service.place(candidate, PlayerBuildContext.survival(PLAYER_ONE, wallet), 20);

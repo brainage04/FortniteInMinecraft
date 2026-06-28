@@ -1,5 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.core.placement;
 
+import io.github.brainage04.fortniteinminecraft.core.BuildConstants;
+
 import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildGridPos;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
@@ -9,6 +11,7 @@ import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.session.PlayerBuildContext;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 
+import java.util.List;
 import java.util.Objects;
 
 public final class PlacementService {
@@ -23,7 +26,7 @@ public final class PlacementService {
         Objects.requireNonNull(rules, "rules");
         this.snapGrid = new SnapGrid(rules);
         this.footprints = new FootprintProjector(rules);
-        this.supportValidator = new SupportValidator();
+        this.supportValidator = new SupportValidator(rules);
         this.obstruction = Objects.requireNonNull(obstruction, "obstruction");
     }
 
@@ -71,18 +74,25 @@ public final class PlacementService {
             return Validation.rejected(footprint, PlacementFailure.OCCUPIED, "build grid cell is already occupied");
         }
 
+        List<BlockOffset> absoluteBlocks = footprint.absoluteBlocks(origin);
         int obstructedBlocks = 0;
-        for (BlockOffset block : footprint.absoluteBlocks(origin)) {
+        for (BlockOffset block : absoluteBlocks) {
             if (obstruction.isSolid(gridPos.dimension(), block.x(), block.y(), block.z())) {
                 obstructedBlocks++;
             }
         }
-        if (obstructedBlocks > 0) {
-            return Validation.rejected(footprint, PlacementFailure.OBSTRUCTED, "footprint intersects a solid world block");
+        int requiredUnobstructedBlocks = requiredUnobstructedBlocks(absoluteBlocks.size());
+        int unobstructedBlocks = absoluteBlocks.size() - obstructedBlocks;
+        if (unobstructedBlocks < requiredUnobstructedBlocks) {
+            return Validation.rejected(
+                    footprint,
+                    PlacementFailure.OBSTRUCTED,
+                    "less than " + BuildConstants.MIN_UNOBSTRUCTED_PLACEMENT_PERCENT + "% of the footprint is unobstructed"
+            );
         }
 
-        if (!player.creative() && !supportValidator.isSupported(state, footprint, origin, obstruction)) {
-            return Validation.rejected(footprint, PlacementFailure.UNSUPPORTED, "placement has no ground, world, or build support");
+        if (obstructedBlocks == 0 && !supportValidator.hasDirectAdjacency(state, footprint, absoluteBlocks, obstruction)) {
+            return Validation.rejected(footprint, PlacementFailure.UNSUPPORTED, "placement has no adjacent build or world support");
         }
 
         int cost = candidate.material().placementCost();
@@ -91,6 +101,10 @@ public final class PlacementService {
         }
 
         return Validation.valid(footprint);
+    }
+
+    private static int requiredUnobstructedBlocks(int totalBlocks) {
+        return Math.max(1, (totalBlocks * BuildConstants.MIN_UNOBSTRUCTED_PLACEMENT_PERCENT + 99) / 100);
     }
 
     private record Validation(boolean valid, PieceFootprint footprint, PlacementFailure failure, String message) {

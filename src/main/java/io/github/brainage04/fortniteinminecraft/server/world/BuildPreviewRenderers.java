@@ -37,6 +37,12 @@ public final class BuildPreviewRenderers {
         }
     }
 
+    public void clearAll() {
+        for (BuildPreviewRenderer renderer : renderers.values()) {
+            renderer.clearAll();
+        }
+    }
+
     public String renderedUnit(PreviewMode mode, boolean valid) {
         return renderer(mode).renderedUnit(valid);
     }

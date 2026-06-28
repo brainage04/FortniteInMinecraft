@@ -6,6 +6,7 @@ public final class BuildConstants {
     public static final int PIECE_FOOTPRINT_BLOCKS = 5;
     public static final int WALL_HEIGHT_BLOCKS = 5;
     public static final int DEFAULT_RESOURCE_COST = 10;
+    public static final int MIN_UNOBSTRUCTED_PLACEMENT_PERCENT = 20;
 
     private BuildConstants() {
     }

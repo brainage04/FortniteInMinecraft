@@ -89,7 +89,8 @@ public final class BuildItemInteractions {
                 level,
                 hand,
                 sessions,
-                previewRenderers
+                previewRenderers,
+                false
         ));
     }
 
@@ -97,7 +98,7 @@ public final class BuildItemInteractions {
         if (registeredSessions == null || registeredPreviewRenderers == null) {
             return;
         }
-        cycleMaterial(player, player.level(), hand, registeredSessions, registeredPreviewRenderers);
+        cycleMaterial(player, player.level(), hand, registeredSessions, registeredPreviewRenderers, true);
     }
 
     public static void updatePreviewFromHeldItem(
@@ -169,7 +170,8 @@ public final class BuildItemInteractions {
             Level level,
             InteractionHand hand,
             BuildSessionManager sessions,
-            BuildPreviewRenderers previewRenderers
+            BuildPreviewRenderers previewRenderers,
+            boolean fromSwing
     ) {
         if (!(player instanceof ServerPlayer serverPlayer) || !(level instanceof ServerLevel serverLevel)) {
             return InteractionResult.PASS;
@@ -182,6 +184,9 @@ public final class BuildItemInteractions {
 
         PlayerBuildSession session = sessions.getOrCreate(serverPlayer.getUUID());
         long tick = serverLevel.getGameTime();
+        if (fromSwing && session.shouldIgnoreMaterialSwing(tick)) {
+            return InteractionResult.SUCCESS_SERVER;
+        }
         if (!session.markMaterialCycle(tick)) {
             return InteractionResult.SUCCESS_SERVER;
         }
@@ -218,6 +223,7 @@ public final class BuildItemInteractions {
         session.rememberPreview(candidate);
 
         long tick = serverLevel.getGameTime();
+        session.markBuildUse(tick);
         session.extendTurboPlacement(tick, TURBO_INPUT_GRACE_TICKS);
         if (candidate.slot().equals(session.lastPlacedSlot())) {
             return InteractionResult.SUCCESS_SERVER;

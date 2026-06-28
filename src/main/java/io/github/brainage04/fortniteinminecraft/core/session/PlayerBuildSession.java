@@ -14,13 +14,14 @@ public final class PlayerBuildSession {
 
     private PieceType selectedPiece = PieceType.WALL;
     private MaterialType selectedMaterial = MaterialType.WOOD;
-    private PreviewMode previewMode = PreviewMode.PARTICLES;
+    private PreviewMode previewMode = PreviewMode.GLASS;
     private PlacementCandidate previewCandidate;
     private BuildSlot lastPlacedSlot;
     private long lastPlacementTick = NO_TURBO_PLACEMENT_TICK;
     private long nextTurboPlacementTick = NO_TURBO_PLACEMENT_TICK;
     private long turboPlacementUntilTick = NO_TURBO_PLACEMENT_TICK;
     private long lastMaterialCycleTick = NO_TURBO_PLACEMENT_TICK;
+    private long lastBuildUseTick = NO_TURBO_PLACEMENT_TICK;
 
     public PieceType selectedPiece() {
         return selectedPiece;
@@ -58,6 +59,10 @@ public final class PlayerBuildSession {
         return lastMaterialCycleTick;
     }
 
+    public long lastBuildUseTick() {
+        return lastBuildUseTick;
+    }
+
     public void selectPiece(PieceType piece) {
         Objects.requireNonNull(piece, "piece");
         if (selectedPiece != piece) {
@@ -89,6 +94,20 @@ public final class PlayerBuildSession {
         }
         lastMaterialCycleTick = tick;
         return true;
+    }
+
+    public void markBuildUse(long tick) {
+        if (tick < 0) {
+            throw new IllegalArgumentException("tick cannot be negative");
+        }
+        lastBuildUseTick = tick;
+    }
+
+    public boolean shouldIgnoreMaterialSwing(long tick) {
+        if (tick < 0) {
+            throw new IllegalArgumentException("tick cannot be negative");
+        }
+        return lastBuildUseTick == tick;
     }
 
     public void selectPreviewMode(PreviewMode previewMode) {
@@ -160,5 +179,6 @@ public final class PlayerBuildSession {
         lastPlacementTick = NO_TURBO_PLACEMENT_TICK;
         nextTurboPlacementTick = NO_TURBO_PLACEMENT_TICK;
         turboPlacementUntilTick = NO_TURBO_PLACEMENT_TICK;
+        lastBuildUseTick = NO_TURBO_PLACEMENT_TICK;
     }
 }

@@ -91,6 +91,16 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
     }
 
     @Override
+    public void clearAll() {
+        activePreviews.values().forEach(preview -> preview.displays().values().forEach(Display.BlockDisplay::discard));
+        activePreviews.clear();
+    }
+
+    int activePreviewCount() {
+        return activePreviews.size();
+    }
+
+    @Override
     public String renderedUnit(boolean valid) {
         return valid ? "light blue glass holograms" : "red glass holograms";
     }
