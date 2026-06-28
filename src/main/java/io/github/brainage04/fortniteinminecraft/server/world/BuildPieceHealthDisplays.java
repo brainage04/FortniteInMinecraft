@@ -73,7 +73,9 @@ public final class BuildPieceHealthDisplays {
         if (state == null || materializer == null) {
             return;
         }
-        state.progressConstruction(level.getGameTime());
+        for (BuildPieceState changed : state.progressConstruction(level.getGameTime())) {
+            materializer.refresh(level, changed);
+        }
         String dimension = level.dimension().identifier().toString();
         for (ServerPlayer player : level.players()) {
             updatePlayerView(level, dimension, player);
@@ -91,7 +93,7 @@ public final class BuildPieceHealthDisplays {
             clear(player.getUUID());
             return;
         }
-        Vec3 origin = healthDisplayOrigin(slot);
+        Vec3 origin = healthDisplayOrigin(slot, player.getEyePosition());
         ActiveHealthView view = ACTIVE_VIEWS.get(player.getUUID());
         if (view == null || view.display().isRemoved() || !view.dimension().equals(dimension) || !view.slot().equals(slot)) {
             clear(player.getUUID());
@@ -119,8 +121,15 @@ public final class BuildPieceHealthDisplays {
         return materializer.topOwnerAt(dimension, blockHit.getBlockPos());
     }
 
-    private static Vec3 healthDisplayOrigin(BuildSlot slot) {
-        List<BlockPos> positions = materializer.trackedBlockPositions(slot);
+    private static Vec3 healthDisplayOrigin(BuildSlot slot, Vec3 viewerPosition) {
+        return visibleDisplayOrigin(rawPieceCenter(slot), viewerPosition);
+    }
+
+    static Vec3 rawPieceCenter(BuildSlot slot) {
+        return rawPieceCenter(materializer.trackedBlockPositions(slot), slot);
+    }
+
+    static Vec3 rawPieceCenter(List<BlockPos> positions, BuildSlot slot) {
         if (positions.isEmpty()) {
             return Vec3.atCenterOf(new BlockPos(slot.gridPos().x(), slot.gridPos().y(), slot.gridPos().z()));
         }
@@ -138,7 +147,16 @@ public final class BuildPieceHealthDisplays {
             maxY = Math.max(maxY, pos.getY() + 1.0D);
             maxZ = Math.max(maxZ, pos.getZ() + 1.0D);
         }
-        return new Vec3((minX + maxX) * 0.5D, maxY + 0.35D, (minZ + maxZ) * 0.5D);
+        return new Vec3((minX + maxX) * 0.5D, (minY + maxY) * 0.5D, (minZ + maxZ) * 0.5D);
+    }
+
+    static Vec3 visibleDisplayOrigin(Vec3 pieceCenter, Vec3 viewerPosition) {
+        Vec3 towardViewer = viewerPosition.subtract(pieceCenter);
+        double distance = towardViewer.length();
+        if (distance <= 1.0E-6D) {
+            return pieceCenter;
+        }
+        return pieceCenter.add(towardViewer.scale(Math.min(1.0D, distance) / distance));
     }
 
     private static void configure(Display.TextDisplay display) {

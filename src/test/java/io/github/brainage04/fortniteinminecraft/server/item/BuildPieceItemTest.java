@@ -8,6 +8,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -38,12 +39,12 @@ class BuildPieceItemTest {
                 properties("test_build_stair"),
                 Items.OAK_STAIRS,
                 Items.COBBLESTONE_STAIRS,
-                Items.CUT_COPPER_STAIRS.weathering().unaffected()
+                Items.CUT_COPPER_STAIRS.waxed().unaffected()
         );
 
         assertSame(Items.OAK_STAIRS, item.clientItemFor(MaterialType.WOOD));
         assertSame(Items.COBBLESTONE_STAIRS, item.clientItemFor(MaterialType.STONE));
-        assertSame(Items.CUT_COPPER_STAIRS.weathering().unaffected(), item.clientItemFor(MaterialType.METAL));
+        assertSame(Items.CUT_COPPER_STAIRS.waxed().unaffected(), item.clientItemFor(MaterialType.METAL));
     }
 
     @Test
@@ -61,6 +62,17 @@ class BuildPieceItemTest {
         WeaponItem item = ModItems.WEAPONS.get(0);
 
         assertEquals("Assault Rifle: 30/30", item.statusText(30));
+    }
+
+    @Test
+    void weaponNamesUseFortniteRarityColorWithoutRarityPrefix() {
+        WeaponItem item = ModItems.WEAPONS.stream()
+                .filter(weapon -> weapon.definition().path().equals("weapon_assault_rifle_legendary"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("Assault Rifle", item.getName(ItemStack.EMPTY).getString());
+        assertEquals(TextColor.GOLD, item.getName(ItemStack.EMPTY).getStyle().getColor());
     }
 
     @Test
@@ -148,16 +160,31 @@ class BuildPieceItemTest {
     }
 
     @Test
+    void consumablesCannotStartWhenTheyWouldHaveNoEffect() {
+        ConsumableDefinition smallShield = new ConsumableDefinition(
+                "test_small_shield", "Small Shield", 2.03D, 0, 0, 25, 50, true, "small_shield"
+        );
+        ConsumableDefinition bandage = new ConsumableDefinition(
+                "test_bandage", "Bandage", 3.53D, 15, 75, 0, 0, true, "bandage"
+        );
+
+        assertTrue(ConsumableItem.canBenefit(smallShield, 20.0F, 20.0F, 8.0F, 20.0F));
+        assertFalse(ConsumableItem.canBenefit(smallShield, 20.0F, 20.0F, 10.0F, 20.0F));
+        assertTrue(ConsumableItem.canBenefit(bandage, 10.0F, 20.0F, 0.0F, 0.0F));
+        assertFalse(ConsumableItem.canBenefit(bandage, 15.0F, 20.0F, 0.0F, 0.0F));
+    }
+
+    @Test
     void consumableProgressTextUsesElapsedAndNeededSecondsFromTicks() {
         ConsumableDefinition smallShield = new ConsumableDefinition(
                 "test_small_shield", "Small Shield", 2.03D, 0, 0, 25, 50, true, "small_shield"
         );
 
         assertEquals(41, ConsumableItem.useTicks(smallShield));
-        assertEquals("0/2.05s", ConsumableItem.progressText(smallShield, 41));
-        assertEquals("1/2.05s", ConsumableItem.progressText(smallShield, 21));
+        assertEquals("0.00/2.05s", ConsumableItem.progressText(smallShield, 41));
+        assertEquals("1.00/2.05s", ConsumableItem.progressText(smallShield, 21));
         assertEquals("2.05/2.05s", ConsumableItem.progressText(smallShield, 0));
-        assertEquals("0/2.05s", ConsumableItem.progressText(smallShield, 99));
+        assertEquals("0.00/2.05s", ConsumableItem.progressText(smallShield, 99));
         assertEquals("2.05/2.05s", ConsumableItem.progressText(smallShield, -1));
     }
 

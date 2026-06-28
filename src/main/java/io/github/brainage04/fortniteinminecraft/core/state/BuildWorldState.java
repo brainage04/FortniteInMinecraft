@@ -5,6 +5,7 @@ import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,10 +78,17 @@ public final class BuildWorldState {
         return true;
     }
 
-    public void progressConstruction(long tick) {
+    public List<BuildPieceState> progressConstruction(long tick) {
+        ArrayList<BuildPieceState> changed = new ArrayList<>();
         for (Map.Entry<BuildSlot, BuildPieceState> entry : piecesBySlot.entrySet()) {
-            entry.setValue(entry.getValue().progressedTo(tick));
+            BuildPieceState before = entry.getValue();
+            BuildPieceState after = before.progressedTo(tick);
+            if (!after.equals(before)) {
+                entry.setValue(after);
+                changed.add(after);
+            }
         }
+        return List.copyOf(changed);
     }
 
     public DamageResult damage(BuildSlot slot, int damage, long tick) {

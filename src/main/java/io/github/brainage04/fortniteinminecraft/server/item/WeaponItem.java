@@ -4,6 +4,10 @@ import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
+import io.github.brainage04.fortniteinminecraft.core.placement.BuildSupportCascade;
+import io.github.brainage04.fortniteinminecraft.core.placement.WorldObstruction;
+import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
+import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPieceHealthDisplays;
@@ -16,6 +20,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -53,6 +58,7 @@ public final class WeaponItem extends SimplePolymerItem {
     private static final int MAX_TRACE_PARTICLES = 64;
     private static BuildWorldState buildWorldState;
     private static WorldBuildMaterializer buildMaterializer;
+    private static BuildSupportCascade supportCascade;
 
     static final ClipContext.Block BULLET_BLOCK_MODE = ClipContext.Block.COLLIDER;
 
@@ -65,9 +71,10 @@ public final class WeaponItem extends SimplePolymerItem {
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
     }
 
-    public static void configureBuildDamage(BuildWorldState state, WorldBuildMaterializer materializer) {
+    public static void configureBuildDamage(BuildWorldState state, WorldBuildMaterializer materializer, BuildRules rules) {
         buildWorldState = Objects.requireNonNull(state, "state");
         buildMaterializer = Objects.requireNonNull(materializer, "materializer");
+        supportCascade = new BuildSupportCascade(Objects.requireNonNull(rules, "rules"));
     }
 
     public WeaponDefinition definition() {
@@ -94,12 +101,27 @@ public final class WeaponItem extends SimplePolymerItem {
             PacketContext context,
             HolderLookup.Provider registries
     ) {
+        out.set(DataComponents.ITEM_NAME, displayNameComponent());
         out.set(DataComponents.USE_COOLDOWN, cooldownComponent(definition));
     }
 
     @Override
     public Component getName(ItemStack stack) {
-        return Component.literal(definition.rarity().label() + " " + definition.displayName());
+        return displayNameComponent();
+    }
+
+    private Component displayNameComponent() {
+        return Component.literal(definition.displayName()).withStyle(rarityColor(definition.rarity()));
+    }
+
+    private static ChatFormatting rarityColor(io.github.brainage04.fortniteinminecraft.core.item.FortniteRarity rarity) {
+        return switch (rarity) {
+            case COMMON -> ChatFormatting.WHITE;
+            case UNCOMMON -> ChatFormatting.GREEN;
+            case RARE -> ChatFormatting.BLUE;
+            case EPIC -> ChatFormatting.LIGHT_PURPLE;
+            case LEGENDARY -> ChatFormatting.GOLD;
+        };
     }
 
     @Override
@@ -167,12 +189,16 @@ public final class WeaponItem extends SimplePolymerItem {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(hand, "hand");
         ItemStack stack = player.getItemInHand(hand);
-        ServerLevel level = player.level();
-        long tick = level.getGameTime();
-        ManualReloadResult result = tryStartManualReload(stack, tick);
         if (!(stack.getItem() instanceof WeaponItem item)) {
             return InteractionResult.PASS;
         }
+        ServerLevel level = player.level();
+        long tick = level.getGameTime();
+        if (player.getCooldowns().isOnCooldown(stack)
+                && item.customData(stack).getLongOr(RELOAD_COMPLETE_TICK_KEY, 0L) <= tick) {
+            return InteractionResult.SUCCESS_SERVER;
+        }
+        ManualReloadResult result = item.tryStartManualReloadOnGun(stack, tick);
         if (result == ManualReloadResult.STARTED) {
             player.getCooldowns().addCooldown(stack, item.remainingCooldownTicks(stack, tick));
             playReloadSound(level, player);
@@ -200,7 +226,7 @@ public final class WeaponItem extends SimplePolymerItem {
             return;
         }
         int remainingTicks = item.remainingCooldownTicks(stack, player.level().getGameTime());
-        if (remainingTicks > 0) {
+        if (remainingTicks > 0 && !player.getCooldowns().isOnCooldown(stack)) {
             player.getCooldowns().addCooldown(stack, remainingTicks);
         }
     }
@@ -265,17 +291,49 @@ public final class WeaponItem extends SimplePolymerItem {
             WorldBuildWriteResult clearResult = buildMaterializer.clear(level, result.after());
             if (clearResult.success()) {
                 buildWorldState.remove(slot);
+                int collapsed = clearUnsupportedBuilds(level);
                 shooter.sendSystemMessage(Component.literal("Destroyed " + result.before().material().name().toLowerCase(Locale.ROOT)
                         + " " + result.before().slot().pieceType().name().toLowerCase(Locale.ROOT)
-                        + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
+                        + " (" + magazine + "/" + definition.stats().magazineSize() + ")"
+                        + collapseMessage(collapsed)), true);
             } else {
                 shooter.sendSystemMessage(Component.literal("Build destroyed but world clear failed: " + clearResult.message()), false);
             }
         } else {
+            WorldBuildWriteResult refreshResult = buildMaterializer.refresh(level, result.after());
+            if (!refreshResult.success()) {
+                shooter.sendSystemMessage(Component.literal("Build damaged but world refresh failed: " + refreshResult.message()), false);
+            }
             shooter.sendSystemMessage(Component.literal(BuildPieceHealthDisplays.healthText(result.after())
                     + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
         }
         return true;
+    }
+
+    private static int clearUnsupportedBuilds(ServerLevel level) {
+        if (supportCascade == null) {
+            return 0;
+        }
+        String dimension = level.dimension().identifier().toString();
+        WorldObstruction staticWorld = (candidateDimension, x, y, z) -> dimension.equals(candidateDimension)
+                && !buildMaterializer.isTrackedBlock(candidateDimension, x, y, z)
+                && level.getBlockState(new BlockPos(x, y, z)).isSolid();
+        int collapsed = 0;
+        for (BuildPieceState unsupported : supportCascade.unsupportedPieces(buildWorldState, dimension, staticWorld)) {
+            WorldBuildWriteResult clearResult = buildMaterializer.clear(level, unsupported);
+            if (clearResult.success()) {
+                buildWorldState.remove(unsupported.slot());
+                collapsed++;
+            }
+        }
+        return collapsed;
+    }
+
+    private static String collapseMessage(int collapsed) {
+        if (collapsed <= 0) {
+            return ".";
+        }
+        return "; collapsed " + collapsed + " unsupported " + (collapsed == 1 ? "piece" : "pieces") + ".";
     }
 
     static void prepareBulletHit(LivingEntity target) {

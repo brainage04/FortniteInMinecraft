@@ -40,8 +40,8 @@ class WorldBuildMaterializerTest {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
 
         assertSame(Blocks.OAK_PLANKS, materializer.blockStateFor(MaterialType.WOOD).getBlock());
-        assertSame(Blocks.COBBLESTONE, materializer.blockStateFor(MaterialType.STONE).getBlock());
-        assertSame(Blocks.COPPER_BLOCK.weathering().unaffected(), materializer.blockStateFor(MaterialType.METAL).getBlock());
+        assertSame(Blocks.STONE_BRICKS, materializer.blockStateFor(MaterialType.STONE).getBlock());
+        assertSame(Blocks.COPPER_BLOCK.waxed().unaffected(), materializer.blockStateFor(MaterialType.METAL).getBlock());
     }
 
     @Test
@@ -61,7 +61,7 @@ class WorldBuildMaterializerTest {
     void placeTracksBlocksAndClearRemovesOnlyTrackedBlocks() {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
         BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
-        BuildPieceState piece = BuildPieceState.placed(slot, MaterialType.WOOD, PLAYER, 1);
+        BuildPieceState piece = piece(slot, MaterialType.WOOD, MaterialType.WOOD.finalHealth());
         PieceFootprint footprint = footprint(slot);
         InMemoryBlocks blocks = new InMemoryBlocks();
 
@@ -90,8 +90,8 @@ class WorldBuildMaterializerTest {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
         BuildSlot firstSlot = BuildSlot.of("overworld", 0, 0, 0, PieceType.FLOOR, Orientation.NORTH);
         BuildSlot secondSlot = BuildSlot.of("overworld", 1, 0, 0, PieceType.FLOOR, Orientation.NORTH);
-        BuildPieceState firstPiece = BuildPieceState.placed(firstSlot, MaterialType.WOOD, PLAYER, 1);
-        BuildPieceState secondPiece = BuildPieceState.placed(secondSlot, MaterialType.STONE, PLAYER, 2);
+        BuildPieceState firstPiece = piece(firstSlot, MaterialType.WOOD, MaterialType.WOOD.finalHealth());
+        BuildPieceState secondPiece = piece(secondSlot, MaterialType.STONE, MaterialType.STONE.finalHealth());
         PieceFootprint firstFootprint = footprint(firstSlot);
         PieceFootprint secondFootprint = footprint(secondSlot);
         BlockPos shared = new BlockPos(3, -1, -1);
@@ -107,7 +107,7 @@ class WorldBuildMaterializerTest {
         assertEquals(2, materializer.ownedBlockCount("overworld", shared));
         assertEquals(secondSlot, materializer.topOwnerAt("overworld", shared));
         assertTrue(materializer.isTrackedBlock("overworld", shared.getX(), shared.getY(), shared.getZ()));
-        assertEquals(Blocks.COBBLESTONE.defaultBlockState(), blocks.stateAt(shared));
+        assertEquals(Blocks.STONE_BRICKS.defaultBlockState(), blocks.stateAt(shared));
 
         WorldBuildWriteResult firstCleared = materializer.clear(firstPiece, blocks);
 
@@ -117,7 +117,7 @@ class WorldBuildMaterializerTest {
         assertEquals(25, materializer.trackedBlockCount(secondSlot));
         assertEquals(1, materializer.ownedBlockCount("overworld", shared));
         assertEquals(secondSlot, materializer.topOwnerAt("overworld", shared));
-        assertEquals(Blocks.COBBLESTONE.defaultBlockState(), blocks.stateAt(shared));
+        assertEquals(Blocks.STONE_BRICKS.defaultBlockState(), blocks.stateAt(shared));
 
         WorldBuildWriteResult secondCleared = materializer.clear(secondPiece, blocks);
 
@@ -132,7 +132,7 @@ class WorldBuildMaterializerTest {
     void placeRollsBackAlreadyWrittenBlocksOnFailure() {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
         BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.FLOOR, Orientation.NORTH);
-        BuildPieceState piece = BuildPieceState.placed(slot, MaterialType.STONE, PLAYER, 1);
+        BuildPieceState piece = piece(slot, MaterialType.STONE, MaterialType.STONE.finalHealth());
         PieceFootprint footprint = footprint(slot);
         InMemoryBlocks blocks = new InMemoryBlocks();
         blocks.failOnCall = 3;
@@ -152,7 +152,7 @@ class WorldBuildMaterializerTest {
     void clearRollsBackWhenWorldWriteFails() {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
         BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.FLOOR, Orientation.NORTH);
-        BuildPieceState piece = BuildPieceState.placed(slot, MaterialType.METAL, PLAYER, 1);
+        BuildPieceState piece = piece(slot, MaterialType.METAL, MaterialType.METAL.finalHealth());
         PieceFootprint footprint = footprint(slot);
         InMemoryBlocks blocks = new InMemoryBlocks();
         WorldBuildWriteResult placed = materializer.place(piece, footprint, blocks);
@@ -165,10 +165,55 @@ class WorldBuildMaterializerTest {
         assertEquals(2, result.blockCount());
         assertEquals(25, materializer.trackedBlockCount(slot));
         for (BlockPos pos : materializer.blockPositions(footprint)) {
-            assertEquals(Blocks.COPPER_BLOCK.weathering().unaffected().defaultBlockState(), blocks.stateAt(pos));
+            assertEquals(Blocks.COPPER_BLOCK.waxed().unaffected().defaultBlockState(), blocks.stateAt(pos));
         }
     }
 
+
+    @Test
+    void damagePalettesUseRequestedBlockFamilies() {
+        WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
+        BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
+        BlockPos pos = new BlockPos(0, 0, 0);
+
+        assertSame(Blocks.OAK_PLANKS, materializer.blockStateFor(piece(slot, MaterialType.WOOD, MaterialType.WOOD.finalHealth()), pos).getBlock());
+        assertSame(Blocks.DARK_OAK_PLANKS, materializer.blockStateFor(piece(slot, MaterialType.WOOD, 0), pos).getBlock());
+        assertSame(Blocks.STONE_BRICKS, materializer.blockStateFor(piece(slot, MaterialType.STONE, MaterialType.STONE.finalHealth()), pos).getBlock());
+        assertSame(Blocks.MOSSY_COBBLESTONE, materializer.blockStateFor(piece(slot, MaterialType.STONE, 0), pos).getBlock());
+        assertSame(Blocks.COPPER_BLOCK.waxed().unaffected(), materializer.blockStateFor(piece(slot, MaterialType.METAL, MaterialType.METAL.finalHealth()), pos).getBlock());
+        assertSame(Blocks.COPPER_BLOCK.waxed().oxidized(), materializer.blockStateFor(piece(slot, MaterialType.METAL, 0), pos).getBlock());
+    }
+
+    @Test
+    void refreshRepaintsVisibleBlocksForDamagedPiece() {
+        WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
+        BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
+        PieceFootprint footprint = footprint(slot);
+        InMemoryBlocks blocks = new InMemoryBlocks();
+
+        assertTrue(materializer.place(piece(slot, MaterialType.WOOD, MaterialType.WOOD.finalHealth()), footprint, blocks).success());
+        WorldBuildWriteResult refreshed = materializer.refresh(piece(slot, MaterialType.WOOD, 0), blocks);
+
+        assertTrue(refreshed.success(), refreshed.message());
+        assertEquals(25, refreshed.blockCount());
+        for (BlockPos pos : materializer.blockPositions(footprint)) {
+            assertEquals(Blocks.DARK_OAK_PLANKS.defaultBlockState(), blocks.stateAt(pos));
+        }
+    }
+
+    private static BuildPieceState piece(BuildSlot slot, MaterialType material, int health) {
+        return new BuildPieceState(
+                UUID.randomUUID(),
+                PLAYER,
+                slot,
+                material,
+                health,
+                material.finalHealth(),
+                1,
+                1,
+                BuildPieceState.BASE_VARIANT
+        );
+    }
     private static PieceFootprint footprint(BuildSlot slot) {
         return new FootprintProjector(BuildRules.defaults()).project(slot);
     }

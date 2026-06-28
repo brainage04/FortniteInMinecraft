@@ -39,28 +39,28 @@ public final class ModItems {
             PieceType.WALL,
             Items.OAK_PLANKS,
             Items.COBBLESTONE,
-            Items.COPPER_BLOCK.weathering().unaffected()
+            Items.COPPER_BLOCK.waxed().unaffected()
     );
     public static final BuildPieceItem FLOOR = registerBuildPiece(
             "build_floor",
             PieceType.FLOOR,
             Items.OAK_SLAB,
             Items.COBBLESTONE_SLAB,
-            Items.CUT_COPPER_SLAB.weathering().unaffected()
+            Items.CUT_COPPER_SLAB.waxed().unaffected()
     );
     public static final BuildPieceItem STAIR = registerBuildPiece(
             "build_stair",
             PieceType.STAIR,
             Items.OAK_STAIRS,
             Items.COBBLESTONE_STAIRS,
-            Items.CUT_COPPER_STAIRS.weathering().unaffected()
+            Items.CUT_COPPER_STAIRS.waxed().unaffected()
     );
     public static final BuildPieceItem ROOF = registerBuildPiece(
             "build_roof",
             PieceType.ROOF,
             Items.OAK_SLAB,
             Items.COBBLESTONE_SLAB,
-            Items.CUT_COPPER_SLAB.weathering().unaffected()
+            Items.CUT_COPPER_SLAB.waxed().unaffected()
     );
     public static final List<BuildPieceItem> BUILD_PIECES = List.of(WALL, FLOOR, STAIR, ROOF);
 

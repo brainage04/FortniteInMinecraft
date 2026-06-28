@@ -71,6 +71,12 @@ public final class ConsumableItem extends SimplePolymerItem {
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
+        if (!canBenefit(player)) {
+            if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer) {
+                serverPlayer.sendSystemMessage(Component.literal(definition.displayName() + " would have no effect."), true);
+            }
+            return InteractionResult.FAIL;
+        }
         player.startUsingItem(hand);
         return level.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.CONSUME;
     }
@@ -95,6 +101,10 @@ public final class ConsumableItem extends SimplePolymerItem {
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity user) {
         if (!level.isClientSide() && user instanceof ServerPlayer player) {
+            if (!canBenefit(player)) {
+                player.sendSystemMessage(Component.literal(definition.displayName() + " would have no effect."), true);
+                return stack;
+            }
             applyHealth(player);
             applyShield(player);
             player.sendSystemMessage(Component.literal("Used " + definition.displayName() + "."), true);
@@ -109,11 +119,7 @@ public final class ConsumableItem extends SimplePolymerItem {
         if (!definition.restoresHealth()) {
             return;
         }
-        float amount = toMinecraftHealth(definition.healthRestore());
-        float cap = definition.healthCap() > 0
-                ? Math.min(player.getMaxHealth(), toMinecraftHealth(definition.healthCap()))
-                : player.getMaxHealth();
-        player.setHealth(Math.min(cap, player.getHealth() + amount));
+        player.setHealth(healthAfterUse(definition, player.getHealth(), player.getMaxHealth()));
     }
 
     private void applyShield(ServerPlayer player) {
@@ -125,6 +131,40 @@ public final class ConsumableItem extends SimplePolymerItem {
         player.setAbsorptionAmount(shield);
     }
 
+
+    private boolean canBenefit(Player player) {
+        return canBenefit(
+                definition,
+                player.getHealth(),
+                player.getMaxHealth(),
+                player.getAbsorptionAmount(),
+                player.getMaxAbsorption()
+        );
+    }
+
+    static boolean canBenefit(
+            ConsumableDefinition definition,
+            float currentHealth,
+            float maxHealth,
+            float currentAbsorption,
+            float maxAbsorption
+    ) {
+        Objects.requireNonNull(definition, "definition");
+        return healthAfterUse(definition, currentHealth, maxHealth) > currentHealth + 1.0E-4F
+                || shieldAfterUse(definition, currentAbsorption, maxAbsorption) > currentAbsorption + 1.0E-4F;
+    }
+
+    static float healthAfterUse(ConsumableDefinition definition, float currentHealth, float maxHealth) {
+        Objects.requireNonNull(definition, "definition");
+        if (!definition.restoresHealth()) {
+            return currentHealth;
+        }
+        float amount = toMinecraftHealth(definition.healthRestore());
+        float cap = definition.healthCap() > 0
+                ? Math.min(maxHealth, toMinecraftHealth(definition.healthCap()))
+                : maxHealth;
+        return Math.min(cap, currentHealth + amount);
+    }
     static float shieldAfterUse(ConsumableDefinition definition, float currentAbsorption, float maxAbsorption) {
         Objects.requireNonNull(definition, "definition");
         if (!definition.restoresShield()) {
@@ -148,7 +188,7 @@ public final class ConsumableItem extends SimplePolymerItem {
         int totalTicks = useTicks(definition);
         int clampedRemainingTicks = Math.clamp(remainingUseTicks, 0, totalTicks);
         int usedTicks = totalTicks - clampedRemainingTicks;
-        return formatTicks(usedTicks) + "/" + formatTicks(totalTicks) + "s";
+        return formatTicksFixed(usedTicks) + "/" + formatTicksFixed(totalTicks) + "s";
     }
 
     private static void raiseMaxAbsorption(ServerPlayer player, float cap) {
@@ -158,8 +198,8 @@ public final class ConsumableItem extends SimplePolymerItem {
         }
     }
 
-    private static String formatTicks(int ticks) {
-        return format(ticks / 20.0D);
+    private static String formatTicksFixed(int ticks) {
+        return String.format(java.util.Locale.ROOT, "%.2f", ticks / 20.0D);
     }
 
     private static float toMinecraftHealth(int fortniteHealth) {

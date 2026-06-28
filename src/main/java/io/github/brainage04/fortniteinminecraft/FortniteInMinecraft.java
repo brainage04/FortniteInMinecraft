@@ -46,7 +46,7 @@ public final class FortniteInMinecraft implements ModInitializer {
     public void onInitialize() {
         ModItems.initialize(sessions);
         BuildCommands.register(sessions, buildWorld, buildRules, materializer, previewRenderers);
-        WeaponItem.configureBuildDamage(buildWorld, materializer);
+        WeaponItem.configureBuildDamage(buildWorld, materializer, buildRules);
         BuildItemInteractions.register(sessions, buildWorld, buildRules, materializer, previewRenderers);
         WeaponAutoFire.register();
         HitMarkerDisplays.register();
