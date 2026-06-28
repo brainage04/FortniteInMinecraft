@@ -162,6 +162,31 @@ public final class WeaponItem extends SimplePolymerItem {
         }
     }
 
+    public static void showHeldStatus(ServerPlayer player) {
+        Objects.requireNonNull(player, "player");
+        if (showHeldStatus(player, player.getItemInHand(InteractionHand.MAIN_HAND))) {
+            return;
+        }
+        showHeldStatus(player, player.getItemInHand(InteractionHand.OFF_HAND));
+    }
+
+    private static boolean showHeldStatus(ServerPlayer player, ItemStack stack) {
+        if (!(stack.getItem() instanceof WeaponItem item)) {
+            return false;
+        }
+        player.sendSystemMessage(Component.literal(item.statusText(stack)), true);
+        return true;
+    }
+
+    String statusText(ItemStack stack) {
+        return statusText(magazine(stack));
+    }
+
+    String statusText(int magazine) {
+        WeaponStats stats = definition.stats();
+        return definition.displayName() + ": " + magazine + "/" + stats.magazineSize();
+    }
+
     private DamageReport damageTarget(ServerLevel level, ServerPlayer shooter, LivingEntity target) {
         float before = target.getHealth() + target.getAbsorptionAmount();
         Vec3 velocityBeforeHit = target.getDeltaMovement();

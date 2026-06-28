@@ -1,5 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.core.placement;
 
+import io.github.brainage04.fortniteinminecraft.core.BuildConstants;
 import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceFootprint;
@@ -30,7 +31,7 @@ public final class SupportValidator {
         this.snapGrid = new SnapGrid(rules);
     }
 
-    public boolean hasDirectAdjacency(
+    public boolean hasRequiredSupport(
             BuildWorldState state,
             PieceFootprint candidate,
             List<BlockOffset> candidateBlocks,
@@ -44,23 +45,40 @@ public final class SupportValidator {
         String dimension = candidate.slot().gridPos().dimension();
         Set<BlockOffset> candidateSet = new HashSet<>(candidateBlocks);
         Set<BlockOffset> pieceBlocks = pieceBlocksInDimension(state, dimension);
+        int supportedBlocks = 0;
         for (BlockOffset block : candidateBlocks) {
-            if (pieceBlocks.contains(block)) {
-                return true;
-            }
-            for (int[] neighbor : FACE_NEIGHBORS) {
-                BlockOffset adjacent = new BlockOffset(
-                        block.x() + neighbor[0],
-                        block.y() + neighbor[1],
-                        block.z() + neighbor[2]
-                );
-                if (candidateSet.contains(adjacent)) {
-                    continue;
-                }
-                if (pieceBlocks.contains(adjacent)
-                        || obstruction.isSolid(dimension, adjacent.x(), adjacent.y(), adjacent.z())) {
+            if (isSupported(dimension, block, candidateSet, pieceBlocks, obstruction)) {
+                supportedBlocks++;
+                if (supportedBlocks >= BuildConstants.MIN_SUPPORTED_PLACEMENT_BLOCKS) {
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    private boolean isSupported(
+            String dimension,
+            BlockOffset block,
+            Set<BlockOffset> candidateSet,
+            Set<BlockOffset> pieceBlocks,
+            WorldObstruction obstruction
+    ) {
+        if (pieceBlocks.contains(block) || obstruction.isSolid(dimension, block.x(), block.y(), block.z())) {
+            return true;
+        }
+        for (int[] neighbor : FACE_NEIGHBORS) {
+            BlockOffset adjacent = new BlockOffset(
+                    block.x() + neighbor[0],
+                    block.y() + neighbor[1],
+                    block.z() + neighbor[2]
+            );
+            if (candidateSet.contains(adjacent)) {
+                continue;
+            }
+            if (pieceBlocks.contains(adjacent)
+                    || obstruction.isSolid(dimension, adjacent.x(), adjacent.y(), adjacent.z())) {
+                return true;
             }
         }
         return false;

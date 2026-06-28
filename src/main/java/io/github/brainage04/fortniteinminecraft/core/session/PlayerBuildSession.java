@@ -11,6 +11,7 @@ import java.util.Objects;
 
 public final class PlayerBuildSession {
     public static final long NO_TURBO_PLACEMENT_TICK = -1L;
+    private static final long BUILD_USE_SWING_SUPPRESSION_TICKS = 4L;
 
     private PieceType selectedPiece = PieceType.WALL;
     private MaterialType selectedMaterial = MaterialType.WOOD;
@@ -107,7 +108,9 @@ public final class PlayerBuildSession {
         if (tick < 0) {
             throw new IllegalArgumentException("tick cannot be negative");
         }
-        return lastBuildUseTick == tick;
+        return lastBuildUseTick != NO_TURBO_PLACEMENT_TICK
+                && tick >= lastBuildUseTick
+                && tick - lastBuildUseTick <= BUILD_USE_SWING_SUPPRESSION_TICKS;
     }
 
     public void selectPreviewMode(PreviewMode previewMode) {

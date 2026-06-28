@@ -64,6 +64,10 @@ public final class WeaponAutoFire {
             }
             item.fireFromHeldItem(level, player, input.hand());
         }
+        for (ServerPlayer player : level.players()) {
+            WeaponItem.showHeldStatus(player);
+        }
+
     }
 
     private record ActiveInput(InteractionHand hand, String weaponPath, long lastInputTick) {

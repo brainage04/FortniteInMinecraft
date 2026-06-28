@@ -55,6 +55,13 @@ class BuildPieceItemTest {
     }
 
     @Test
+    void weaponStatusTextShowsHeldAmmoAndMagazineSize() {
+        WeaponItem item = ModItems.WEAPONS.get(0);
+
+        assertEquals("Assault Rifle: 30/30", item.statusText(30));
+    }
+
+    @Test
     void consumableItemsExposeFoodUseProgressComponents() {
         ConsumableItem item = ModItems.CONSUMABLES.get(0);
         Consumable consumable = ConsumableItem.consumableComponent(item.definition());

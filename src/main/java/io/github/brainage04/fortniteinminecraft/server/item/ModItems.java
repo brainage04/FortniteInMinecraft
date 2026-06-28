@@ -1,7 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
 import eu.pb4.polymer.common.api.PolymerCommonUtils;
-import eu.pb4.polymer.core.api.item.PolymerCreativeModeTabUtils;
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.item.ConsumableDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.FortniteRarity;
@@ -197,19 +196,6 @@ public final class ModItems {
                 .build();
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id("items"), combatTab);
 
-        CreativeModeTab polymerBuildTab = PolymerCreativeModeTabUtils.builder()
-                .title(Component.literal("Build Pieces"))
-                .icon(() -> new ItemStack(WALL))
-                .displayItems((parameters, output) -> BUILD_PIECES.forEach(output::accept))
-                .build();
-        PolymerCreativeModeTabUtils.registerPolymerCreativeModeTab(id("polymer_build_pieces"), polymerBuildTab);
-
-        CreativeModeTab polymerCombatTab = PolymerCreativeModeTabUtils.builder()
-                .title(Component.literal("Fortnite Items"))
-                .icon(() -> new ItemStack(WEAPONS.get(0)))
-                .displayItems((parameters, output) -> COMBAT_ITEMS.forEach(output::accept))
-                .build();
-        PolymerCreativeModeTabUtils.registerPolymerCreativeModeTab(id("polymer_items"), polymerCombatTab);
 
         registerVanillaCreativeTabEntries();
     }

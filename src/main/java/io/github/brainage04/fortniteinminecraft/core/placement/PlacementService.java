@@ -52,8 +52,8 @@ public final class PlacementService {
 
         BuildSlot slot = candidate.slot();
         BuildPieceState piece = BuildPieceState.placed(slot, candidate.material(), player.playerId(), tick);
-        if (!state.addIfGridAbsent(piece)) {
-            return PlacementResult.rejected(PlacementFailure.OCCUPIED, "build grid cell became occupied before commit");
+        if (!state.addIfNotConflicting(piece)) {
+            return PlacementResult.rejected(PlacementFailure.OCCUPIED, "build slot became occupied before commit");
         }
 
         if (!player.creative() && !player.resources().spend(candidate.material(), candidate.material().placementCost())) {
@@ -70,8 +70,8 @@ public final class PlacementService {
         BuildGridPos gridPos = slot.gridPos();
         BlockOffset origin = snapGrid.blockOrigin(gridPos);
 
-        if (state.hasAnyAt(gridPos)) {
-            return Validation.rejected(footprint, PlacementFailure.OCCUPIED, "build grid cell is already occupied");
+        if (state.conflicts(slot)) {
+            return Validation.rejected(footprint, PlacementFailure.OCCUPIED, "build slot is already occupied");
         }
 
         List<BlockOffset> absoluteBlocks = footprint.absoluteBlocks(origin);
@@ -91,8 +91,8 @@ public final class PlacementService {
             );
         }
 
-        if (obstructedBlocks == 0 && !supportValidator.hasDirectAdjacency(state, footprint, absoluteBlocks, obstruction)) {
-            return Validation.rejected(footprint, PlacementFailure.UNSUPPORTED, "placement has no adjacent build or world support");
+        if (!supportValidator.hasRequiredSupport(state, footprint, absoluteBlocks, obstruction)) {
+            return Validation.rejected(footprint, PlacementFailure.UNSUPPORTED, "placement has fewer than " + BuildConstants.MIN_SUPPORTED_PLACEMENT_BLOCKS + " supported blocks");
         }
 
         int cost = candidate.material().placementCost();

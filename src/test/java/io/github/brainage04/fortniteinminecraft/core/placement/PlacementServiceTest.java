@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PlacementServiceTest {
     private static final UUID PLAYER = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final BuildRules RULES = BuildRules.defaults();
-    private static final WorldObstruction FLOOR_SUPPORT = solidAt(-1, -2, -1);
+    private static final WorldObstruction FLOOR_SUPPORT = supportBelowFloorBlocks(5);
 
     @Test
     void survivalPlacementSpendsSelectedMaterialAndCommitsState() {
@@ -54,7 +54,7 @@ class PlacementServiceTest {
     }
 
     @Test
-    void differentPieceTypeAtSameGridRejectsWithoutDoubleSpend() {
+    void differentPieceTypeAtSameGridCanShareSupportedSlotWithoutDoubleSpend() {
         BuildWorldState state = new BuildWorldState();
         ResourceWallet wallet = ResourceWallet.with(MaterialType.WOOD, 50);
         PlacementService service = new PlacementService(state, RULES, FLOOR_SUPPORT);
@@ -63,12 +63,12 @@ class PlacementServiceTest {
         PlayerBuildContext player = PlayerBuildContext.survival(PLAYER, wallet);
 
         PlacementResult first = service.place(new PlacementCandidate(floor, MaterialType.WOOD), player, 1);
-        PlacementResult duplicateCell = service.place(new PlacementCandidate(stair, MaterialType.WOOD), player, 2);
+        PlacementResult supportedStair = service.place(new PlacementCandidate(stair, MaterialType.WOOD), player, 2);
 
         assertTrue(first.placed(), first.message());
-        assertEquals(PlacementFailure.OCCUPIED, duplicateCell.failure());
-        assertEquals(40, wallet.get(MaterialType.WOOD));
-        assertEquals(1, state.size());
+        assertTrue(supportedStair.placed(), supportedStair.message());
+        assertEquals(30, wallet.get(MaterialType.WOOD));
+        assertEquals(2, state.size());
     }
 
     @Test
@@ -155,7 +155,7 @@ class PlacementServiceTest {
     }
 
     @Test
-    void oneSolidWorldBlockStillAllowsPlacement() {
+    void oneSolidWorldBlockDoesNotMeetSupportThreshold() {
         BuildWorldState state = new BuildWorldState();
         ResourceWallet wallet = ResourceWallet.with(MaterialType.WOOD, 50);
         WorldObstruction obstruction = solidAt(-1, -1, -1);
@@ -164,9 +164,23 @@ class PlacementServiceTest {
 
         PlacementResult result = service.place(new PlacementCandidate(slot, MaterialType.WOOD), PlayerBuildContext.survival(PLAYER, wallet), 1);
 
-        assertTrue(result.placed(), result.message());
-        assertEquals(40, wallet.get(MaterialType.WOOD));
-        assertEquals(1, state.size());
+        assertEquals(PlacementFailure.UNSUPPORTED, result.failure());
+        assertEquals(50, wallet.get(MaterialType.WOOD));
+        assertEquals(0, state.size());
+    }
+
+    @Test
+    void fourSupportedWorldBlocksRejectPlacement() {
+        BuildWorldState state = new BuildWorldState();
+        ResourceWallet wallet = ResourceWallet.with(MaterialType.WOOD, 50);
+        PlacementService service = new PlacementService(state, RULES, supportBelowFloorBlocks(4));
+        BuildSlot slot = floorSlot(0, 0, 0);
+
+        PlacementResult result = service.place(new PlacementCandidate(slot, MaterialType.WOOD), PlayerBuildContext.survival(PLAYER, wallet), 1);
+
+        assertEquals(PlacementFailure.UNSUPPORTED, result.failure());
+        assertEquals(50, wallet.get(MaterialType.WOOD));
+        assertEquals(0, state.size());
     }
 
     @Test
@@ -234,8 +248,90 @@ class PlacementServiceTest {
         assertEquals(2, state.size());
     }
 
+    @Test
+    void wallsUseAllFourFloorEdgesAsFiveBlockSupport() {
+        BuildSlot[] walls = {
+                BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH),
+                BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.SOUTH),
+                BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.EAST),
+                BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.WEST)
+        };
+
+        for (BuildSlot wall : walls) {
+            BuildWorldState state = stateWithFloor();
+            PlacementService service = new PlacementService(state, RULES, WorldObstruction.none());
+
+            PlacementResult result = service.place(new PlacementCandidate(wall, MaterialType.WOOD), PlayerBuildContext.creative(PLAYER), 2);
+
+            assertTrue(result.placed(), wall + ": " + result.message());
+            assertEquals(2, state.size());
+        }
+    }
+
+    @Test
+    void stairOrientationsUseFloorAsFiveBlockSupport() {
+        for (Orientation orientation : Orientation.values()) {
+            BuildWorldState state = stateWithFloor();
+            PlacementService service = new PlacementService(state, RULES, WorldObstruction.none());
+            BuildSlot stair = BuildSlot.of("overworld", 0, 0, 0, PieceType.STAIR, orientation);
+
+            PlacementResult result = service.place(new PlacementCandidate(stair, MaterialType.WOOD), PlayerBuildContext.creative(PLAYER), 2);
+
+            assertTrue(result.placed(), stair + ": " + result.message());
+            assertEquals(2, state.size());
+        }
+    }
+
+    @Test
+    void roofUsesFloorAsAdjacentSupport() {
+        BuildWorldState state = stateWithFloor();
+        PlacementService service = new PlacementService(state, RULES, WorldObstruction.none());
+        BuildSlot roof = BuildSlot.of("overworld", 0, 0, 0, PieceType.ROOF, Orientation.NORTH);
+
+        PlacementResult result = service.place(new PlacementCandidate(roof, MaterialType.WOOD), PlayerBuildContext.creative(PLAYER), 2);
+
+        assertTrue(result.placed(), result.message());
+        assertEquals(2, state.size());
+    }
+
+    @Test
+    void diagonalRoofCornerOverlapDoesNotMeetSupportThreshold() {
+        BuildWorldState state = new BuildWorldState();
+        state.addIfAbsent(BuildPieceState.placed(BuildSlot.of("overworld", 0, 0, 0, PieceType.ROOF, Orientation.NORTH), MaterialType.WOOD, PLAYER, 1));
+        PlacementService service = new PlacementService(state, RULES, WorldObstruction.none());
+        BuildSlot diagonal = BuildSlot.of("overworld", 1, 0, 1, PieceType.ROOF, Orientation.NORTH);
+
+        PlacementResult result = service.place(new PlacementCandidate(diagonal, MaterialType.WOOD), PlayerBuildContext.creative(PLAYER), 2);
+
+        assertEquals(PlacementFailure.UNSUPPORTED, result.failure());
+        assertEquals(1, state.size());
+    }
+
+    @Test
+    void offsetQuarterTurnStairCornerOverlapDoesNotMeetSupportThreshold() {
+        BuildWorldState state = new BuildWorldState();
+        state.addIfAbsent(BuildPieceState.placed(BuildSlot.of("overworld", 0, 0, 0, PieceType.STAIR, Orientation.NORTH), MaterialType.WOOD, PLAYER, 1));
+        PlacementService service = new PlacementService(state, RULES, WorldObstruction.none());
+        BuildSlot offsetQuarterTurn = BuildSlot.of("overworld", 1, 0, 0, PieceType.STAIR, Orientation.EAST);
+
+        PlacementResult result = service.place(new PlacementCandidate(offsetQuarterTurn, MaterialType.WOOD), PlayerBuildContext.creative(PLAYER), 2);
+
+        assertEquals(PlacementFailure.UNSUPPORTED, result.failure());
+        assertEquals(1, state.size());
+    }
+
     private static BuildSlot floorSlot(int x, int y, int z) {
         return BuildSlot.of("overworld", x, y, z, PieceType.FLOOR, Orientation.NORTH);
+    }
+
+    private static BuildWorldState stateWithFloor() {
+        BuildWorldState state = new BuildWorldState();
+        state.addIfAbsent(BuildPieceState.placed(floorSlot(0, 0, 0), MaterialType.WOOD, PLAYER, 1));
+        return state;
+    }
+
+    private static WorldObstruction supportBelowFloorBlocks(int count) {
+        return (dimension, x, y, z) -> y == -2 && z == -1 && x >= -1 && x < -1 + count;
     }
 
     private static WorldObstruction solidAt(int blockX, int blockY, int blockZ) {

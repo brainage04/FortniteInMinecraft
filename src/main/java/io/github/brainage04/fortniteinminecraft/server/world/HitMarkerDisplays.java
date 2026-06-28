@@ -28,7 +28,7 @@ public final class HitMarkerDisplays {
     static final double MAX_MARKER_DISTANCE_BLOCKS = 20.0D;
     static final int MARKER_LIFETIME_TICKS = 18;
     private static final double MARKER_RISE_PER_TICK = 0.035D;
-    private static final float MARKER_SCALE = 0.032F;
+    private static final float MARKER_SCALE = 1.0F;
     private static final int TRANSPARENT_BACKGROUND = 0;
     private static final int TEXT_LINE_WIDTH = 80;
     private static final EntityType<Display.TextDisplay> TEXT_DISPLAY_TYPE = textDisplayType();

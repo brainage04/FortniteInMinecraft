@@ -1,8 +1,8 @@
 package io.github.brainage04.fortniteinminecraft.core.state;
 
-import io.github.brainage04.fortniteinminecraft.core.model.BuildGridPos;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
+import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -26,9 +26,9 @@ public final class BuildWorldState {
         return piecesBySlot.putIfAbsent(piece.slot(), piece) == null;
     }
 
-    public boolean addIfGridAbsent(BuildPieceState piece) {
+    public boolean addIfNotConflicting(BuildPieceState piece) {
         Objects.requireNonNull(piece, "piece");
-        if (hasAnyAt(piece.slot().gridPos())) {
+        if (conflicts(piece.slot())) {
             return false;
         }
         piecesBySlot.put(piece.slot(), piece);
@@ -39,10 +39,16 @@ public final class BuildWorldState {
         return piecesBySlot.remove(Objects.requireNonNull(slot, "slot"));
     }
 
-    public boolean hasAnyAt(BuildGridPos gridPos) {
-        Objects.requireNonNull(gridPos, "gridPos");
-        for (BuildSlot slot : piecesBySlot.keySet()) {
-            if (slot.gridPos().equals(gridPos)) {
+    public boolean conflicts(BuildSlot slot) {
+        Objects.requireNonNull(slot, "slot");
+        if (piecesBySlot.containsKey(slot)) {
+            return true;
+        }
+        if (slot.pieceType() != PieceType.STAIR) {
+            return false;
+        }
+        for (BuildSlot existing : piecesBySlot.keySet()) {
+            if (existing.pieceType() == PieceType.STAIR && existing.gridPos().equals(slot.gridPos())) {
                 return true;
             }
         }

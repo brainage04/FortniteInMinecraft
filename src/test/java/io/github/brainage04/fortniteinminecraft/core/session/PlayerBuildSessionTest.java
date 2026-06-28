@@ -106,6 +106,17 @@ class PlayerBuildSessionTest {
     }
 
     @Test
+    void materialSwingAfterBuildUseIsSuppressedBriefly() {
+        PlayerBuildSession session = new PlayerBuildSession();
+
+        session.markBuildUse(10);
+
+        assertTrue(session.shouldIgnoreMaterialSwing(10));
+        assertTrue(session.shouldIgnoreMaterialSwing(14));
+        assertFalse(session.shouldIgnoreMaterialSwing(15));
+    }
+
+    @Test
     void turboPlacementWindowSkipsRepeatedSlotAndHonorsCadence() {
         PlayerBuildSession session = new PlayerBuildSession();
         BuildSlot first = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
@@ -163,7 +174,7 @@ class PlayerBuildSessionTest {
         session.selectMaterial(MaterialType.STONE);
         PlacementCandidate candidate = session.candidateAt(new BuildGridPos("overworld", 0, 0, 0), Orientation.SOUTH);
         BuildWorldState state = new BuildWorldState();
-        PlacementService service = new PlacementService(state, BuildRules.defaults(), (dimension, x, y, z) -> x == -1 && y == -2 && z == -1);
+        PlacementService service = new PlacementService(state, BuildRules.defaults(), (dimension, x, y, z) -> y == -2 && z == -1 && x >= -1 && x <= 3);
         ResourceWallet wallet = ResourceWallet.with(MaterialType.STONE, 50);
 
         PlacementResult result = service.place(candidate, PlayerBuildContext.survival(PLAYER_ONE, wallet), 20);

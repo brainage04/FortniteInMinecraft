@@ -7,6 +7,7 @@ public final class BuildConstants {
     public static final int WALL_HEIGHT_BLOCKS = 5;
     public static final int DEFAULT_RESOURCE_COST = 10;
     public static final int MIN_UNOBSTRUCTED_PLACEMENT_PERCENT = 20;
+    public static final int MIN_SUPPORTED_PLACEMENT_BLOCKS = 5;
 
     private BuildConstants() {
     }
