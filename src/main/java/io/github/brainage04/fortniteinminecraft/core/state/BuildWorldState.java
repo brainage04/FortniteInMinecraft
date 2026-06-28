@@ -1,17 +1,22 @@
 package io.github.brainage04.fortniteinminecraft.core.state;
 
+import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public final class BuildWorldState {
     private final Map<BuildSlot, BuildPieceState> piecesBySlot = new HashMap<>();
+    private final Map<BuildSlot, List<BlockOffset>> occupiedBlocksBySlot = new HashMap<>();
+    private final Map<OccupiedBlockKey, Set<BuildSlot>> slotsByOccupiedBlock = new HashMap<>();
 
     public BuildPieceState get(BuildSlot slot) {
         return piecesBySlot.get(Objects.requireNonNull(slot, "slot"));
@@ -27,16 +32,50 @@ public final class BuildWorldState {
     }
 
     public boolean addIfNotConflicting(BuildPieceState piece) {
+        return addIfNotConflicting(piece, List.of());
+    }
+
+    public boolean addIfNotConflicting(BuildPieceState piece, Collection<BlockOffset> occupiedBlocks) {
         Objects.requireNonNull(piece, "piece");
-        if (conflicts(piece.slot())) {
+        Objects.requireNonNull(occupiedBlocks, "occupiedBlocks");
+        if (conflicts(piece.slot(), occupiedBlocks)) {
+            return false;
+        }
+        piecesBySlot.put(piece.slot(), piece);
+        trackOccupiedBlocks(piece.slot(), occupiedBlocks);
+        return true;
+    }
+
+    public BuildPieceState remove(BuildSlot slot) {
+        Objects.requireNonNull(slot, "slot");
+        untrackOccupiedBlocks(slot);
+        return piecesBySlot.remove(slot);
+    }
+
+    public boolean replace(BuildPieceState piece) {
+        Objects.requireNonNull(piece, "piece");
+        if (!piecesBySlot.containsKey(piece.slot())) {
             return false;
         }
         piecesBySlot.put(piece.slot(), piece);
         return true;
     }
 
-    public BuildPieceState remove(BuildSlot slot) {
-        return piecesBySlot.remove(Objects.requireNonNull(slot, "slot"));
+    public void progressConstruction(long tick) {
+        for (Map.Entry<BuildSlot, BuildPieceState> entry : piecesBySlot.entrySet()) {
+            entry.setValue(entry.getValue().progressedTo(tick));
+        }
+    }
+
+    public DamageResult damage(BuildSlot slot, int damage, long tick) {
+        Objects.requireNonNull(slot, "slot");
+        BuildPieceState before = piecesBySlot.get(slot);
+        if (before == null) {
+            return DamageResult.missing();
+        }
+        BuildPieceState after = before.damagedBy(damage, tick);
+        piecesBySlot.put(slot, after);
+        return new DamageResult(before, after);
     }
 
     public boolean conflicts(BuildSlot slot) {
@@ -53,6 +92,85 @@ public final class BuildWorldState {
             }
         }
         return false;
+    }
+
+    public boolean conflicts(BuildSlot slot, Collection<BlockOffset> occupiedBlocks) {
+        Objects.requireNonNull(slot, "slot");
+        Objects.requireNonNull(occupiedBlocks, "occupiedBlocks");
+        if (conflicts(slot)) {
+            return true;
+        }
+        String dimension = slot.gridPos().dimension();
+        for (BlockOffset block : occupiedBlocks) {
+            Set<BuildSlot> existingSlots = slotsByOccupiedBlock.get(new OccupiedBlockKey(dimension, block));
+            if (existingSlots == null) {
+                continue;
+            }
+            for (BuildSlot existing : existingSlots) {
+                if (!intendedModelPermitsFootprintOverlap(existing, slot)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void trackOccupiedBlocks(BuildSlot slot, Collection<BlockOffset> occupiedBlocks) {
+        List<BlockOffset> blocks = List.copyOf(occupiedBlocks);
+        if (blocks.isEmpty()) {
+            return;
+        }
+        occupiedBlocksBySlot.put(slot, blocks);
+        String dimension = slot.gridPos().dimension();
+        for (BlockOffset block : blocks) {
+            slotsByOccupiedBlock
+                    .computeIfAbsent(new OccupiedBlockKey(dimension, block), ignored -> new HashSet<>())
+                    .add(slot);
+        }
+    }
+
+    private void untrackOccupiedBlocks(BuildSlot slot) {
+        List<BlockOffset> blocks = occupiedBlocksBySlot.remove(slot);
+        if (blocks == null) {
+            return;
+        }
+        String dimension = slot.gridPos().dimension();
+        for (BlockOffset block : blocks) {
+            OccupiedBlockKey key = new OccupiedBlockKey(dimension, block);
+            Set<BuildSlot> slots = slotsByOccupiedBlock.get(key);
+            if (slots == null) {
+                continue;
+            }
+            slots.remove(slot);
+            if (slots.isEmpty()) {
+                slotsByOccupiedBlock.remove(key);
+            }
+        }
+    }
+
+    private static boolean intendedModelPermitsFootprintOverlap(BuildSlot existing, BuildSlot candidate) {
+        return existing.pieceType() == candidate.pieceType();
+    }
+
+    public record DamageResult(BuildPieceState before, BuildPieceState after) {
+        public static DamageResult missing() {
+            return new DamageResult(null, null);
+        }
+
+        public boolean hit() {
+            return after != null;
+        }
+
+        public boolean destroyed() {
+            return after != null && after.destroyed();
+        }
+    }
+
+    private record OccupiedBlockKey(String dimension, BlockOffset block) {
+        private OccupiedBlockKey {
+            Objects.requireNonNull(dimension, "dimension");
+            Objects.requireNonNull(block, "block");
+        }
     }
 
     public int size() {

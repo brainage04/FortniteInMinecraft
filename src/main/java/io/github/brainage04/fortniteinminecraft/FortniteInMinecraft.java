@@ -7,9 +7,11 @@ import io.github.brainage04.fortniteinminecraft.server.command.BuildCommands;
 import io.github.brainage04.fortniteinminecraft.server.item.BuildItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
 import io.github.brainage04.fortniteinminecraft.server.item.WeaponAutoFire;
+import io.github.brainage04.fortniteinminecraft.server.item.WeaponItem;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewParticles;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewGlassBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewRenderers;
+import io.github.brainage04.fortniteinminecraft.server.world.BuildPieceHealthDisplays;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewTicker;
 import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
@@ -44,14 +46,17 @@ public final class FortniteInMinecraft implements ModInitializer {
     public void onInitialize() {
         ModItems.initialize(sessions);
         BuildCommands.register(sessions, buildWorld, buildRules, materializer, previewRenderers);
+        WeaponItem.configureBuildDamage(buildWorld, materializer);
         BuildItemInteractions.register(sessions, buildWorld, buildRules, materializer, previewRenderers);
         WeaponAutoFire.register();
         HitMarkerDisplays.register();
+        BuildPieceHealthDisplays.register(buildWorld, materializer);
         previewTicker.register();
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> previewRenderers.clear(handler.player));
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-            previewRenderers.clearAll();
             HitMarkerDisplays.clearAll();
+            BuildPieceHealthDisplays.clearAll();
+            previewRenderers.clearAll();
         });
         LOGGER.info("{} server core initialized.", MOD_NAME);
     }

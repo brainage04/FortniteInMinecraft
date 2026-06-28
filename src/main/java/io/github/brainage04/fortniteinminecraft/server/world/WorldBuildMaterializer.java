@@ -84,6 +84,11 @@ public final class WorldBuildMaterializer {
         return positions == null ? 0 : positions.size();
     }
 
+    public List<BlockPos> trackedBlockPositions(BuildSlot slot) {
+        List<BlockPos> positions = placedBlocksBySlot.get(Objects.requireNonNull(slot, "slot"));
+        return positions == null ? List.of() : List.copyOf(positions);
+    }
+
     public int ownedBlockCount(String dimension, BlockPos pos) {
         Set<BuildSlot> owners = ownersByBlock.get(new WorldBlockKey(dimension, pos));
         return owners == null ? 0 : owners.size();
@@ -91,6 +96,14 @@ public final class WorldBuildMaterializer {
 
     public boolean isTrackedBlock(String dimension, int x, int y, int z) {
         return ownersByBlock.containsKey(new WorldBlockKey(dimension, new BlockPos(x, y, z)));
+    }
+
+    public BuildSlot topOwnerAt(String dimension, BlockPos pos) {
+        LinkedHashSet<BuildSlot> owners = ownersByBlock.get(new WorldBlockKey(
+                Objects.requireNonNull(dimension, "dimension"),
+                Objects.requireNonNull(pos, "pos")
+        ));
+        return owners == null || owners.isEmpty() ? null : lastOwner(owners);
     }
 
     WorldBuildWriteResult place(BuildPieceState piece, PieceFootprint footprint, BlockWriter writer) {

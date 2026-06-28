@@ -3,19 +3,17 @@ package io.github.brainage04.fortniteinminecraft.server.item;
 import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import io.github.brainage04.fortniteinminecraft.core.item.ConsumableDefinition;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
-import net.minecraft.world.item.component.Consumable;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
@@ -41,19 +39,6 @@ public final class ConsumableItem extends SimplePolymerItem {
         return definition;
     }
 
-    static FoodProperties foodProperties() {
-        return new FoodProperties(0, 0.0F, true);
-    }
-
-    static Consumable consumableComponent(ConsumableDefinition definition) {
-        Objects.requireNonNull(definition, "definition");
-        return Consumable.builder()
-                .consumeSeconds(useTicks(definition) / 20.0F)
-                .animation(definition.restoresShield() ? ItemUseAnimation.DRINK : ItemUseAnimation.EAT)
-                .hasConsumeParticles(true)
-                .build();
-    }
-
     static int useTicks(ConsumableDefinition definition) {
         Objects.requireNonNull(definition, "definition");
         return Math.max(1, (int) Math.ceil(definition.castSeconds() * 20.0D));
@@ -62,17 +47,6 @@ public final class ConsumableItem extends SimplePolymerItem {
     @Override
     public Item getPolymerItem(ItemStack stack, PacketContext context) {
         return clientItem;
-    }
-
-    @Override
-    public void modifyBasePolymerItemStack(
-            ItemStack out,
-            ItemStack stack,
-            PacketContext context,
-            HolderLookup.Provider registries
-    ) {
-        out.set(DataComponents.FOOD, foodProperties());
-        out.set(DataComponents.CONSUMABLE, consumableComponent(definition));
     }
 
     @Override
@@ -112,6 +86,13 @@ public final class ConsumableItem extends SimplePolymerItem {
     }
 
     @Override
+    public void onUseTick(Level level, LivingEntity user, ItemStack stack, int remainingUseDuration) {
+        if (!level.isClientSide() && user instanceof ServerPlayer player) {
+            player.sendSystemMessage(Component.literal(progressText(definition, remainingUseDuration)), true);
+        }
+    }
+
+    @Override
     public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity user) {
         if (!level.isClientSide() && user instanceof ServerPlayer player) {
             applyHealth(player);
@@ -139,9 +120,46 @@ public final class ConsumableItem extends SimplePolymerItem {
         if (!definition.restoresShield()) {
             return;
         }
-        float amount = toMinecraftHealth(definition.shieldRestore());
-        float cap = definition.shieldCap() > 0 ? toMinecraftHealth(definition.shieldCap()) : player.getMaxAbsorption();
-        player.setAbsorptionAmount(Math.min(cap, player.getAbsorptionAmount() + amount));
+        float shield = shieldAfterUse(definition, player.getAbsorptionAmount(), player.getMaxAbsorption());
+        raiseMaxAbsorption(player, shield);
+        player.setAbsorptionAmount(shield);
+    }
+
+    static float shieldAfterUse(ConsumableDefinition definition, float currentAbsorption, float maxAbsorption) {
+        Objects.requireNonNull(definition, "definition");
+        if (!definition.restoresShield()) {
+            return currentAbsorption;
+        }
+        float cap = shieldCap(definition, currentAbsorption, maxAbsorption);
+        return Math.min(Math.max(currentAbsorption, cap), currentAbsorption + toMinecraftHealth(definition.shieldRestore()));
+    }
+
+    static float shieldCap(ConsumableDefinition definition, float currentAbsorption, float maxAbsorption) {
+        Objects.requireNonNull(definition, "definition");
+        if (definition.shieldCap() > 0) {
+            return toMinecraftHealth(definition.shieldCap());
+        }
+        float restoredAbsorption = currentAbsorption + toMinecraftHealth(definition.shieldRestore());
+        return maxAbsorption > 0.0F ? maxAbsorption : restoredAbsorption;
+    }
+
+    static String progressText(ConsumableDefinition definition, int remainingUseTicks) {
+        Objects.requireNonNull(definition, "definition");
+        int totalTicks = useTicks(definition);
+        int clampedRemainingTicks = Math.clamp(remainingUseTicks, 0, totalTicks);
+        int usedTicks = totalTicks - clampedRemainingTicks;
+        return formatTicks(usedTicks) + "/" + formatTicks(totalTicks) + "s";
+    }
+
+    private static void raiseMaxAbsorption(ServerPlayer player, float cap) {
+        AttributeInstance attribute = player.getAttribute(Attributes.MAX_ABSORPTION);
+        if (attribute != null && attribute.getValue() < cap) {
+            attribute.setBaseValue(cap);
+        }
+    }
+
+    private static String formatTicks(int ticks) {
+        return format(ticks / 20.0D);
     }
 
     private static float toMinecraftHealth(int fortniteHealth) {

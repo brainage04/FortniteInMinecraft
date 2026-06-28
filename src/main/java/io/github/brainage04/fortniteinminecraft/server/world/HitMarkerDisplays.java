@@ -30,8 +30,8 @@ public final class HitMarkerDisplays {
     private static final double MARKER_RISE_PER_TICK = 0.035D;
     public static final float MIN_MARKER_SCALE = 0.05F;
     public static final float MAX_MARKER_SCALE = 8.0F;
-    private static final float DEFAULT_MARKER_NEAR_SCALE = 1.0F;
-    private static final float DEFAULT_MARKER_FAR_SCALE = 1.0F;
+    private static final float DEFAULT_MARKER_NEAR_SCALE = 2.0F;
+    private static final float DEFAULT_MARKER_FAR_SCALE = 4.0F;
     private static final int TRANSPARENT_BACKGROUND = 0;
     private static final int TEXT_LINE_WIDTH = 80;
     private static final EntityType<Display.TextDisplay> TEXT_DISPLAY_TYPE = textDisplayType();

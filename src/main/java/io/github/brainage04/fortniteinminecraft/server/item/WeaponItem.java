@@ -4,8 +4,14 @@ import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
+import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
+import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
+import io.github.brainage04.fortniteinminecraft.server.world.BuildPieceHealthDisplays;
 import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
+import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
+import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
@@ -28,6 +34,7 @@ import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -44,6 +51,9 @@ public final class WeaponItem extends SimplePolymerItem {
     private static final double ENTITY_HITBOX_INFLATE_BLOCKS = 0.3D;
     private static final double BULLET_TRACE_STEP_BLOCKS = 1.25D;
     private static final int MAX_TRACE_PARTICLES = 64;
+    private static BuildWorldState buildWorldState;
+    private static WorldBuildMaterializer buildMaterializer;
+
     static final ClipContext.Block BULLET_BLOCK_MODE = ClipContext.Block.COLLIDER;
 
     private final WeaponDefinition definition;
@@ -53,6 +63,11 @@ public final class WeaponItem extends SimplePolymerItem {
         super(settings, clientItem);
         this.definition = Objects.requireNonNull(definition, "definition");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
+    }
+
+    public static void configureBuildDamage(BuildWorldState state, WorldBuildMaterializer materializer) {
+        buildWorldState = Objects.requireNonNull(state, "state");
+        buildMaterializer = Objects.requireNonNull(materializer, "materializer");
     }
 
     public WeaponDefinition definition() {
@@ -119,17 +134,14 @@ public final class WeaponItem extends SimplePolymerItem {
 
         long tick = level.getGameTime();
         long nextFireTick = customData(stack).getLongOr(NEXT_FIRE_TICK_KEY, 0L);
-        if (tick < nextFireTick || player.getCooldowns().isOnCooldown(stack)) {
+        int magazine = magazine(stack);
+        FireAttempt attempt = fireAttempt(magazine, tick < nextFireTick || player.getCooldowns().isOnCooldown(stack));
+        if (attempt == FireAttempt.COOLDOWN) {
             resyncCooldownOverlay(player, stack);
             return InteractionResult.SUCCESS_SERVER;
         }
-
-        int magazine = magazine(stack);
-        if (magazine <= 0) {
-            startReload(stack, tick);
-            player.getCooldowns().addCooldown(stack, remainingCooldownTicks(stack, tick));
-            playReloadSound(level, player);
-            player.sendSystemMessage(Component.literal("Reloading " + definition.displayName() + "."), true);
+        if (attempt == FireAttempt.EMPTY_MAGAZINE) {
+            player.sendSystemMessage(Component.literal("Empty " + definition.displayName() + ". Left-click to reload."), true);
             return InteractionResult.SUCCESS_SERVER;
         }
 
@@ -144,7 +156,7 @@ public final class WeaponItem extends SimplePolymerItem {
             DamageReport report = damageTarget(level, player, trace.target());
             playHitEffects(level, player, trace.hitLocation(), report.damage());
             HitMarkerDisplays.show(level, player, trace.target(), report.damage());
-        } else {
+        } else if (!damageBuild(level, player, trace, magazine)) {
             player.sendSystemMessage(Component.literal("Fired " + definition.displayName()
                     + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
         }
@@ -234,6 +246,38 @@ public final class WeaponItem extends SimplePolymerItem {
         return new DamageReport(damaged, Math.max(0.0F, before - after));
     }
 
+    private boolean damageBuild(ServerLevel level, ServerPlayer shooter, ShotTrace trace, int magazine) {
+        if (buildWorldState == null || buildMaterializer == null || trace.blockHitPos() == null) {
+            return false;
+        }
+        String dimension = level.dimension().identifier().toString();
+        BuildSlot slot = buildMaterializer.topOwnerAt(dimension, trace.blockHitPos());
+        if (slot == null) {
+            return false;
+        }
+        int damage = buildDamage();
+        BuildWorldState.DamageResult result = buildWorldState.damage(slot, damage, level.getGameTime());
+        if (!result.hit()) {
+            return false;
+        }
+        playBuildHitEffects(level, trace.hitLocation());
+        if (result.destroyed()) {
+            WorldBuildWriteResult clearResult = buildMaterializer.clear(level, result.after());
+            if (clearResult.success()) {
+                buildWorldState.remove(slot);
+                shooter.sendSystemMessage(Component.literal("Destroyed " + result.before().material().name().toLowerCase(Locale.ROOT)
+                        + " " + result.before().slot().pieceType().name().toLowerCase(Locale.ROOT)
+                        + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
+            } else {
+                shooter.sendSystemMessage(Component.literal("Build destroyed but world clear failed: " + clearResult.message()), false);
+            }
+        } else {
+            shooter.sendSystemMessage(Component.literal(BuildPieceHealthDisplays.healthText(result.after())
+                    + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
+        }
+        return true;
+    }
+
     static void prepareBulletHit(LivingEntity target) {
         Objects.requireNonNull(target, "target");
         if (target instanceof ServerPlayer) {
@@ -255,6 +299,10 @@ public final class WeaponItem extends SimplePolymerItem {
 
     private float minecraftDamage() {
         return (float) Math.max(1.0D, definition.stats().damage() * definition.stats().pellets() * FORTNITE_TO_MINECRAFT_DAMAGE);
+    }
+
+    int buildDamage() {
+        return Math.max(1, (int) Math.round(definition.stats().damage() * definition.stats().pellets()));
     }
 
     private int magazine(ItemStack stack) {
@@ -288,6 +336,13 @@ public final class WeaponItem extends SimplePolymerItem {
             return ManualReloadResult.FULL_MAGAZINE;
         }
         return ManualReloadResult.STARTED;
+    }
+
+    static FireAttempt fireAttempt(int magazine, boolean coolingDown) {
+        if (coolingDown) {
+            return FireAttempt.COOLDOWN;
+        }
+        return magazine <= 0 ? FireAttempt.EMPTY_MAGAZINE : FireAttempt.FIRE;
     }
 
     void setGunState(ItemStack stack, int magazine, long nextFireTick) {
@@ -327,9 +382,11 @@ public final class WeaponItem extends SimplePolymerItem {
         Vec3 start = player.getEyePosition();
         Vec3 look = player.getLookAngle();
         Vec3 rayEnd = start.add(look.scale(rangeBlocks));
-        HitResult blockHit = level.clip(new ClipContext(start, rayEnd, BULLET_BLOCK_MODE, ClipContext.Fluid.NONE, player));
-        if (blockHit.getType() != HitResult.Type.MISS) {
-            rayEnd = blockHit.getLocation();
+        BlockHitResult blockHit = null;
+        HitResult hitResult = level.clip(new ClipContext(start, rayEnd, BULLET_BLOCK_MODE, ClipContext.Fluid.NONE, player));
+        if (hitResult.getType() != HitResult.Type.MISS && hitResult instanceof BlockHitResult hitBlock) {
+            blockHit = hitBlock;
+            rayEnd = hitBlock.getLocation();
         }
 
         AABB searchBox = player.getBoundingBox().expandTowards(rayEnd.subtract(start)).inflate(1.0D);
@@ -348,7 +405,13 @@ public final class WeaponItem extends SimplePolymerItem {
                 closestHit = hit.get();
             }
         }
-        return new ShotTrace(start, closest == null ? rayEnd : closestHit, closest, closestHit);
+        return new ShotTrace(
+                start,
+                closest == null ? rayEnd : closestHit,
+                closest,
+                closest == null ? rayEnd : closestHit,
+                blockHit == null ? null : blockHit.getBlockPos()
+        );
     }
 
     private static boolean canShoot(Entity entity) {
@@ -357,7 +420,7 @@ public final class WeaponItem extends SimplePolymerItem {
 
     private static void playShotEffects(ServerLevel level, ServerPlayer shooter, ShotTrace trace) {
         Vec3 muzzle = muzzlePosition(shooter, trace.start());
-        level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.PLAYERS, 1.2F, 0.65F);
+        level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), SoundEvents.FIREWORK_ROCKET_BLAST, SoundSource.PLAYERS, 0.9F, 1.35F);
         level.sendParticles(ParticleTypes.ELECTRIC_SPARK, true, true, muzzle.x(), muzzle.y(), muzzle.z(), 3, 0.05D, 0.05D, 0.05D, 0.0D);
         spawnBulletTrace(level, trace.start(), trace.end());
     }
@@ -384,6 +447,11 @@ public final class WeaponItem extends SimplePolymerItem {
         level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 0.7F, 1.35F);
         int damageParticles = Math.max(1, Math.min(12, Math.round(damage)));
         level.sendParticles(ParticleTypes.DAMAGE_INDICATOR, true, true, hitLocation.x(), hitLocation.y(), hitLocation.z(), damageParticles, 0.2D, 0.3D, 0.2D, 0.05D);
+    }
+
+    private static void playBuildHitEffects(ServerLevel level, Vec3 hitLocation) {
+        level.playSound(null, hitLocation.x(), hitLocation.y(), hitLocation.z(), SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.BLOCKS, 0.9F, 1.0F);
+        level.sendParticles(ParticleTypes.CRIT, true, true, hitLocation.x(), hitLocation.y(), hitLocation.z(), 6, 0.18D, 0.18D, 0.18D, 0.03D);
     }
 
     private static void spawnBulletTrace(ServerLevel level, Vec3 start, Vec3 end) {
@@ -415,9 +483,15 @@ public final class WeaponItem extends SimplePolymerItem {
         NOT_WEAPON
     }
 
+    enum FireAttempt {
+        FIRE,
+        EMPTY_MAGAZINE,
+        COOLDOWN
+    }
+
     record DamageReport(boolean damaged, float damage) {
     }
 
-    private record ShotTrace(Vec3 start, Vec3 end, LivingEntity target, Vec3 hitLocation) {
+    private record ShotTrace(Vec3 start, Vec3 end, LivingEntity target, Vec3 hitLocation, BlockPos blockHitPos) {
     }
 }

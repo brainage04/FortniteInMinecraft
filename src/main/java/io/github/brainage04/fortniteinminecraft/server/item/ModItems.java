@@ -364,7 +364,7 @@ public final class ModItems {
         return Registry.register(
                 BuiltInRegistries.ITEM,
                 key,
-                new ConsumableItem(definition, consumableProperties(key, definition), clientItem)
+                new ConsumableItem(definition, consumableProperties(key), clientItem)
         );
     }
 
@@ -375,11 +375,10 @@ public final class ModItems {
                 .component(DataComponents.USE_COOLDOWN, WeaponItem.cooldownComponent(definition));
     }
 
-    private static Item.Properties consumableProperties(ResourceKey<Item> key, ConsumableDefinition definition) {
+    private static Item.Properties consumableProperties(ResourceKey<Item> key) {
         return new Item.Properties()
                 .setId(key)
-                .stacksTo(16)
-                .food(ConsumableItem.foodProperties(), ConsumableItem.consumableComponent(definition));
+                .stacksTo(16);
     }
 
     private static ResourceKey<Item> itemKey(String path) {

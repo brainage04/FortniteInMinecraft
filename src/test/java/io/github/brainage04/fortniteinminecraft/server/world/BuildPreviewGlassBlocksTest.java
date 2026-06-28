@@ -34,36 +34,37 @@ class BuildPreviewGlassBlocksTest {
     }
 
     @Test
-    void wallAndFloorUseChunkLocalStretchedPreviewDisplays() {
+    void allPiecePreviewsUseStablePerBlockVolumes() {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
 
-        LinkedHashSet<BuildPreviewGlassBlocks.PreviewVolume> wall = volumes(materializer, PieceType.WALL, Orientation.NORTH);
-        LinkedHashSet<BuildPreviewGlassBlocks.PreviewVolume> floor = volumes(materializer, PieceType.FLOOR, Orientation.NORTH);
+        for (PieceType pieceType : PieceType.values()) {
+            LinkedHashSet<BuildPreviewGlassBlocks.PreviewVolume> volumes = volumes(materializer, pieceType, Orientation.NORTH);
 
-        assertEquals(25, totalBlocks(wall));
-        assertEquals(25, totalBlocks(floor));
-        assertTrue(wall.size() <= 4);
-        assertTrue(floor.size() <= 4);
-        for (BuildPreviewGlassBlocks.PreviewVolume volume : wall) {
-            assertEquals(1, volume.sizeZ());
-        }
-        for (BuildPreviewGlassBlocks.PreviewVolume volume : floor) {
-            assertEquals(1, volume.sizeY());
+            assertEquals(25, volumes.size());
+            assertEquals(25, totalBlocks(volumes));
+            for (BuildPreviewGlassBlocks.PreviewVolume volume : volumes) {
+                assertEquals(1, volume.sizeX());
+                assertEquals(1, volume.sizeY());
+                assertEquals(1, volume.sizeZ());
+            }
         }
     }
 
     @Test
-    void stairPreviewUsesChunkLocalDisplaysPerDiagonalRow() {
+    void previewVolumesStayChunkLocalAndDeterministicAtChunkBorders() {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
-        PieceFootprint footprint = footprint(PieceType.STAIR, Orientation.NORTH);
+        PieceFootprint crossingChunkBorder = new FootprintProjector(BuildRules.defaults()).project(
+                BuildSlot.of("overworld", 4, 0, 4, PieceType.FLOOR, Orientation.NORTH)
+        );
 
-        LinkedHashSet<BuildPreviewGlassBlocks.PreviewVolume> volumes = BuildPreviewGlassBlocks.previewVolumes(footprint, materializer);
+        LinkedHashSet<BuildPreviewGlassBlocks.PreviewVolume> first = BuildPreviewGlassBlocks.previewVolumes(crossingChunkBorder, materializer);
+        LinkedHashSet<BuildPreviewGlassBlocks.PreviewVolume> second = BuildPreviewGlassBlocks.previewVolumes(crossingChunkBorder, materializer);
 
-        assertEquals(25, totalBlocks(volumes));
-        assertTrue(volumes.size() >= 5);
-        for (BuildPreviewGlassBlocks.PreviewVolume volume : volumes) {
-            assertEquals(1, volume.sizeY());
-            assertEquals(1, volume.sizeZ());
+        assertEquals(first, second);
+        assertEquals(25, first.size());
+        for (BuildPreviewGlassBlocks.PreviewVolume volume : first) {
+            assertEquals(Math.floorDiv(volume.origin().getX(), 16), Math.floorDiv(volume.origin().getX() + volume.sizeX() - 1, 16));
+            assertEquals(Math.floorDiv(volume.origin().getZ(), 16), Math.floorDiv(volume.origin().getZ() + volume.sizeZ() - 1, 16));
         }
     }
 

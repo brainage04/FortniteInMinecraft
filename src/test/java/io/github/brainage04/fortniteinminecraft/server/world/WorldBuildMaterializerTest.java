@@ -105,6 +105,7 @@ class WorldBuildMaterializerTest {
         assertEquals(25, firstPlaced.blockCount());
         assertEquals(25, secondPlaced.blockCount());
         assertEquals(2, materializer.ownedBlockCount("overworld", shared));
+        assertEquals(secondSlot, materializer.topOwnerAt("overworld", shared));
         assertTrue(materializer.isTrackedBlock("overworld", shared.getX(), shared.getY(), shared.getZ()));
         assertEquals(Blocks.COBBLESTONE.defaultBlockState(), blocks.stateAt(shared));
 
@@ -115,6 +116,7 @@ class WorldBuildMaterializerTest {
         assertEquals(0, materializer.trackedBlockCount(firstSlot));
         assertEquals(25, materializer.trackedBlockCount(secondSlot));
         assertEquals(1, materializer.ownedBlockCount("overworld", shared));
+        assertEquals(secondSlot, materializer.topOwnerAt("overworld", shared));
         assertEquals(Blocks.COBBLESTONE.defaultBlockState(), blocks.stateAt(shared));
 
         WorldBuildWriteResult secondCleared = materializer.clear(secondPiece, blocks);
@@ -122,6 +124,7 @@ class WorldBuildMaterializerTest {
         assertTrue(secondCleared.success(), secondCleared.message());
         assertEquals(25, secondCleared.blockCount());
         assertEquals(0, materializer.ownedBlockCount("overworld", shared));
+        assertEquals(null, materializer.topOwnerAt("overworld", shared));
         assertEquals(Blocks.AIR.defaultBlockState(), blocks.stateAt(shared));
     }
 

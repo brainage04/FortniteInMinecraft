@@ -28,12 +28,12 @@ class HitMarkerDisplaysTest {
     }
 
     @Test
-    void markerScaleDefaultsToCurrentConstantSize() {
+    void markerScaleDefaultsToReadableNearFarSizes() {
         HitMarkerDisplays.resetScaleModel();
 
-        assertEquals(1.0F, HitMarkerDisplays.scaleAtDistance(0.0D), 1.0E-6F);
-        assertEquals(1.0F, HitMarkerDisplays.scaleAtDistance(HitMarkerDisplays.MAX_MARKER_DISTANCE_BLOCKS), 1.0E-6F);
-        assertEquals(1.0F, HitMarkerDisplays.scaleAtDistance(80.0D), 1.0E-6F);
+        assertEquals(2.0F, HitMarkerDisplays.scaleAtDistance(0.0D), 1.0E-6F);
+        assertEquals(4.0F, HitMarkerDisplays.scaleAtDistance(HitMarkerDisplays.MAX_MARKER_DISTANCE_BLOCKS), 1.0E-6F);
+        assertEquals(4.0F, HitMarkerDisplays.scaleAtDistance(80.0D), 1.0E-6F);
     }
 
     @Test

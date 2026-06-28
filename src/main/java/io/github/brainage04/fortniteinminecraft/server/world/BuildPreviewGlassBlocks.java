@@ -2,7 +2,6 @@ package io.github.brainage04.fortniteinminecraft.server.world;
 
 import com.mojang.math.Transformation;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceFootprint;
-import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import io.github.brainage04.fortniteinminecraft.core.session.PreviewMode;
 import io.github.brainage04.fortniteinminecraft.mixin.BlockDisplayAccessor;
 import io.github.brainage04.fortniteinminecraft.mixin.DisplayAccessor;
@@ -25,7 +24,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import java.util.UUID;
 
 public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
@@ -121,35 +119,9 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
         Objects.requireNonNull(footprint, "footprint");
         Objects.requireNonNull(materializer, "materializer");
         List<BlockPos> positions = materializer.blockPositions(footprint);
-        PieceType pieceType = footprint.slot().pieceType();
-        LinkedHashSet<PreviewVolume> volumes = switch (pieceType) {
-            case WALL, FLOOR -> singleVolume(positions);
-            case STAIR -> stairRowVolumes(positions);
-            case ROOF -> unitVolumes(positions);
-        };
-        return splitAtChunkBorders(volumes);
+        return unitVolumes(positions);
     }
 
-    private static LinkedHashSet<PreviewVolume> singleVolume(Collection<BlockPos> positions) {
-        LinkedHashSet<PreviewVolume> volumes = new LinkedHashSet<>(1);
-        if (!positions.isEmpty()) {
-            volumes.add(volumeAround(positions));
-        }
-        return volumes;
-    }
-
-    private static LinkedHashSet<PreviewVolume> stairRowVolumes(List<BlockPos> positions) {
-        TreeMap<Integer, ArrayList<BlockPos>> rowsByY = new TreeMap<>();
-        for (BlockPos pos : positions) {
-            rowsByY.computeIfAbsent(pos.getY(), ignored -> new ArrayList<>()).add(pos);
-        }
-
-        LinkedHashSet<PreviewVolume> volumes = new LinkedHashSet<>(rowsByY.size());
-        for (ArrayList<BlockPos> row : rowsByY.values()) {
-            volumes.add(volumeAround(row));
-        }
-        return volumes;
-    }
 
     private static LinkedHashSet<PreviewVolume> unitVolumes(List<BlockPos> positions) {
         LinkedHashSet<PreviewVolume> volumes = new LinkedHashSet<>(positions.size());
@@ -159,23 +131,6 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
         return volumes;
     }
 
-    private static PreviewVolume volumeAround(Collection<BlockPos> positions) {
-        int minX = Integer.MAX_VALUE;
-        int minY = Integer.MAX_VALUE;
-        int minZ = Integer.MAX_VALUE;
-        int maxX = Integer.MIN_VALUE;
-        int maxY = Integer.MIN_VALUE;
-        int maxZ = Integer.MIN_VALUE;
-        for (BlockPos pos : positions) {
-            minX = Math.min(minX, pos.getX());
-            minY = Math.min(minY, pos.getY());
-            minZ = Math.min(minZ, pos.getZ());
-            maxX = Math.max(maxX, pos.getX());
-            maxY = Math.max(maxY, pos.getY());
-            maxZ = Math.max(maxZ, pos.getZ());
-        }
-        return new PreviewVolume(new BlockPos(minX, minY, minZ), maxX - minX + 1, maxY - minY + 1, maxZ - minZ + 1);
-    }
 
     static LinkedHashSet<PreviewVolume> splitAtChunkBorders(Collection<PreviewVolume> volumes) {
         Objects.requireNonNull(volumes, "volumes");

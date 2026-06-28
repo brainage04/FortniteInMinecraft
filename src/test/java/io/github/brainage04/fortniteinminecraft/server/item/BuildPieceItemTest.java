@@ -1,5 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
+import io.github.brainage04.fortniteinminecraft.core.item.ConsumableDefinition;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import net.minecraft.SharedConstants;
@@ -10,7 +11,6 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.Consumable;
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.Vec3;
@@ -63,6 +63,20 @@ class BuildPieceItemTest {
     }
 
     @Test
+    void emptyMagazineFireDoesNotStartAutomaticReload() {
+        assertEquals(WeaponItem.FireAttempt.EMPTY_MAGAZINE, WeaponItem.fireAttempt(0, false));
+        assertEquals(WeaponItem.FireAttempt.FIRE, WeaponItem.fireAttempt(1, false));
+        assertEquals(WeaponItem.FireAttempt.COOLDOWN, WeaponItem.fireAttempt(0, true));
+    }
+
+    @Test
+    void buildDamageUsesFullFortniteWeaponDamage() {
+        WeaponItem item = ModItems.WEAPONS.get(0);
+
+        assertEquals((int) Math.round(item.definition().stats().damage() * item.definition().stats().pellets()), item.buildDamage());
+    }
+
+    @Test
     void manualReloadStartsPartialMagazineReloadWithoutShot() {
         assertEquals(WeaponItem.ManualReloadResult.STARTED,
                 WeaponItem.manualReloadDecision(12, 30, 0L, 200L));
@@ -92,13 +106,37 @@ class BuildPieceItemTest {
     }
 
     @Test
-    void consumableItemsExposeFoodUseProgressComponents() {
-        ConsumableItem item = ModItems.CONSUMABLES.get(0);
-        Consumable consumable = ConsumableItem.consumableComponent(item.definition());
+    void shieldConsumablesRaiseZeroVanillaAbsorptionCap() {
+        ConsumableDefinition smallShield = new ConsumableDefinition(
+                "test_small_shield", "Small Shield", 2.03D, 0, 0, 25, 50, true, "small_shield"
+        );
 
-        assertNotNull(ConsumableItem.foodProperties());
-        assertNotNull(consumable);
-        assertEquals((int) Math.ceil(item.definition().castSeconds() * 20.0D), consumable.consumeTicks());
+        assertEquals(10.0F, ConsumableItem.shieldCap(smallShield, 0.0F, 0.0F), 0.001F);
+        assertEquals(5.0F, ConsumableItem.shieldAfterUse(smallShield, 0.0F, 0.0F), 0.001F);
+    }
+
+    @Test
+    void shieldConsumablesRespectFortniteShieldCap() {
+        ConsumableDefinition smallShield = new ConsumableDefinition(
+                "test_small_shield", "Small Shield", 2.03D, 0, 0, 25, 50, true, "small_shield"
+        );
+
+        assertEquals(10.0F, ConsumableItem.shieldAfterUse(smallShield, 8.0F, 0.0F), 0.001F);
+        assertEquals(12.0F, ConsumableItem.shieldAfterUse(smallShield, 12.0F, 20.0F), 0.001F);
+    }
+
+    @Test
+    void consumableProgressTextUsesElapsedAndNeededSecondsFromTicks() {
+        ConsumableDefinition smallShield = new ConsumableDefinition(
+                "test_small_shield", "Small Shield", 2.03D, 0, 0, 25, 50, true, "small_shield"
+        );
+
+        assertEquals(41, ConsumableItem.useTicks(smallShield));
+        assertEquals("0/2.05s", ConsumableItem.progressText(smallShield, 41));
+        assertEquals("1/2.05s", ConsumableItem.progressText(smallShield, 21));
+        assertEquals("2.05/2.05s", ConsumableItem.progressText(smallShield, 0));
+        assertEquals("0/2.05s", ConsumableItem.progressText(smallShield, 99));
+        assertEquals("2.05/2.05s", ConsumableItem.progressText(smallShield, -1));
     }
 
     @Test
