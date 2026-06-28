@@ -47,6 +47,10 @@ class BuildCommandsTest {
         assertFullyParses(dispatcher, "fim prevent-bullet-knockback true");
         assertFullyParses(dispatcher, "fim prevent-bullet-knockback false");
         assertLeavesUnparsed(dispatcher, "fim prevent-bullet-knockback maybe", "maybe");
+        assertFullyParses(dispatcher, "fim hitmarker-scale");
+        assertFullyParses(dispatcher, "fim hitmarker-scale reset");
+        assertFullyParses(dispatcher, "fim hitmarker-scale 0.5 2");
+        assertLeavesUnparsed(dispatcher, "fim hitmarker-scale 0.5 2 extra", "extra");
     }
 
     private static CommandDispatcher<CommandSourceStack> dispatcher() {

@@ -56,27 +56,34 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
 
         String dimension = dimensionOf(level);
         BlockState state = previewState(valid);
-        LinkedHashSet<PreviewVolume> volumes = previewVolumes(footprint, materializer);
-        ActivePreview previous = activePreviews.remove(player.getUUID());
-        HashMap<PreviewVolume, Display.BlockDisplay> displays = new HashMap<>(volumes.size());
+        List<PreviewVolume> volumes = List.copyOf(previewVolumes(footprint, materializer));
+        ActivePreview previous = activePreviews.get(player.getUUID());
+        ArrayList<Display.BlockDisplay> displays = new ArrayList<>(volumes.size());
+        List<Display.BlockDisplay> reusable = List.of();
 
         if (previous != null && previous.dimension().equals(dimension)) {
-            for (Map.Entry<PreviewVolume, Display.BlockDisplay> entry : previous.displays().entrySet()) {
-                if (volumes.contains(entry.getKey())) {
-                    configureDisplay(entry.getValue(), entry.getKey(), state);
-                    displays.put(entry.getKey(), entry.getValue());
-                } else {
-                    entry.getValue().discard();
-                }
-            }
+            reusable = previous.displays();
         } else if (previous != null) {
-            previous.displays().values().forEach(Display.BlockDisplay::discard);
+            previous.displays().forEach(Display.BlockDisplay::discard);
         }
 
-        for (PreviewVolume volume : volumes) {
-            displays.computeIfAbsent(volume, ignored -> spawnDisplay(level, volume, state));
+        for (int i = 0; i < volumes.size(); i++) {
+            PreviewVolume volume = volumes.get(i);
+            Display.BlockDisplay display = i < reusable.size() ? reusable.get(i) : null;
+            if (display == null || display.isRemoved()) {
+                display = spawnDisplay(level, volume, state);
+            } else {
+                configureDisplay(display, volume, state);
+            }
+            if (display != null) {
+                displays.add(display);
+            }
         }
-        displays.values().removeIf(Objects::isNull);
+
+        for (int i = volumes.size(); i < reusable.size(); i++) {
+            reusable.get(i).discard();
+        }
+
         activePreviews.put(player.getUUID(), new ActivePreview(dimension, displays));
         return displays.size();
     }
@@ -88,12 +95,12 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
         if (previous == null) {
             return;
         }
-        previous.displays().values().forEach(Display.BlockDisplay::discard);
+        previous.displays().forEach(Display.BlockDisplay::discard);
     }
 
     @Override
     public void clearAll() {
-        activePreviews.values().forEach(preview -> preview.displays().values().forEach(Display.BlockDisplay::discard));
+        activePreviews.values().forEach(preview -> preview.displays().forEach(Display.BlockDisplay::discard));
         activePreviews.clear();
     }
 
@@ -275,10 +282,10 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
     private record AxisRange(int start, int size) {
     }
 
-    private record ActivePreview(String dimension, Map<PreviewVolume, Display.BlockDisplay> displays) {
+    private record ActivePreview(String dimension, List<Display.BlockDisplay> displays) {
         private ActivePreview {
             Objects.requireNonNull(dimension, "dimension");
-            displays = Map.copyOf(displays);
+            displays = List.copyOf(displays);
         }
     }
 }

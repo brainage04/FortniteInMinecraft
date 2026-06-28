@@ -39,6 +39,7 @@ import java.util.Optional;
 public final class WeaponItem extends SimplePolymerItem {
     private static final String MAGAZINE_KEY = "magazine";
     private static final String NEXT_FIRE_TICK_KEY = "next_fire_tick";
+    private static final String RELOAD_COMPLETE_TICK_KEY = "reload_complete_tick";
     private static final double FORTNITE_TO_MINECRAFT_DAMAGE = 0.2D;
     private static final double ENTITY_HITBOX_INFLATE_BLOCKS = 0.3D;
     private static final double BULLET_TRACE_STEP_BLOCKS = 1.25D;
@@ -125,9 +126,8 @@ public final class WeaponItem extends SimplePolymerItem {
 
         int magazine = magazine(stack);
         if (magazine <= 0) {
-            int reloadTicks = reloadTicks();
-            reload(stack, tick, reloadTicks);
-            player.getCooldowns().addCooldown(stack, reloadTicks);
+            startReload(stack, tick);
+            player.getCooldowns().addCooldown(stack, remainingCooldownTicks(stack, tick));
             playReloadSound(level, player);
             player.sendSystemMessage(Component.literal("Reloading " + definition.displayName() + "."), true);
             return InteractionResult.SUCCESS_SERVER;
@@ -149,6 +149,37 @@ public final class WeaponItem extends SimplePolymerItem {
                     + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
         }
         return InteractionResult.SUCCESS_SERVER;
+    }
+
+    public static InteractionResult handleManualReloadOnSwing(ServerPlayer player, InteractionHand hand) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(hand, "hand");
+        ItemStack stack = player.getItemInHand(hand);
+        ServerLevel level = player.level();
+        long tick = level.getGameTime();
+        ManualReloadResult result = tryStartManualReload(stack, tick);
+        if (!(stack.getItem() instanceof WeaponItem item)) {
+            return InteractionResult.PASS;
+        }
+        if (result == ManualReloadResult.STARTED) {
+            player.getCooldowns().addCooldown(stack, item.remainingCooldownTicks(stack, tick));
+            playReloadSound(level, player);
+            player.sendSystemMessage(Component.literal("Reloading " + item.definition.displayName() + "."), true);
+            return InteractionResult.SUCCESS_SERVER;
+        }
+        if (result == ManualReloadResult.ALREADY_RELOADING) {
+            resyncCooldownOverlay(player, stack);
+            return InteractionResult.SUCCESS_SERVER;
+        }
+        return InteractionResult.PASS;
+    }
+
+    static ManualReloadResult tryStartManualReload(ItemStack stack, long tick) {
+        Objects.requireNonNull(stack, "stack");
+        if (!(stack.getItem() instanceof WeaponItem item)) {
+            return ManualReloadResult.NOT_WEAPON;
+        }
+        return item.tryStartManualReloadOnGun(stack, tick);
     }
 
     public static void resyncCooldownOverlay(ServerPlayer player, ItemStack stack) {
@@ -230,14 +261,40 @@ public final class WeaponItem extends SimplePolymerItem {
         return customData(stack).getIntOr(MAGAZINE_KEY, definition.stats().magazineSize());
     }
 
-    private void reload(ItemStack stack, long tick, int reloadTicks) {
+    private void startReload(ItemStack stack, long tick) {
+        int reloadTicks = reloadTicks();
         setGunState(stack, definition.stats().magazineSize(), tick + reloadTicks);
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putLong(RELOAD_COMPLETE_TICK_KEY, tick + reloadTicks));
     }
 
-    private void setGunState(ItemStack stack, int magazine, long nextFireTick) {
+    private ManualReloadResult tryStartManualReloadOnGun(ItemStack stack, long tick) {
+        ManualReloadResult result = manualReloadDecision(
+                magazine(stack),
+                definition.stats().magazineSize(),
+                customData(stack).getLongOr(RELOAD_COMPLETE_TICK_KEY, 0L),
+                tick
+        );
+        if (result == ManualReloadResult.STARTED) {
+            startReload(stack, tick);
+        }
+        return result;
+    }
+
+    static ManualReloadResult manualReloadDecision(int magazine, int magazineSize, long reloadCompleteTick, long tick) {
+        if (reloadCompleteTick > tick) {
+            return ManualReloadResult.ALREADY_RELOADING;
+        }
+        if (magazine >= magazineSize) {
+            return ManualReloadResult.FULL_MAGAZINE;
+        }
+        return ManualReloadResult.STARTED;
+    }
+
+    void setGunState(ItemStack stack, int magazine, long nextFireTick) {
         CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
             tag.putInt(MAGAZINE_KEY, magazine);
             tag.putLong(NEXT_FIRE_TICK_KEY, nextFireTick);
+            tag.remove(RELOAD_COMPLETE_TICK_KEY);
         });
     }
 
@@ -349,6 +406,13 @@ public final class WeaponItem extends SimplePolymerItem {
             return Integer.toString((int) value);
         }
         return String.format(Locale.ROOT, "%.2f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
+    }
+
+    enum ManualReloadResult {
+        STARTED,
+        FULL_MAGAZINE,
+        ALREADY_RELOADING,
+        NOT_WEAPON
     }
 
     record DamageReport(boolean damaged, float damage) {

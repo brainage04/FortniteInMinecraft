@@ -18,7 +18,8 @@ public abstract class ServerGamePacketListenerMixin {
     public ServerPlayer player;
 
     @Inject(method = "handleAnimate", at = @At("TAIL"))
-    private void fortniteinminecraft$cycleBuildMaterialOnSwing(ServerboundSwingPacket packet, CallbackInfo ci) {
+    private void fortniteinminecraft$handleHeldItemSwing(ServerboundSwingPacket packet, CallbackInfo ci) {
+        WeaponItem.handleManualReloadOnSwing(player, packet.getHand());
         BuildItemInteractions.handleBuildItemSwing(player, packet.getHand());
     }
 

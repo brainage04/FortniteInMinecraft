@@ -8,6 +8,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.Consumable;
 import net.minecraft.world.item.component.UseCooldown;
@@ -59,6 +60,35 @@ class BuildPieceItemTest {
         WeaponItem item = ModItems.WEAPONS.get(0);
 
         assertEquals("Assault Rifle: 30/30", item.statusText(30));
+    }
+
+    @Test
+    void manualReloadStartsPartialMagazineReloadWithoutShot() {
+        assertEquals(WeaponItem.ManualReloadResult.STARTED,
+                WeaponItem.manualReloadDecision(12, 30, 0L, 200L));
+    }
+
+    @Test
+    void manualReloadIgnoresFullMagazine() {
+        assertEquals(WeaponItem.ManualReloadResult.FULL_MAGAZINE,
+                WeaponItem.manualReloadDecision(30, 30, 0L, 200L));
+    }
+
+    @Test
+    void manualReloadDoesNotRestartAlreadyReloadingGun() {
+        assertEquals(WeaponItem.ManualReloadResult.ALREADY_RELOADING,
+                WeaponItem.manualReloadDecision(0, 30, 240L, 201L));
+    }
+
+    @Test
+    void manualReloadStartsEmptyMagazineReload() {
+        assertEquals(WeaponItem.ManualReloadResult.STARTED,
+                WeaponItem.manualReloadDecision(0, 30, 0L, 200L));
+    }
+
+    @Test
+    void manualReloadIgnoresNonGunStacks() {
+        assertEquals(WeaponItem.ManualReloadResult.NOT_WEAPON, WeaponItem.tryStartManualReload(ItemStack.EMPTY, 200L));
     }
 
     @Test

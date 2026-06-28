@@ -25,14 +25,18 @@ import java.util.Locale;
 import java.util.Objects;
 
 public final class HitMarkerDisplays {
-    static final double MAX_MARKER_DISTANCE_BLOCKS = 20.0D;
+    public static final double MAX_MARKER_DISTANCE_BLOCKS = 20.0D;
     static final int MARKER_LIFETIME_TICKS = 18;
     private static final double MARKER_RISE_PER_TICK = 0.035D;
-    private static final float MARKER_SCALE = 1.0F;
+    public static final float MIN_MARKER_SCALE = 0.05F;
+    public static final float MAX_MARKER_SCALE = 8.0F;
+    private static final float DEFAULT_MARKER_NEAR_SCALE = 1.0F;
+    private static final float DEFAULT_MARKER_FAR_SCALE = 1.0F;
     private static final int TRANSPARENT_BACKGROUND = 0;
     private static final int TEXT_LINE_WIDTH = 80;
     private static final EntityType<Display.TextDisplay> TEXT_DISPLAY_TYPE = textDisplayType();
     private static final List<ActiveMarker> ACTIVE_MARKERS = new ArrayList<>();
+    private static volatile ScaleModel scaleModel = ScaleModel.defaults();
     private static boolean registered;
 
     private HitMarkerDisplays() {
@@ -55,10 +59,11 @@ public final class HitMarkerDisplays {
         }
 
         Vec3 origin = markerPosition(shooter, target);
+        float scale = scaleAtDistance(shooter.getEyePosition().distanceTo(origin));
         Display.TextDisplay display = new Display.TextDisplay(TEXT_DISPLAY_TYPE, level);
         display.setNoGravity(true);
         display.setPos(origin.x(), origin.y(), origin.z());
-        configureDisplay(display, Component.literal(format(damage)).withStyle(ChatFormatting.YELLOW));
+        configureDisplay(display, Component.literal(format(damage)).withStyle(ChatFormatting.YELLOW), scale);
         if (!level.addFreshEntity(display)) {
             display.discard();
             return;
@@ -69,6 +74,21 @@ public final class HitMarkerDisplays {
     public static void clearAll() {
         ACTIVE_MARKERS.forEach(marker -> marker.display().discard());
         ACTIVE_MARKERS.clear();
+    }
+
+    public static ScaleModel scaleModel() {
+        return scaleModel;
+    }
+
+    public static ScaleModel setScaleModel(float nearScale, float farScale) {
+        ScaleModel model = new ScaleModel(nearScale, farScale);
+        scaleModel = model;
+        return model;
+    }
+
+    public static ScaleModel resetScaleModel() {
+        scaleModel = ScaleModel.defaults();
+        return scaleModel;
     }
 
     static Vec3 clampedMarkerPosition(Vec3 shooterEye, Vec3 targetCenter) {
@@ -87,7 +107,7 @@ public final class HitMarkerDisplays {
         return clampedMarkerPosition(shooter.getEyePosition(), targetCenter);
     }
 
-    private static void configureDisplay(Display.TextDisplay display, Component text) {
+    private static void configureDisplay(Display.TextDisplay display, Component text, float markerScale) {
         TextDisplayAccessor textAccessor = (TextDisplayAccessor) display;
         textAccessor.fortniteinminecraft$setText(text);
         textAccessor.fortniteinminecraft$setLineWidth(TEXT_LINE_WIDTH);
@@ -106,7 +126,7 @@ public final class HitMarkerDisplays {
         displayAccessor.fortniteinminecraft$setTransformation(new Transformation(
                 new Vector3f(),
                 new Quaternionf(),
-                new Vector3f(MARKER_SCALE, MARKER_SCALE, MARKER_SCALE),
+                new Vector3f(markerScale, markerScale, markerScale),
                 new Quaternionf()
         ));
     }
@@ -155,6 +175,37 @@ public final class HitMarkerDisplays {
             return Integer.toString((int) value);
         }
         return String.format(Locale.ROOT, "%.1f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
+    }
+
+
+    static float scaleAtDistance(double distanceBlocks) {
+        return scaleModel.scaleAtDistance(distanceBlocks);
+    }
+
+    public record ScaleModel(float nearScale, float farScale) {
+        public ScaleModel {
+            validateScale(nearScale, "nearScale");
+            validateScale(farScale, "farScale");
+        }
+
+        public static ScaleModel defaults() {
+            return new ScaleModel(DEFAULT_MARKER_NEAR_SCALE, DEFAULT_MARKER_FAR_SCALE);
+        }
+
+        public float scaleAtDistance(double distanceBlocks) {
+            double clampedDistance = Double.isFinite(distanceBlocks)
+                    ? Math.max(0.0D, Math.min(MAX_MARKER_DISTANCE_BLOCKS, distanceBlocks))
+                    : MAX_MARKER_DISTANCE_BLOCKS;
+            double progress = clampedDistance / MAX_MARKER_DISTANCE_BLOCKS;
+            return (float) (nearScale + (farScale - nearScale) * progress);
+        }
+
+        private static void validateScale(float scale, String name) {
+            if (!Float.isFinite(scale) || scale < MIN_MARKER_SCALE || scale > MAX_MARKER_SCALE) {
+                throw new IllegalArgumentException(name + " must be between "
+                        + MIN_MARKER_SCALE + " and " + MAX_MARKER_SCALE);
+            }
+        }
     }
 
     private record ActiveMarker(String dimension, Display.TextDisplay display, Vec3 origin, long spawnTick) {
