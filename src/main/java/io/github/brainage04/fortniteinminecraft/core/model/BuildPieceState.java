@@ -12,9 +12,9 @@ public record BuildPieceState(
         int maxHealth,
         long placedAtTick,
         long lastHealthUpdateTick,
-        String editVariant
+        EditVariantId editVariant
 ) {
-    public static final String BASE_VARIANT = "base";
+    public static final EditVariantId BASE_VARIANT = EditVariantId.BASE;
 
     public BuildPieceState {
         Objects.requireNonNull(id, "id");

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 public final class BuildWorldState {
     private final Map<BuildSlot, BuildPieceState> piecesBySlot = new HashMap<>();
@@ -58,6 +59,21 @@ public final class BuildWorldState {
             return false;
         }
         piecesBySlot.put(piece.slot(), piece);
+        return true;
+    }
+
+    public boolean replaceIfCurrent(BuildSlot slot, UUID expectedId, BuildPieceState replacement) {
+        Objects.requireNonNull(slot, "slot");
+        Objects.requireNonNull(expectedId, "expectedId");
+        Objects.requireNonNull(replacement, "replacement");
+        if (!slot.equals(replacement.slot())) {
+            throw new IllegalArgumentException("replacement slot must match target slot");
+        }
+        BuildPieceState current = piecesBySlot.get(slot);
+        if (current == null || !current.id().equals(expectedId)) {
+            return false;
+        }
+        piecesBySlot.put(slot, replacement);
         return true;
     }
 

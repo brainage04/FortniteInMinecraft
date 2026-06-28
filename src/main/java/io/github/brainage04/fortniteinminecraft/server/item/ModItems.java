@@ -76,6 +76,17 @@ public final class ModItems {
             weapon("assault_rifle", "Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.LEGENDARY,
                     36, 1.5, 30, 5.5, 2.25, 1, 81.28, "WID_Assault_Auto_Athena_SR_Ore_T03", "Assault_Auto_Athena_SR_Ore_T03", Items.IRON_HOE),
 
+            weapon("pump_shotgun", "Pump Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.COMMON,
+                    9.2, 1.85, 5, 0.7, 5.104, 10, 21.12, 165, "WID_Shotgun_Standard_Athena_C_Ore_T03", "Shotgun_Standard_Athena_C_Ore_T03", Items.IRON_AXE),
+            weapon("pump_shotgun", "Pump Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.UNCOMMON,
+                    10.1, 1.85, 5, 0.7, 4.752, 10, 21.12, 170, "WID_Shotgun_Standard_Athena_UC_Ore_T03", "Shotgun_Standard_Athena_UC_Ore_T03", Items.IRON_AXE),
+            weapon("pump_shotgun", "Pump Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.RARE,
+                    11.0, 1.85, 5, 0.7, 4.4, 10, 21.12, 175, "WID_Shotgun_Standard_Athena_R_Ore_T03", "Shotgun_Standard_Athena_R_Ore_T03", Items.IRON_AXE),
+            weapon("pump_shotgun", "Pump Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.EPIC,
+                    11.9, 1.85, 5, 0.7, 4.048, 10, 21.12, 180, "WID_Shotgun_Standard_Athena_VR_Ore_T03", "Shotgun_Standard_Athena_VR_Ore_T03", Items.IRON_AXE),
+            weapon("pump_shotgun", "Pump Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.LEGENDARY,
+                    12.8, 1.85, 5, 0.7, 3.696, 10, 21.12, 185, "WID_Shotgun_Standard_Athena_SR_Ore_T03", "Shotgun_Standard_Athena_SR_Ore_T03", Items.IRON_AXE),
+
             weapon("drum_shotgun", "Drum Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.COMMON,
                     4.2, 1.75, 12, 3.0, 3.85, 12, 21.12, "WID_Shotgun_AutoDrum_Athena_C_Ore_T03", "Shotgun_AutoDrum_Athena_C_Ore_T03", Items.IRON_AXE),
             weapon("drum_shotgun", "Drum Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.UNCOMMON,
@@ -276,13 +287,49 @@ public final class ModItems {
             String sourceStatRow,
             Item clientItem
     ) {
+        return weapon(
+                path,
+                displayName,
+                category,
+                rarity,
+                damage,
+                criticalMultiplier,
+                magazineSize,
+                fireRatePerSecond,
+                reloadSeconds,
+                pellets,
+                rangeBlocks,
+                0.0D,
+                sourceItemId,
+                sourceStatRow,
+                clientItem
+        );
+    }
+
+    private static WeaponItem weapon(
+            String path,
+            String displayName,
+            WeaponCategory category,
+            FortniteRarity rarity,
+            double damage,
+            double criticalMultiplier,
+            int magazineSize,
+            double fireRatePerSecond,
+            double reloadSeconds,
+            int pellets,
+            double rangeBlocks,
+            double maxDamagePerShot,
+            String sourceItemId,
+            String sourceStatRow,
+            Item clientItem
+    ) {
         String itemPath = "weapon_" + path + "_" + rarity.pathPrefix();
         WeaponDefinition definition = new WeaponDefinition(
                 itemPath,
                 displayName,
                 category,
                 rarity,
-                new WeaponStats(damage, criticalMultiplier, magazineSize, fireRatePerSecond, reloadSeconds, pellets, rangeBlocks),
+                new WeaponStats(damage, criticalMultiplier, magazineSize, fireRatePerSecond, reloadSeconds, pellets, rangeBlocks, maxDamagePerShot),
                 sourceItemId,
                 sourceStatRow
         );

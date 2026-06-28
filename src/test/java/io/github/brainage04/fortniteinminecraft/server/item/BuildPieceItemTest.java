@@ -1,6 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
 import io.github.brainage04.fortniteinminecraft.core.item.ConsumableDefinition;
+import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import net.minecraft.SharedConstants;
@@ -73,7 +74,28 @@ class BuildPieceItemTest {
     void buildDamageUsesFullFortniteWeaponDamage() {
         WeaponItem item = ModItems.WEAPONS.get(0);
 
-        assertEquals((int) Math.round(item.definition().stats().damage() * item.definition().stats().pellets()), item.buildDamage());
+        assertEquals((int) Math.round(item.definition().stats().totalDamagePerShot()), item.buildDamage());
+    }
+
+    @Test
+    void weaponCatalogIncludesSourceBackedPumpShotgunSlice() {
+        WeaponItem item = ModItems.WEAPONS.stream()
+                .filter(weapon -> weapon.definition().path().equals("weapon_pump_shotgun_legendary"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("Pump Shotgun", item.definition().displayName());
+        assertEquals("Shotgun_Standard_Athena_SR_Ore_T03", item.definition().sourceStatRow());
+        assertEquals(12.8D, item.definition().stats().damage(), 0.001D);
+        assertEquals(10, item.definition().stats().pellets());
+        assertEquals(128.0D, item.definition().stats().totalDamagePerShot(), 0.001D);
+    }
+
+    @Test
+    void weaponStatsCapTotalDamagePerShotWhenSourceProvidesCap() {
+        WeaponStats capped = new WeaponStats(50.0D, 2.0D, 5, 1.0D, 2.0D, 5, 20.0D, 120.0D);
+
+        assertEquals(120.0D, capped.totalDamagePerShot(), 0.001D);
     }
 
     @Test

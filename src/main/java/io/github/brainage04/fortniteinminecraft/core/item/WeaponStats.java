@@ -7,9 +7,13 @@ public record WeaponStats(
         double fireRatePerSecond,
         double reloadSeconds,
         int pellets,
-        double rangeBlocks
+        double rangeBlocks,
+        double maxDamagePerShot
 ) {
     public WeaponStats {
+        if (maxDamagePerShot < 0.0D) {
+            throw new IllegalArgumentException("maxDamagePerShot cannot be negative");
+        }
         if (damage < 0.0D) {
             throw new IllegalArgumentException("damage cannot be negative");
         }
@@ -31,5 +35,22 @@ public record WeaponStats(
         if (rangeBlocks <= 0.0D) {
             throw new IllegalArgumentException("rangeBlocks must be positive");
         }
+    }
+
+    public WeaponStats(
+            double damage,
+            double criticalMultiplier,
+            int magazineSize,
+            double fireRatePerSecond,
+            double reloadSeconds,
+            int pellets,
+            double rangeBlocks
+    ) {
+        this(damage, criticalMultiplier, magazineSize, fireRatePerSecond, reloadSeconds, pellets, rangeBlocks, 0.0D);
+    }
+
+    public double totalDamagePerShot() {
+        double rawDamage = damage * pellets;
+        return maxDamagePerShot > 0.0D ? Math.min(maxDamagePerShot, rawDamage) : rawDamage;
     }
 }

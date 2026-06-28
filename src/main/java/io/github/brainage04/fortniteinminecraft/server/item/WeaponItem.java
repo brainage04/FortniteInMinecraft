@@ -298,11 +298,11 @@ public final class WeaponItem extends SimplePolymerItem {
     }
 
     private float minecraftDamage() {
-        return (float) Math.max(1.0D, definition.stats().damage() * definition.stats().pellets() * FORTNITE_TO_MINECRAFT_DAMAGE);
+        return (float) Math.max(1.0D, definition.stats().totalDamagePerShot() * FORTNITE_TO_MINECRAFT_DAMAGE);
     }
 
     int buildDamage() {
-        return Math.max(1, (int) Math.round(definition.stats().damage() * definition.stats().pellets()));
+        return Math.max(1, (int) Math.round(definition.stats().totalDamagePerShot()));
     }
 
     private int magazine(ItemStack stack) {

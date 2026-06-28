@@ -3,6 +3,7 @@ package io.github.brainage04.fortniteinminecraft.core.state;
 import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
+import io.github.brainage04.fortniteinminecraft.core.model.EditVariantId;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.model.Orientation;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
@@ -74,5 +75,41 @@ class BuildWorldStateTest {
 
         assertTrue(destroyed.destroyed());
         assertEquals(0, destroyed.after().currentHealth());
+    }
+
+    @Test
+    void placedPiecesUseTypedBaseEditVariant() {
+        BuildPieceState piece = BuildPieceState.placed(
+                BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH),
+                MaterialType.WOOD,
+                UUID.randomUUID(),
+                0
+        );
+
+        assertSame(EditVariantId.BASE, piece.editVariant());
+    }
+
+    @Test
+    void replaceIfCurrentProtectsEditConfirmAgainstStaleTargets() {
+        BuildWorldState state = new BuildWorldState();
+        BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
+        BuildPieceState original = BuildPieceState.placed(slot, MaterialType.WOOD, UUID.randomUUID(), 0);
+        BuildPieceState edited = new BuildPieceState(
+                original.id(),
+                original.owner(),
+                original.slot(),
+                original.material(),
+                original.currentHealth(),
+                original.maxHealth(),
+                original.placedAtTick(),
+                original.lastHealthUpdateTick(),
+                new EditVariantId("wall-window")
+        );
+        assertTrue(state.addIfAbsent(original));
+
+        assertFalse(state.replaceIfCurrent(slot, UUID.randomUUID(), edited));
+        assertSame(original, state.get(slot));
+        assertTrue(state.replaceIfCurrent(slot, original.id(), edited));
+        assertSame(edited, state.get(slot));
     }
 }
