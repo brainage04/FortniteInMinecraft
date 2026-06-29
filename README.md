@@ -1,10 +1,10 @@
 # FortniteInMinecraft
 
-Server-authoritative Minecraft mechanics prototype generated from `brainage04/FabricModdingTemplate` with `--side=server`.
+Server-authoritative Minecraft mechanics prototype generated from `brainage04/FabricModdingTemplate`, now using the template's server+client layout: common/server code in `src/main`, client-only code in `src/client`, and Fabric GameTests in `src/gametest`.
 
 Current slice:
-- Java 25 / Minecraft 26.2 Fabric server-side scaffold.
-- No `src/client` source set.
+- Java 25 / Minecraft 26.2 Fabric server+client scaffold.
+- Client entrypoint in `src/client`; server authority remains in the common `ModInitializer`.
 - Core build data/state records.
 - Old-mod-style build grid: 4-block stride, `4n + 1` centers, 5-block footprints with one-block overlaps.
 - Canonical wall slots: north/west approach-side walls normalize to the same south/east build plane, so opposite-side placement cannot create duplicate parallel walls.
@@ -30,4 +30,7 @@ Run:
 ```shell
 ./gradlew test
 ./gradlew build
+ALSOFT_DRIVERS=null LIBGL_ALWAYS_SOFTWARE=1 \
+  xvfb-run -a --server-args="-screen 0 1280x720x24" \
+  ./gradlew --no-daemon runClientGameTest
 ```

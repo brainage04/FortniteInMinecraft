@@ -3,7 +3,7 @@
 	"id": "${mod_id}",
 	"version": "${mod_version}",
 	"name": "${mod_name}",
-	"description": "Server-authoritative building mechanics prototype.",
+	"description": "Server and client Fortnite building and combat mechanics prototype.",
 	"authors": [
 		"brainage04"
 	],
@@ -15,6 +15,9 @@
 	"icon": "assets/fortniteinminecraft/icon.png",
 	"environment": "*",
 	"entrypoints": {
+		"client": [
+			"io.github.brainage04.fortniteinminecraft.FortniteInMinecraftClient"
+		],
 		"main": [
 			"io.github.brainage04.fortniteinminecraft.FortniteInMinecraft"
 		]

@@ -45,6 +45,95 @@ processResources {
 	}
 }
 
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		fortniteinminecraft {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+
+	accessWidenerPath = file("src/main/resources/fortniteinminecraft.accesswidener")
+}
+
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "${project.mod_id}-gametest"
+		enableGameTests = true
+		enableClientGameTests = true
+		eula = true
+	}
+}
+
+tasks.named("processGametestResources") {
+	inputs.property "mod_id", project.properties.mod_id
+	inputs.property "mod_version", project.version
+	inputs.property "mod_name", project.properties.mod_name
+
+	filesMatching("fabric.mod.json") {
+		expand([
+				"mod_id": inputs.properties.mod_id,
+				"mod_version": inputs.properties.mod_version,
+				"mod_name": inputs.properties.mod_name,
+		])
+	}
+}
+
+// BEGIN CLIENT GAMETEST RUN SETUP
+def clientGameTestRunDir = layout.buildDirectory.dir("run/clientGameTest")
+
+tasks.register("prepareClientGameTestRun") {
+	def optionsFile = clientGameTestRunDir.map { it.file("options.txt") }
+
+	outputs.file(optionsFile)
+	mustRunAfter(tasks.named("deleteGameTestRunDir"))
+
+	doLast {
+		def settings = [
+				version                  : "4671",
+				ao                       : "false",
+				autoJump                 : "false",
+				biomeBlendRadius         : "0",
+				chunkSectionFadeInTime   : "0.0",
+				enableVsync              : "false",
+				entityDistanceScaling    : "0.5",
+				entityShadows            : "false",
+				fullscreen               : "false",
+				graphicsPreset           : '"fast"',
+				guiScale                 : "3",
+				improvedTransparency     : "false",
+				maxAnisotropyBit         : "1",
+				maxFps                   : "30",
+				menuBackgroundBlurriness : "0",
+				mipmapLevels             : "0",
+				narrator                 : "0",
+				narratorHotkey           : "false",
+				particles                : "2",
+				prioritizeChunkUpdates   : "0",
+				renderClouds             : '"false"',
+				renderDistance           : "5",
+				simulationDistance       : "5",
+				soundCategory_master     : "0.0",
+				soundCategory_music      : "0.0",
+				toggleSprint             : "true",
+				weatherRadius            : "5"
+		]
+		def file = optionsFile.get().asFile
+
+		file.parentFile.mkdirs()
+		file.text = settings.collect { key, value -> "${key}:${value}" }.join(System.lineSeparator()) + System.lineSeparator()
+	}
+}
+
+tasks.matching { it.name == "runClientGameTest" }.configureEach {
+	dependsOn(tasks.named("prepareClientGameTestRun"))
+}
+// END CLIENT GAMETEST RUN SETUP
+
+
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = project.java_version.toInteger()
 }
@@ -78,6 +167,3 @@ test {
 	systemProperty "fabric.side", "server"
 }
 
-loom {
-	accessWidenerPath = file("src/main/resources/fortniteinminecraft.accesswidener")
-}

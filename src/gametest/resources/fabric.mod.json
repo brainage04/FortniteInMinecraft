@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "${mod_id}-gametest",
+	"version": "${mod_version}",
+	"name": "${mod_name} Game Tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"io.github.brainage04.fortniteinminecraft.FortniteInMinecraftClientGameTest"
+		],
+		"fabric-gametest": [
+			"io.github.brainage04.fortniteinminecraft.FortniteInMinecraftGameTest"
+		]
+	}
+}
