@@ -3,8 +3,6 @@ package io.github.brainage04.fortniteinminecraft.server.world;
 import com.mojang.math.Transformation;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceFootprint;
 import io.github.brainage04.fortniteinminecraft.core.session.PreviewMode;
-import io.github.brainage04.fortniteinminecraft.mixin.BlockDisplayAccessor;
-import io.github.brainage04.fortniteinminecraft.mixin.DisplayAccessor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -192,7 +190,7 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
     }
 
     private static void setBlockState(Display.BlockDisplay display, BlockState state) {
-        ((BlockDisplayAccessor) display).fortniteinminecraft$setBlockState(state);
+        display.setBlockState(state);
     }
 
     private static void setTransformation(Display.BlockDisplay display, PreviewVolume volume) {
@@ -203,7 +201,7 @@ public final class BuildPreviewGlassBlocks implements BuildPreviewRenderer {
                 expandedScale(volume.sizeY(), outset),
                 expandedScale(volume.sizeZ(), outset)
         );
-        ((DisplayAccessor) display).fortniteinminecraft$setTransformation(
+        display.setTransformation(
                 new Transformation(translation, new Quaternionf(), scale, new Quaternionf())
         );
     }

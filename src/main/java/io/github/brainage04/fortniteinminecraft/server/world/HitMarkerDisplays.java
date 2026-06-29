@@ -1,8 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.world;
 
 import com.mojang.math.Transformation;
-import io.github.brainage04.fortniteinminecraft.mixin.DisplayAccessor;
-import io.github.brainage04.fortniteinminecraft.mixin.TextDisplayAccessor;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -108,22 +106,20 @@ public final class HitMarkerDisplays {
     }
 
     private static void configureDisplay(Display.TextDisplay display, Component text, float markerScale) {
-        TextDisplayAccessor textAccessor = (TextDisplayAccessor) display;
-        textAccessor.fortniteinminecraft$setText(text);
-        textAccessor.fortniteinminecraft$setLineWidth(TEXT_LINE_WIDTH);
-        textAccessor.fortniteinminecraft$setBackgroundColor(TRANSPARENT_BACKGROUND);
-        textAccessor.fortniteinminecraft$setTextOpacity((byte) 255);
-        textAccessor.fortniteinminecraft$setFlags((byte) (Display.TextDisplay.FLAG_SHADOW | Display.TextDisplay.FLAG_SEE_THROUGH));
+        display.setText(text);
+        display.setLineWidth(TEXT_LINE_WIDTH);
+        display.setBackgroundColor(TRANSPARENT_BACKGROUND);
+        display.setTextOpacity((byte) 255);
+        display.setFlags((byte) (Display.TextDisplay.FLAG_SHADOW | Display.TextDisplay.FLAG_SEE_THROUGH));
 
-        DisplayAccessor displayAccessor = (DisplayAccessor) display;
-        displayAccessor.fortniteinminecraft$setBillboardConstraints(Display.BillboardConstraints.CENTER);
-        displayAccessor.fortniteinminecraft$setBrightnessOverride(Brightness.FULL_BRIGHT);
-        displayAccessor.fortniteinminecraft$setViewRange(0.5F);
-        displayAccessor.fortniteinminecraft$setShadowRadius(0.0F);
-        displayAccessor.fortniteinminecraft$setShadowStrength(0.0F);
-        displayAccessor.fortniteinminecraft$setWidth(1.0F);
-        displayAccessor.fortniteinminecraft$setHeight(0.5F);
-        displayAccessor.fortniteinminecraft$setTransformation(new Transformation(
+        display.setBillboardConstraints(Display.BillboardConstraints.CENTER);
+        display.setBrightnessOverride(Brightness.FULL_BRIGHT);
+        display.setViewRange(0.5F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        display.setWidth(1.0F);
+        display.setHeight(0.5F);
+        display.setTransformation(new Transformation(
                 new Vector3f(),
                 new Quaternionf(),
                 new Vector3f(markerScale, markerScale, markerScale),
@@ -147,7 +143,7 @@ public final class HitMarkerDisplays {
                 continue;
             }
             marker.display().setPos(marker.origin().add(0.0D, age * MARKER_RISE_PER_TICK, 0.0D));
-            ((TextDisplayAccessor) marker.display()).fortniteinminecraft$setTextOpacity(opacity(age));
+            marker.display().setTextOpacity(opacity(age));
         }
     }
 

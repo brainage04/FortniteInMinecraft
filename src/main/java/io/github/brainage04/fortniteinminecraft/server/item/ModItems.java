@@ -1,12 +1,14 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
 import eu.pb4.polymer.common.api.PolymerCommonUtils;
+import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.item.ConsumableDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.FortniteRarity;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponCategory;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
+import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import io.github.brainage04.fortniteinminecraft.core.session.BuildSessionManager;
@@ -15,6 +17,7 @@ import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTabOutput;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -28,6 +31,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.block.Blocks;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -120,16 +124,98 @@ public final class ModItems {
             weapon("pistol", "Pistol", WeaponCategory.PISTOL, FortniteRarity.LEGENDARY,
                     31, 2.0, 18, 6.8, 1.215, 1, 53.12, "WID_Pistol_Auto_Athena_SR", "Pistol_SemiAuto_Athena_SR_Ore_T03", Items.IRON_NUGGET),
 
-            weapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.COMMON,
-                    99, 2.5, 1, 0.75, 3.3, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_C_Ore_T03", "Sniper_BoltAction_Scope_Athena_C_Ore_T03", Items.BOW),
-            weapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.UNCOMMON,
-                    105, 2.5, 1, 0.75, 3.15, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_UC_Ore_T03", "Sniper_BoltAction_Scope_Athena_UC_Ore_T03", Items.BOW),
-            weapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.RARE,
-                    110, 2.5, 1, 0.75, 3.0, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_R_Ore_T03", "Sniper_BoltAction_Scope_Athena_R_Ore_T03", Items.BOW),
-            weapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.EPIC,
-                    116, 2.5, 1, 0.75, 2.5, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_VR_Ore_T03", "Sniper_BoltAction_Scope_Athena_VR_Ore_T03", Items.BOW),
-            weapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.LEGENDARY,
-                    121, 2.5, 1, 0.75, 2.35, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_SR_Ore_T03", "Sniper_BoltAction_Scope_Athena_SR_Ore_T03", Items.BOW)
+
+            weapon("warforged_assault_rifle", "Warforged Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.COMMON,
+                    22, 1.5, 35, 7.2, 3.685, 1, 81.28, "WID_Assault_SunRose_HS_Athena_C", "Assault_Sunrose_Athena_C_Ore_T03", Items.IRON_HOE),
+            weapon("warforged_assault_rifle", "Warforged Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.UNCOMMON,
+                    23, 1.5, 35, 7.2, 3.5175, 1, 81.28, "WID_Assault_SunRose_HS_Athena_UC", "Assault_Sunrose_Athena_UC_Ore_T03", Items.IRON_HOE),
+            weapon("warforged_assault_rifle", "Warforged Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.RARE,
+                    24, 1.5, 35, 7.2, 3.35, 1, 81.28, "WID_Assault_SunRose_HS_Athena_R", "Assault_Sunrose_Athena_R_Ore_T03", Items.IRON_HOE),
+            weapon("warforged_assault_rifle", "Warforged Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.EPIC,
+                    25, 1.5, 35, 7.2, 3.1825, 1, 81.28, "WID_Assault_SunRose_HS_Athena_VR", "Assault_Sunrose_Athena_VR_Ore_T03", Items.IRON_HOE),
+            weapon("warforged_assault_rifle", "Warforged Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.LEGENDARY,
+                    26, 1.5, 35, 7.2, 3.015, 1, 81.28, "WID_Assault_SunRose_HS_Athena_SR", "Assault_Sunrose_Athena_SR_Ore_T03", Items.IRON_HOE),
+
+            weapon("infantry_rifle", "Infantry Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.COMMON,
+                    36, 2, 8, 4, 2.53, 1, 81.28, "WID_Assault_Infantry_Athena_C", "Assault_Infantry_Athena_C_Ore_T03", Items.IRON_HOE),
+            weapon("infantry_rifle", "Infantry Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.UNCOMMON,
+                    38, 2, 8, 4, 2.415, 1, 81.28, "WID_Assault_Infantry_Athena_UC", "Assault_Infantry_Athena_UC_Ore_T03", Items.IRON_HOE),
+            weapon("infantry_rifle", "Infantry Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.RARE,
+                    40, 2, 8, 4, 2.3, 1, 81.28, "WID_Assault_Infantry_Athena_R", "Assault_Infantry_Athena_R_Ore_T03", Items.IRON_HOE),
+            weapon("infantry_rifle", "Infantry Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.EPIC,
+                    42, 2, 10, 4, 2.185, 1, 81.28, "WID_Assault_Infantry_Athena_VR", "Assault_Infantry_Athena_VR_Ore_T03", Items.IRON_HOE),
+            weapon("infantry_rifle", "Infantry Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.LEGENDARY,
+                    44, 2, 10, 4, 2.07, 1, 81.28, "WID_Assault_Infantry_Athena_SR", "Assault_Infantry_Athena_SR_Ore_T03", Items.IRON_HOE),
+
+            weapon("scoped_assault_rifle", "Scoped Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.UNCOMMON,
+                    32, 2, 15, 2, 2.415, 1, 78.72, "WID_Assault_Surgical_Athena_UC_Ore_T03", "Assault_Surgical_Athena_UC_Ore_T03", Items.IRON_HOE),
+            weapon("scoped_assault_rifle", "Scoped Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.RARE,
+                    34, 2, 15, 2, 2.3, 1, 78.72, "WID_Assault_Surgical_Athena_R_Ore_T03", "Assault_Surgical_Athena_R_Ore_T03", Items.IRON_HOE),
+            weapon("scoped_assault_rifle", "Scoped Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.EPIC,
+                    36, 2, 20, 2, 2.185, 1, 78.72, "WID_Assault_Surgical_Athena_VR_Ore_T03", "Assault_Surgical_Athena_VR_Ore_T03", Items.IRON_HOE),
+            weapon("scoped_assault_rifle", "Scoped Assault Rifle", WeaponCategory.ASSAULT_RIFLE, FortniteRarity.LEGENDARY,
+                    37, 2, 20, 2, 2.07, 1, 78.72, "WID_Assault_Surgical_Athena_SR_Ore_T03", "Assault_Surgical_Athena_SR_Ore_T03", Items.IRON_HOE),
+
+            weapon("thermal_scoped_assault_rifle", "Thermal Scoped Assault Rifle", WeaponCategory.SNIPER, FortniteRarity.COMMON,
+                    25, 2, 15, 4, 2.53, 1, 6.4, "WID_Assault_Surgical_Thermal_Athena_C_Ore_T03", "Assault_Surgical_Thermal_Athena_C_Ore_T03", Items.IRON_HOE),
+            weapon("thermal_scoped_assault_rifle", "Thermal Scoped Assault Rifle", WeaponCategory.SNIPER, FortniteRarity.UNCOMMON,
+                    27, 2, 15, 4, 2.415, 1, 6.4, "WID_Assault_Surgical_Thermal_Athena_UC_Ore_T03", "Assault_Surgical_Thermal_Athena_UC_Ore_T03", Items.IRON_HOE),
+            weapon("thermal_scoped_assault_rifle", "Thermal Scoped Assault Rifle", WeaponCategory.SNIPER, FortniteRarity.RARE,
+                    28, 2, 15, 4, 2.3, 1, 6.4, "WID_Assault_Surgical_Thermal_Athena_R_Ore_T03", "Assault_Surgical_Thermal_Athena_R_Ore_T03", Items.IRON_HOE),
+            weapon("thermal_scoped_assault_rifle", "Thermal Scoped Assault Rifle", WeaponCategory.SNIPER, FortniteRarity.EPIC,
+                    29, 2, 15, 4, 2.185, 1, 6.4, "WID_Assault_Surgical_Thermal_Athena_VR_Ore_T03", "Assault_Surgical_Thermal_Athena_VR_Ore_T03", Items.IRON_HOE),
+            weapon("thermal_scoped_assault_rifle", "Thermal Scoped Assault Rifle", WeaponCategory.SNIPER, FortniteRarity.LEGENDARY,
+                    31, 2, 15, 4, 2.07, 1, 6.4, "WID_Assault_Surgical_Thermal_Athena_SR_Ore_T03", "Assault_Surgical_Thermal_Athena_SR_Ore_T03", Items.IRON_HOE),
+
+            weapon("suppressed_submachine_gun", "Suppressed Submachine Gun", WeaponCategory.SMG, FortniteRarity.COMMON,
+                    23, 1.75, 36, 8, 2.2, 1, 32.48, "WID_Pistol_AutoHeavySuppressed_Athena_C_Ore_T02", "Pistol_AutoHeavySuppressed_Athena_C_Ore_T03", Items.CROSSBOW),
+            weapon("suppressed_submachine_gun", "Suppressed Submachine Gun", WeaponCategory.SMG, FortniteRarity.UNCOMMON,
+                    24, 1.75, 36, 8, 2.1, 1, 32.48, "WID_Pistol_AutoHeavySuppressed_Athena_UC_Ore_T03", "Pistol_AutoHeavySuppressed_Athena_UC_Ore_T03", Items.CROSSBOW),
+            weapon("suppressed_submachine_gun", "Suppressed Submachine Gun", WeaponCategory.SMG, FortniteRarity.RARE,
+                    25, 1.75, 36, 8, 2, 1, 32.48, "WID_Pistol_AutoHeavySuppressed_Athena_R_Ore_T03", "Pistol_AutoHeavySuppressed_Athena_R_Ore_T03", Items.CROSSBOW),
+            weapon("suppressed_submachine_gun", "Suppressed Submachine Gun", WeaponCategory.SMG, FortniteRarity.EPIC,
+                    26, 1.75, 36, 8, 1.9, 1, 32.48, "WID_Pistol_AutoHeavySuppressed_Athena_VR_Ore_T03", "Pistol_AutoHeavySuppressed_Athena_VR_Ore_T03", Items.CROSSBOW),
+            weapon("suppressed_submachine_gun", "Suppressed Submachine Gun", WeaponCategory.SMG, FortniteRarity.LEGENDARY,
+                    28, 1.75, 36, 8, 1.8, 1, 32.48, "WID_Pistol_AutoHeavySuppressed_Athena_SR_Ore_T03", "Pistol_AutoHeavySuppressed_Athena_SR_Ore_T03", Items.CROSSBOW),
+
+            weapon("tactical_shotgun", "Tactical Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.COMMON,
+                    7.9, 1.75, 8, 1.5, 6.27, 10, 19.68, 120, "WID_Shotgun_SemiAuto_Athena_C", "Shotgun_SemiAuto_Athena_C_Ore_T03", Items.IRON_AXE),
+            weapon("tactical_shotgun", "Tactical Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.UNCOMMON,
+                    8.4, 1.75, 8, 1.5, 5.985, 10, 19.68, 125, "WID_Shotgun_SemiAuto_Athena_UC", "Shotgun_SemiAuto_Athena_UC_Ore_T03", Items.IRON_AXE),
+            weapon("tactical_shotgun", "Tactical Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.RARE,
+                    8.8, 1.75, 8, 1.5, 5.7, 10, 19.68, 130, "WID_Shotgun_SemiAuto_Athena_R", "Shotgun_SemiAuto_Athena_R_Ore_T03", Items.IRON_AXE),
+            weapon("tactical_shotgun", "Tactical Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.EPIC,
+                    9.2, 1.75, 8, 1.5, 5.415, 10, 19.68, 135, "WID_Shotgun_SemiAuto_Athena_VR", "Shotgun_SemiAuto_Athena_VR_Ore_T03", Items.IRON_AXE),
+            weapon("tactical_shotgun", "Tactical Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.LEGENDARY,
+                    9.7, 1.75, 8, 1.5, 5.13, 10, 19.68, 140, "WID_Shotgun_SemiAuto_Athena_SR", "Shotgun_SemiAuto_Athena_SR_Ore_T03", Items.IRON_AXE),
+
+            weapon("heavy_shotgun", "Heavy Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.RARE,
+                    7, 2.5, 7, 1, 6.25, 10, 23.04, 145, "WID_Shotgun_SlugFire_Athena_R", "Shotgun_SlugFire_Athena_R_Ore_T03", Items.IRON_AXE),
+            weapon("heavy_shotgun", "Heavy Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.EPIC,
+                    7.4, 2.5, 7, 1, 5.9375, 10, 23.04, 150, "WID_Shotgun_SlugFire_Athena_VR", "Shotgun_SlugFire_Athena_VR_Ore_T03", Items.IRON_AXE),
+            weapon("heavy_shotgun", "Heavy Shotgun", WeaponCategory.SHOTGUN, FortniteRarity.LEGENDARY,
+                    7.7, 2.5, 7, 1, 5.625, 10, 23.04, 155, "WID_Shotgun_SlugFire_Athena_SR", "Shotgun_SlugFire_Athena_SR_Ore_T03", Items.IRON_AXE)
+    );
+
+    public static final List<ProjectileWeaponItem> PROJECTILE_WEAPONS = List.of(
+            projectileWeapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.COMMON,
+                    99, 2.5, 1, 0.75, 3.3, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_C_Ore_T03", "Sniper_BoltAction_Scope_Athena_C_Ore_T03", Items.BOW, 4.5F, 0.0F),
+            projectileWeapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.UNCOMMON,
+                    105, 2.5, 1, 0.75, 3.15, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_UC_Ore_T03", "Sniper_BoltAction_Scope_Athena_UC_Ore_T03", Items.BOW, 4.5F, 0.0F),
+            projectileWeapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.RARE,
+                    110, 2.5, 1, 0.75, 3.0, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_R_Ore_T03", "Sniper_BoltAction_Scope_Athena_R_Ore_T03", Items.BOW, 4.5F, 0.0F),
+            projectileWeapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.EPIC,
+                    116, 2.5, 1, 0.75, 2.5, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_VR_Ore_T03", "Sniper_BoltAction_Scope_Athena_VR_Ore_T03", Items.BOW, 4.5F, 0.0F),
+            projectileWeapon("bolt_action_sniper", "Bolt-Action Sniper Rifle", WeaponCategory.SNIPER, FortniteRarity.LEGENDARY,
+                    121, 2.5, 1, 0.75, 2.35, 1, 80.0, "WID_Sniper_BoltAction_Scope_Athena_SR_Ore_T03", "Sniper_BoltAction_Scope_Athena_SR_Ore_T03", Items.BOW, 4.5F, 0.0F),
+            projectileWeapon("hunting_rifle", "Hunting Rifle", WeaponCategory.SNIPER, FortniteRarity.UNCOMMON,
+                    86, 2.75, 1, 0.8, 2.1, 1, 80.0, "WID_Sniper_NoScope_Athena_UC_Ore_T03", "Sniper_NoScope_Athena_UC_Ore_T03", Items.BOW, 4.2F, 0.4F),
+            projectileWeapon("hunting_rifle", "Hunting Rifle", WeaponCategory.SNIPER, FortniteRarity.RARE,
+                    91, 2.75, 1, 0.8, 2.0, 1, 80.0, "WID_Sniper_NoScope_Athena_R_Ore_T03", "Sniper_NoScope_Athena_R_Ore_T03", Items.BOW, 4.2F, 0.35F),
+            projectileWeapon("hunting_rifle", "Hunting Rifle", WeaponCategory.SNIPER, FortniteRarity.EPIC,
+                    96, 2.75, 1, 0.8, 1.9, 1, 80.0, "WID_Sniper_NoScope_Athena_VR_Ore_T03", "Sniper_NoScope_Athena_VR_Ore_T03", Items.BOW, 4.2F, 0.3F),
+            projectileWeapon("hunting_rifle", "Hunting Rifle", WeaponCategory.SNIPER, FortniteRarity.LEGENDARY,
+                    100, 2.75, 1, 0.8, 1.8, 1, 80.0, "WID_Sniper_NoScope_Athena_SR_Ore_T03", "Sniper_NoScope_Athena_SR_Ore_T03", Items.BOW, 4.2F, 0.25F)
     );
 
     public static final List<ConsumableItem> CONSUMABLES = List.of(
@@ -137,7 +223,118 @@ public final class ModItems {
             consumable("medkit", "Medkit", 10.03, 100, 100, 0, 0, true, "medkit", Items.IRON_INGOT),
             consumable("small_shield", "Small Shield Potion", 2.03, 0, 0, 25, 50, true, "small_shield", Items.AMETHYST_SHARD),
             consumable("shield_potion", "Shield Potion", 5.03, 0, 0, 50, 100, true, "shield_potion", Items.PRISMARINE_SHARD),
-            consumable("full_restore_jug", "Full Restore Jug", 15.03, 100, 100, 100, 100, true, "full_restore_jug", Items.ECHO_SHARD)
+            consumable("full_restore_jug", "Full Restore Jug", 15.03, 100, 100, 100, 100, true, "full_restore_jug", Items.ECHO_SHARD),
+            consumable("apple", "Apple", 0.6, 5, 100, 0, 0, false, "WID_Athena_Apple", Items.APPLE),
+            consumable("banana", "Banana", 0.6, 5, 100, 0, 0, false, "WID_Athena_Banana", Items.PAPER)
+    );
+
+    public static final List<Item> DEFERRED_WEAPONS = List.of(
+            placeholder("weapon_rocket_launcher_legendary", "Rocket Launcher", "WID_Launcher_Rocket_Athena_SR_Ore_T03", Items.FIREWORK_ROCKET),
+            placeholder("weapon_grenade_launcher_legendary", "Grenade Launcher", "WID_Launcher_Grenade_Athena_SR_Ore_T03", Items.FIRE_CHARGE),
+            placeholder("weapon_proximity_grenade_launcher_legendary", "Proximity Grenade Launcher", "WID_Launcher_Prox_Athena_SR_Ore_T03", Items.FIRE_CHARGE),
+            placeholder("weapon_boom_bow_legendary", "Boom Bow", "WID_ExplosiveBow_Athena_SR", Items.BOW),
+            placeholder("weapon_shockwave_launcher_epic", "Shockwave Launcher", "WID_Launcher_Shockwave_Athena_VR_Ore_T03", Items.CROSSBOW)
+    );
+
+    public static final List<PickupItem> PICKUPS = List.of(
+            pickup("pickup_wood", "Wood", PickupPayload.material(MaterialType.WOOD, 30), Items.OAK_PLANKS),
+            pickup("pickup_stone", "Stone", PickupPayload.material(MaterialType.STONE, 30), Items.COBBLESTONE),
+            pickup("pickup_metal", "Metal", PickupPayload.material(MaterialType.METAL, 30), Items.IRON_INGOT),
+            pickup("pickup_gold", "Gold", PickupPayload.gold(100), Items.GOLD_INGOT),
+            pickup("pickup_light_ammo", "Light Ammo", PickupPayload.ammo(AmmoType.LIGHT, 18), Items.IRON_NUGGET),
+            pickup("pickup_medium_ammo", "Medium Ammo", PickupPayload.ammo(AmmoType.MEDIUM, 18), Items.IRON_NUGGET),
+            pickup("pickup_shells", "Shells", PickupPayload.ammo(AmmoType.SHELLS, 6), Items.FLINT),
+            pickup("pickup_heavy_ammo", "Heavy Ammo", PickupPayload.ammo(AmmoType.HEAVY, 6), Items.IRON_NUGGET),
+            pickup("pickup_rockets", "Rockets", PickupPayload.ammo(AmmoType.ROCKETS, 2), Items.FIREWORK_ROCKET)
+    );
+
+    public static final List<ThrowableImpulseItem> THROWABLES = List.of(
+            throwableImpulse(new ThrowableImpulseItem.Definition(
+                    "shockwave_grenade",
+                    "Shockwave Grenade",
+                    6.0D,
+                    1.55D,
+                    1.0D,
+                    60,
+                    20,
+                    true,
+                    1.15F,
+                    ChatFormatting.LIGHT_PURPLE
+            ), Items.ENDER_PEARL),
+            throwableImpulse(new ThrowableImpulseItem.Definition(
+                    "impulse_grenade",
+                    "Impulse Grenade",
+                    4.5D,
+                    1.05D,
+                    0.7D,
+                    60,
+                    15,
+                    false,
+                    0.85F,
+                    ChatFormatting.BLUE
+            ), Items.SNOWBALL)
+    );
+
+    public static final PickaxeItem PICKAXE = registerPickaxe("harvesting_tool", Items.IRON_PICKAXE);
+    public static final GrapplerItem GRAPPLER = registerGrappler(new GrapplerItem.Definition(
+            "grappler",
+            "Grappler",
+            32.0D,
+            1.6D,
+            0.25D,
+            20,
+            "Adventure_Special_HookGun_Athena_SR_Ore_T03"
+    ), Items.FISHING_ROD);
+    public static final LaunchPadItem LAUNCH_PAD = registerLaunchPad("launch_pad", "Launch Pad", 40, 140, Items.HEAVY_WEIGHTED_PRESSURE_PLATE);
+    public static final GliderItem GLIDER = registerGlider("glider", "Glider", 160, Items.PHANTOM_MEMBRANE);
+    public static final List<Item> UTILITY_ITEMS = List.of(PICKAXE, GRAPPLER, LAUNCH_PAD, GLIDER);
+
+    public static final List<ResourceNodeItem> RESOURCE_NODE_ITEMS = List.of(
+            resourceNode(
+                    new ResourceNodeItem.Definition(
+                            "resource_node_wood",
+                            "Wood Resource Node",
+                            MaterialType.WOOD,
+                            100,
+                            12,
+                            List.of(new BlockOffset(0, 0, 0), new BlockOffset(0, 1, 0), new BlockOffset(0, 2, 0))
+                    ),
+                    Blocks.OAK_LOG.defaultBlockState(),
+                    Items.OAK_LOG
+            ),
+            resourceNode(
+                    new ResourceNodeItem.Definition(
+                            "resource_node_stone",
+                            "Stone Resource Node",
+                            MaterialType.STONE,
+                            120,
+                            12,
+                            List.of(
+                                    new BlockOffset(0, 0, 0),
+                                    new BlockOffset(1, 0, 0),
+                                    new BlockOffset(0, 0, 1),
+                                    new BlockOffset(0, 1, 0)
+                            )
+                    ),
+                    Blocks.COBBLESTONE.defaultBlockState(),
+                    Items.COBBLESTONE
+            ),
+            resourceNode(
+                    new ResourceNodeItem.Definition(
+                            "resource_node_metal",
+                            "Metal Resource Node",
+                            MaterialType.METAL,
+                            150,
+                            12,
+                            List.of(
+                                    new BlockOffset(0, 0, 0),
+                                    new BlockOffset(1, 0, 0),
+                                    new BlockOffset(0, 1, 0)
+                            )
+                    ),
+                    Blocks.CUT_COPPER.weathering().unaffected().defaultBlockState(),
+                    Items.CUT_COPPER.weathering().unaffected()
+            )
     );
 
     public static final List<Item> COMBAT_ITEMS = combatItems();
@@ -215,12 +412,20 @@ public final class ModItems {
         CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("building_blocks")).register(
                 output -> acceptAll(output, BUILD_PIECES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS)
         );
-        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("combat")).register(
-                output -> acceptAll(output, WEAPONS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS)
-        );
+        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("combat")).register(output -> {
+            acceptAll(output, WEAPONS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+            acceptAll(output, PROJECTILE_WEAPONS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+            acceptAll(output, DEFERRED_WEAPONS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+            acceptAll(output, THROWABLES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+            acceptAll(output, UTILITY_ITEMS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+        });
         CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("food_and_drinks")).register(
                 output -> acceptAll(output, CONSUMABLES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS)
         );
+        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("ingredients")).register(output -> {
+            acceptAll(output, PICKUPS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+            acceptAll(output, RESOURCE_NODE_ITEMS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+        });
         CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("search")).register(
                 output -> acceptAll(output, ALL_ITEMS, CreativeModeTab.TabVisibility.SEARCH_TAB_ONLY)
         );
@@ -336,6 +541,37 @@ public final class ModItems {
         return registerWeapon(definition, clientItem);
     }
 
+    private static ProjectileWeaponItem projectileWeapon(
+            String path,
+            String displayName,
+            WeaponCategory category,
+            FortniteRarity rarity,
+            double damage,
+            double criticalMultiplier,
+            int magazineSize,
+            double fireRatePerSecond,
+            double reloadSeconds,
+            int pellets,
+            double rangeBlocks,
+            String sourceItemId,
+            String sourceStatRow,
+            Item clientItem,
+            float projectileSpeed,
+            float inaccuracy
+    ) {
+        String itemPath = "weapon_" + path + "_" + rarity.pathPrefix();
+        WeaponDefinition definition = new WeaponDefinition(
+                itemPath,
+                displayName,
+                category,
+                rarity,
+                new WeaponStats(damage, criticalMultiplier, magazineSize, fireRatePerSecond, reloadSeconds, pellets, rangeBlocks, 0.0D),
+                sourceItemId,
+                sourceStatRow
+        );
+        return registerProjectileWeapon(definition, clientItem, projectileSpeed, inaccuracy);
+    }
+
     private static ConsumableItem consumable(
             String path,
             String displayName,
@@ -362,17 +598,95 @@ public final class ModItems {
         return registerConsumable(definition, clientItem);
     }
 
+    private static SourceBackedPlaceholderItem placeholder(String path, String displayName, String sourceItemId, Item clientItem) {
+        ResourceKey<Item> key = itemKey(path);
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new SourceBackedPlaceholderItem(displayName, sourceItemId, placeholderProperties(key, 1), clientItem)
+        );
+    }
+
+    private static PickupItem pickup(String path, String displayName, PickupPayload payload, Item clientItem) {
+        ResourceKey<Item> key = itemKey(path);
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new PickupItem(displayName, payload, placeholderProperties(key, 64), clientItem)
+        );
+    }
+
+    private static ThrowableImpulseItem throwableImpulse(ThrowableImpulseItem.Definition definition, Item clientItem) {
+        ResourceKey<Item> key = itemKey(definition.path());
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new ThrowableImpulseItem(definition, throwableProperties(key, definition), clientItem)
+        );
+    }
+
+    private static PickaxeItem registerPickaxe(String path, Item clientItem) {
+        ResourceKey<Item> key = itemKey(path);
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new PickaxeItem(singleStackProperties(key), clientItem)
+        );
+    }
+
+    private static GrapplerItem registerGrappler(GrapplerItem.Definition definition, Item clientItem) {
+        ResourceKey<Item> key = itemKey(definition.path());
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new GrapplerItem(definition, singleStackProperties(key), clientItem)
+        );
+    }
+
+    private static LaunchPadItem registerLaunchPad(String path, String displayName, int cooldownTicks, long redeployTicks, Item clientItem) {
+        ResourceKey<Item> key = itemKey(path);
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new LaunchPadItem(displayName, cooldownTicks, redeployTicks, singleStackProperties(key), clientItem)
+        );
+    }
+
+    private static GliderItem registerGlider(String path, String displayName, long redeployTicks, Item clientItem) {
+        ResourceKey<Item> key = itemKey(path);
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new GliderItem(displayName, redeployTicks, singleStackProperties(key), clientItem)
+        );
+    }
+
+    private static ResourceNodeItem resourceNode(ResourceNodeItem.Definition definition, net.minecraft.world.level.block.state.BlockState blockState, Item clientItem) {
+        ResourceKey<Item> key = itemKey(definition.path());
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new ResourceNodeItem(definition, blockState, placeholderProperties(key, 16), clientItem)
+        );
+    }
+
     private static List<Item> combatItems() {
-        ArrayList<Item> items = new ArrayList<>(WEAPONS.size() + CONSUMABLES.size());
+        ArrayList<Item> items = new ArrayList<>(WEAPONS.size() + PROJECTILE_WEAPONS.size() + DEFERRED_WEAPONS.size() + THROWABLES.size() + UTILITY_ITEMS.size() + CONSUMABLES.size());
         items.addAll(WEAPONS);
+        items.addAll(PROJECTILE_WEAPONS);
+        items.addAll(DEFERRED_WEAPONS);
+        items.addAll(THROWABLES);
+        items.addAll(UTILITY_ITEMS);
         items.addAll(CONSUMABLES);
         return List.copyOf(items);
     }
 
     private static List<Item> allItems() {
-        ArrayList<Item> items = new ArrayList<>(BUILD_PIECES.size() + COMBAT_ITEMS.size());
+        ArrayList<Item> items = new ArrayList<>(BUILD_PIECES.size() + COMBAT_ITEMS.size() + PICKUPS.size() + RESOURCE_NODE_ITEMS.size());
         items.addAll(BUILD_PIECES);
         items.addAll(COMBAT_ITEMS);
+        items.addAll(PICKUPS);
+        items.addAll(RESOURCE_NODE_ITEMS);
         return List.copyOf(items);
     }
 
@@ -406,6 +720,20 @@ public final class ModItems {
         );
     }
 
+    private static ProjectileWeaponItem registerProjectileWeapon(
+            WeaponDefinition definition,
+            Item clientItem,
+            float projectileSpeed,
+            float inaccuracy
+    ) {
+        ResourceKey<Item> key = itemKey(definition.path());
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new ProjectileWeaponItem(definition, projectileWeaponProperties(key, definition), clientItem, projectileSpeed, inaccuracy)
+        );
+    }
+
     private static ConsumableItem registerConsumable(ConsumableDefinition definition, Item clientItem) {
         ResourceKey<Item> key = itemKey(definition.path());
         return Registry.register(
@@ -422,10 +750,36 @@ public final class ModItems {
                 .component(DataComponents.USE_COOLDOWN, WeaponItem.cooldownComponent(definition));
     }
 
+    private static Item.Properties projectileWeaponProperties(ResourceKey<Item> key, WeaponDefinition definition) {
+        return new Item.Properties()
+                .setId(key)
+                .stacksTo(1)
+                .component(DataComponents.USE_COOLDOWN, ProjectileWeaponItem.cooldownComponent(definition));
+    }
+
     private static Item.Properties consumableProperties(ResourceKey<Item> key) {
         return new Item.Properties()
                 .setId(key)
                 .stacksTo(16);
+    }
+
+    private static Item.Properties throwableProperties(ResourceKey<Item> key, ThrowableImpulseItem.Definition definition) {
+        return new Item.Properties()
+                .setId(key)
+                .stacksTo(6)
+                .component(DataComponents.USE_COOLDOWN, ThrowableImpulseItem.cooldownComponent(definition));
+    }
+
+    private static Item.Properties singleStackProperties(ResourceKey<Item> key) {
+        return new Item.Properties()
+                .setId(key)
+                .stacksTo(1);
+    }
+
+    private static Item.Properties placeholderProperties(ResourceKey<Item> key, int stackSize) {
+        return new Item.Properties()
+                .setId(key)
+                .stacksTo(stackSize);
     }
 
     private static ResourceKey<Item> itemKey(String path) {
@@ -434,5 +788,27 @@ public final class ModItems {
 
     private static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath(FortniteInMinecraft.MOD_ID, path);
+    }
+
+    private static final class SourceBackedPlaceholderItem extends SimplePolymerItem {
+        private final String displayName;
+        private final String sourceItemId;
+
+        private SourceBackedPlaceholderItem(String displayName, String sourceItemId, Item.Properties settings, Item clientItem) {
+            super(settings, clientItem);
+            this.displayName = Objects.requireNonNull(displayName, "displayName");
+            this.sourceItemId = Objects.requireNonNull(sourceItemId, "sourceItemId");
+        }
+
+        @Override
+        public Component getName(ItemStack stack) {
+            return Component.literal(displayName);
+        }
+
+        @Override
+        public void modifyClientTooltip(List<Component> tooltip, ItemStack stack, PacketContext context) {
+            tooltip.add(Component.literal("Placeholder: implementation pending"));
+            tooltip.add(Component.literal("Source: " + sourceItemId));
+        }
     }
 }

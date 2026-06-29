@@ -3,11 +3,13 @@ package io.github.brainage04.fortniteinminecraft;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.session.BuildSessionManager;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
-import io.github.brainage04.fortniteinminecraft.server.command.BuildCommands;
+import io.github.brainage04.fortniteinminecraft.server.command.CommandRegistrar;
 import io.github.brainage04.fortniteinminecraft.server.item.BuildItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
+import io.github.brainage04.fortniteinminecraft.server.item.PickaxeItem;
 import io.github.brainage04.fortniteinminecraft.server.item.WeaponAutoFire;
 import io.github.brainage04.fortniteinminecraft.server.item.WeaponItem;
+import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewParticles;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewGlassBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewRenderers;
@@ -15,6 +17,7 @@ import io.github.brainage04.fortniteinminecraft.server.world.BuildPieceHealthDis
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPreviewTicker;
 import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
+import io.github.brainage04.fortniteinminecraft.server.world.ResourceNodeRegistry;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -45,10 +48,12 @@ public final class FortniteInMinecraft implements ModInitializer {
     @Override
     public void onInitialize() {
         ModItems.initialize(sessions);
-        BuildCommands.register(sessions, buildWorld, buildRules, materializer, previewRenderers);
+        CommandRegistrar.initialize(sessions, buildWorld, buildRules, materializer, previewRenderers);
         WeaponItem.configureBuildDamage(buildWorld, materializer, buildRules);
+        PickaxeItem.configureHarvesting(buildWorld, materializer);
         BuildItemInteractions.register(sessions, buildWorld, buildRules, materializer, previewRenderers);
         WeaponAutoFire.register();
+        MobilityItemInteractions.register();
         HitMarkerDisplays.register();
         BuildPieceHealthDisplays.register(buildWorld, materializer);
         previewTicker.register();
@@ -56,6 +61,8 @@ public final class FortniteInMinecraft implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             HitMarkerDisplays.clearAll();
             BuildPieceHealthDisplays.clearAll();
+            MobilityItemInteractions.clearAll();
+            ResourceNodeRegistry.clearAll();
             previewRenderers.clearAll();
         });
         LOGGER.info("{} server core initialized.", MOD_NAME);

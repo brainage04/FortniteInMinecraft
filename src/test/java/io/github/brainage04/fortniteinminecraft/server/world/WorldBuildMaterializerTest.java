@@ -201,6 +201,28 @@ class WorldBuildMaterializerTest {
         }
     }
 
+    @Test
+    void resourceNodeRegistryDamagesTrackedCustomResourceBlocks() {
+        ResourceNodeRegistry.clearAll();
+        BlockPos first = new BlockPos(1, 64, 1);
+        BlockPos second = new BlockPos(2, 64, 1);
+
+        ResourceNodeRegistry.register("overworld", List.of(first, second), MaterialType.STONE, 100, 12);
+
+        ResourceNodeRegistry.ResourceHit chipped = ResourceNodeRegistry.hit("overworld", first, 40);
+        assertTrue(chipped.hit());
+        assertFalse(chipped.destroyed());
+        assertEquals(MaterialType.STONE, chipped.material());
+        assertEquals(12, chipped.resourceReward());
+        assertEquals(60, chipped.remainingHealth());
+
+        ResourceNodeRegistry.ResourceHit destroyed = ResourceNodeRegistry.hit("overworld", first, 60);
+        assertTrue(destroyed.destroyed());
+        assertFalse(ResourceNodeRegistry.tracked("overworld", first));
+        assertTrue(ResourceNodeRegistry.tracked("overworld", second));
+        ResourceNodeRegistry.clearAll();
+    }
+
     private static BuildPieceState piece(BuildSlot slot, MaterialType material, int health) {
         return new BuildPieceState(
                 UUID.randomUUID(),

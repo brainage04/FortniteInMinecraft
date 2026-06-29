@@ -2,6 +2,7 @@ package io.github.brainage04.fortniteinminecraft.server.item;
 
 import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import io.github.brainage04.fortniteinminecraft.core.item.ConsumableDefinition;
+import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
 import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -75,6 +76,11 @@ public final class ConsumableItem extends SimplePolymerItem {
             if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer) {
                 serverPlayer.sendSystemMessage(Component.literal(definition.displayName() + " would have no effect."), true);
             }
+            return InteractionResult.FAIL;
+        }
+        if (definition.movementLocked() && player instanceof ServerPlayer serverPlayer
+                && MobilityItemInteractions.isGliding(serverPlayer)) {
+            serverPlayer.sendSystemMessage(Component.literal("Cannot use " + definition.displayName() + " while gliding."), true);
             return InteractionResult.FAIL;
         }
         player.startUsingItem(hand);

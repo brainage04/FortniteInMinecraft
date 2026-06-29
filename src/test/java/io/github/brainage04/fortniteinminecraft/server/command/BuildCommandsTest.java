@@ -55,7 +55,7 @@ class BuildCommandsTest {
 
     private static CommandDispatcher<CommandSourceStack> dispatcher() {
         CommandDispatcher<CommandSourceStack> dispatcher = new CommandDispatcher<>();
-        BuildCommands.register(
+        CommandRegistrar.register(
                 dispatcher,
                 new BuildSessionManager(),
                 new BuildWorldState(),

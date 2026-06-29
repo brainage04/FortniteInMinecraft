@@ -10,6 +10,7 @@ import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
+import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPieceHealthDisplays;
 import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
@@ -143,6 +144,10 @@ public final class WeaponItem extends SimplePolymerItem {
         if (!(level instanceof ServerLevel serverLevel) || !(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResult.PASS;
         }
+        if (MobilityItemInteractions.isGliding(serverPlayer)) {
+            serverPlayer.sendSystemMessage(Component.literal("Cannot fire while gliding."), true);
+            return InteractionResult.SUCCESS_SERVER;
+        }
 
         WeaponAutoFire.rememberInput(serverPlayer, hand, this, serverLevel.getGameTime());
         return fireFromHeldItem(serverLevel, serverPlayer, hand);
@@ -152,6 +157,9 @@ public final class WeaponItem extends SimplePolymerItem {
         ItemStack stack = player.getItemInHand(hand);
         if (stack.getItem() != this) {
             return InteractionResult.PASS;
+        }
+        if (MobilityItemInteractions.isGliding(player)) {
+            return InteractionResult.SUCCESS_SERVER;
         }
 
         long tick = level.getGameTime();

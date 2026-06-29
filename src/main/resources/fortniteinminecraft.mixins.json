@@ -3,9 +3,6 @@
 	"package": "io.github.brainage04.fortniteinminecraft.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"BlockDisplayAccessor",
-		"DisplayAccessor",
-		"TextDisplayAccessor",
 		"ServerGamePacketListenerMixin"
 	],
 	"injectors": {

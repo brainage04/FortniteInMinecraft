@@ -4,8 +4,6 @@ import com.mojang.math.Transformation;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
-import io.github.brainage04.fortniteinminecraft.mixin.DisplayAccessor;
-import io.github.brainage04.fortniteinminecraft.mixin.TextDisplayAccessor;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
@@ -108,7 +106,7 @@ public final class BuildPieceHealthDisplays {
             ACTIVE_VIEWS.put(player.getUUID(), view);
         }
         view.display().setPos(origin.x(), origin.y(), origin.z());
-        ((TextDisplayAccessor) view.display()).fortniteinminecraft$setText(
+        view.display().setText(
                 Component.literal(healthText(piece)).withStyle(ChatFormatting.GREEN)
         );
     }
@@ -160,21 +158,19 @@ public final class BuildPieceHealthDisplays {
     }
 
     private static void configure(Display.TextDisplay display) {
-        TextDisplayAccessor textAccessor = (TextDisplayAccessor) display;
-        textAccessor.fortniteinminecraft$setLineWidth(TEXT_LINE_WIDTH);
-        textAccessor.fortniteinminecraft$setBackgroundColor(TRANSPARENT_BACKGROUND);
-        textAccessor.fortniteinminecraft$setTextOpacity((byte) 255);
-        textAccessor.fortniteinminecraft$setFlags((byte) Display.TextDisplay.FLAG_SHADOW);
+        display.setLineWidth(TEXT_LINE_WIDTH);
+        display.setBackgroundColor(TRANSPARENT_BACKGROUND);
+        display.setTextOpacity((byte) 255);
+        display.setFlags((byte) Display.TextDisplay.FLAG_SHADOW);
 
-        DisplayAccessor displayAccessor = (DisplayAccessor) display;
-        displayAccessor.fortniteinminecraft$setBillboardConstraints(Display.BillboardConstraints.CENTER);
-        displayAccessor.fortniteinminecraft$setBrightnessOverride(Brightness.FULL_BRIGHT);
-        displayAccessor.fortniteinminecraft$setViewRange(0.75F);
-        displayAccessor.fortniteinminecraft$setShadowRadius(0.0F);
-        displayAccessor.fortniteinminecraft$setShadowStrength(0.0F);
-        displayAccessor.fortniteinminecraft$setWidth(3.0F);
-        displayAccessor.fortniteinminecraft$setHeight(0.6F);
-        displayAccessor.fortniteinminecraft$setTransformation(new Transformation(
+        display.setBillboardConstraints(Display.BillboardConstraints.CENTER);
+        display.setBrightnessOverride(Brightness.FULL_BRIGHT);
+        display.setViewRange(0.75F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        display.setWidth(3.0F);
+        display.setHeight(0.6F);
+        display.setTransformation(new Transformation(
                 new Vector3f(),
                 new Quaternionf(),
                 new Vector3f(DISPLAY_SCALE, DISPLAY_SCALE, DISPLAY_SCALE),
