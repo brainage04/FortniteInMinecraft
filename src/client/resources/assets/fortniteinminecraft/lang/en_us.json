@@ -2,5 +2,14 @@
   "fortniteinminecraft.client.status": "FortniteInMinecraft client hooks initialized; server authority remains active.",
   "key.categories.fortniteinminecraft.controls": "Fortnite in Minecraft",
   "key.fortniteinminecraft.reload_weapon": "Reload Fortnite weapon",
-  "key.fortniteinminecraft.edit_build": "Edit targeted build"
+  "key.fortniteinminecraft.edit_build": "Edit targeted build (primary)",
+  "key.fortniteinminecraft.edit_build.secondary": "Edit targeted build (secondary)",
+  "key.fortniteinminecraft.edit_reset": "Reset targeted edit (primary)",
+  "key.fortniteinminecraft.edit_reset.secondary": "Reset targeted edit (secondary)",
+  "key.fortniteinminecraft.build_wall": "Select wall build piece",
+  "key.fortniteinminecraft.build_floor": "Select floor build piece",
+  "key.fortniteinminecraft.build_stair": "Select stair build piece",
+  "key.fortniteinminecraft.build_roof": "Select roof build piece",
+  "key.fortniteinminecraft.rotate_build": "Rotate selected build piece",
+  "key.fortniteinminecraft.repair_build": "Repair targeted build piece"
 }

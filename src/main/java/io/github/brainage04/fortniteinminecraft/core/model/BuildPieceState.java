@@ -71,6 +71,14 @@ public record BuildPieceState(
         return progressed.withHealth(Math.max(0, progressed.currentHealth - damage), Math.max(tick, progressed.lastHealthUpdateTick));
     }
 
+    public BuildPieceState repairedBy(int health, long tick) {
+        if (health <= 0) {
+            return progressedTo(tick);
+        }
+        BuildPieceState progressed = progressedTo(tick);
+        return progressed.withHealth(Math.min(progressed.maxHealth, progressed.currentHealth + health), Math.max(tick, progressed.lastHealthUpdateTick));
+    }
+
     public double healthRatio() {
         return (double) currentHealth / maxHealth;
     }

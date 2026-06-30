@@ -63,6 +63,25 @@ public final class BuildEditInteractions {
         return beginTargetedPiece(player, state, rules, materializer);
     }
 
+    public static InteractionResult handleEditResetKey(
+            ServerPlayer player,
+            BuildWorldState state,
+            BuildRules rules,
+            WorldBuildMaterializer materializer
+    ) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(state, "state");
+        Objects.requireNonNull(rules, "rules");
+        Objects.requireNonNull(materializer, "materializer");
+
+        EditSession session = SESSIONS.get(player.getUUID());
+        if (session != null) {
+            resetSelection(player, state, rules, materializer, session);
+            return InteractionResult.SUCCESS_SERVER;
+        }
+        return resetTargetedPiece(player, state, rules, materializer);
+    }
+
     public static boolean handlePrimaryInput(
             ServerPlayer player,
             boolean pressed,
@@ -160,6 +179,51 @@ public final class BuildEditInteractions {
         player.sendSystemMessage(Component.literal(
                 "Editing " + label(slot.pieceType()) + ": attack/use-drag cells, sneak+use reset, edit confirm, sneak+edit cancel."
         ), true);
+        return InteractionResult.SUCCESS_SERVER;
+    }
+
+    private static InteractionResult resetTargetedPiece(
+            ServerPlayer player,
+            BuildWorldState state,
+            BuildRules rules,
+            WorldBuildMaterializer materializer
+    ) {
+        ServerLevel level = player.level();
+        HitResult hit = player.pick(BuildTargeting.TARGET_RANGE_BLOCKS, 0.0F, false);
+        if (!(hit instanceof BlockHitResult blockHit)) {
+            player.sendSystemMessage(Component.literal("Look at a build piece to reset."), true);
+            syncEditMode(player, false);
+            return InteractionResult.PASS;
+        }
+
+        String dimension = level.dimension().identifier().toString();
+        BuildSlot slot = materializer.topOwnerAt(dimension, blockHit.getBlockPos());
+        if (slot == null) {
+            player.sendSystemMessage(Component.literal("Look at a tracked build piece to reset."), true);
+            syncEditMode(player, false);
+            return InteractionResult.PASS;
+        }
+
+        BuildPieceState current = state.get(slot);
+        if (current == null) {
+            player.sendSystemMessage(Component.literal("Build reset failed: tracked world block has no build state."), false);
+            syncEditMode(player, false);
+            return InteractionResult.FAIL;
+        }
+        if (!player.isCreative() && !player.getUUID().equals(current.owner())) {
+            player.sendSystemMessage(Component.literal("Cannot reset another player's build."), true);
+            syncEditMode(player, false);
+            return InteractionResult.FAIL;
+        }
+
+        int selectedMask = BuildEditGrids.maskForVariant(slot.pieceType(), current.editVariant()).orElse(0);
+        EditSession session = new EditSession(current, selectedMask);
+        if (!applyMask(player, state, rules, materializer, session, 0)) {
+            syncEditMode(player, false);
+            return InteractionResult.FAIL;
+        }
+        player.sendSystemMessage(Component.literal("Reset " + label(slot.pieceType()) + " edit to base shape."), true);
+        syncEditMode(player, false);
         return InteractionResult.SUCCESS_SERVER;
     }
 

@@ -118,7 +118,7 @@ key_key.right:key.keyboard.d
 key_key.jump:key.keyboard.space
 key_key.sneak:key.keyboard.left.control
 key_key.sprint:key.keyboard.f3
-key_key.drop:key.keyboard.h
+key_key.drop:key.keyboard.q
 key_key.inventory:key.keyboard.e
 key_key.chat:key.keyboard.t
 key_key.playerlist:key.keyboard.tab
@@ -147,9 +147,9 @@ key_key.hotbar.3:key.keyboard.3
 key_key.hotbar.4:key.keyboard.4
 key_key.hotbar.5:key.keyboard.z
 key_key.hotbar.6:key.keyboard.x
-key_key.hotbar.7:key.keyboard.f
-key_key.hotbar.8:key.keyboard.g
-key_key.hotbar.9:key.keyboard.c
+key_key.hotbar.7:key.keyboard.7
+key_key.hotbar.8:key.keyboard.8
+key_key.hotbar.9:key.keyboard.9
 key_key.debug.reloadChunk:key.keyboard.a
 key_key.debug.showHitboxes:key.keyboard.b
 key_key.debug.clearChat:key.keyboard.d
@@ -172,6 +172,15 @@ key_key.debug.networkCharts:key.keyboard.3
 key_key.debug.lightmapTexture:key.keyboard.4
 key_key.fortniteinminecraft.reload_weapon:key.keyboard.r
 key_key.fortniteinminecraft.edit_build:key.keyboard.f
+key_key.fortniteinminecraft.edit_build.secondary:key.keyboard.unknown
+key_key.fortniteinminecraft.edit_reset:key.keyboard.unknown
+key_key.fortniteinminecraft.edit_reset.secondary:key.keyboard.unknown
+key_key.fortniteinminecraft.build_wall:key.mouse.5
+key_key.fortniteinminecraft.build_floor:key.keyboard.left.shift
+key_key.fortniteinminecraft.build_stair:key.mouse.4
+key_key.fortniteinminecraft.build_roof:key.keyboard.c
+key_key.fortniteinminecraft.rotate_build:key.keyboard.r
+key_key.fortniteinminecraft.repair_build:key.keyboard.h
 soundCategory_master:0.20617239238410603
 soundCategory_music:0.0
 soundCategory_record:1.0

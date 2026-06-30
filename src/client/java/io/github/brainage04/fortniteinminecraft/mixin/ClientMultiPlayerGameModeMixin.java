@@ -58,7 +58,7 @@ public abstract class ClientMultiPlayerGameModeMixin {
             InteractionHand hand,
             CallbackInfoReturnable<InteractionResult> cir
     ) {
-        if (ClientInputHooks.isEditModeActive()) {
+        if (ClientInputHooks.isEditModeActive() || ClientInputHooks.isBuildModeActive()) {
             cir.setReturnValue(InteractionResult.PASS);
         }
     }
@@ -70,7 +70,7 @@ public abstract class ClientMultiPlayerGameModeMixin {
             BlockHitResult hitResult,
             CallbackInfoReturnable<InteractionResult> cir
     ) {
-        if (ClientInputHooks.isEditModeActive()) {
+        if (ClientInputHooks.isEditModeActive() || ClientInputHooks.isBuildModeActive()) {
             cir.setReturnValue(InteractionResult.PASS);
         }
     }
@@ -79,6 +79,7 @@ public abstract class ClientMultiPlayerGameModeMixin {
         Minecraft client = Minecraft.getInstance();
         return client.player != null
                 && (ClientInputHooks.isEditModeActive()
+                        || ClientInputHooks.isBuildModeActive()
                         || ModItems.suppressesVanillaBlockBreaking(client.player.getMainHandItem()));
     }
 }

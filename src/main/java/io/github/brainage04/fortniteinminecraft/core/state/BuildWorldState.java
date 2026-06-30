@@ -123,6 +123,17 @@ public final class BuildWorldState {
         return new DamageResult(before, after);
     }
 
+    public RepairResult repair(BuildSlot slot, int health, long tick) {
+        Objects.requireNonNull(slot, "slot");
+        BuildPieceState before = piecesBySlot.get(slot);
+        if (before == null) {
+            return RepairResult.missing();
+        }
+        BuildPieceState after = before.repairedBy(health, tick);
+        piecesBySlot.put(slot, after);
+        return new RepairResult(before, after);
+    }
+
     public int scheduleCollapse(Collection<BuildSupportCascade.CollapseStep> steps, long startTick) {
         Objects.requireNonNull(steps, "steps");
         int scheduled = 0;
@@ -285,6 +296,20 @@ public final class BuildWorldState {
 
         public boolean destroyed() {
             return after != null && after.destroyed();
+        }
+    }
+
+    public record RepairResult(BuildPieceState before, BuildPieceState after) {
+        public static RepairResult missing() {
+            return new RepairResult(null, null);
+        }
+
+        public boolean repaired() {
+            return after != null && before.currentHealth() < after.currentHealth();
+        }
+
+        public boolean alreadyFull() {
+            return after != null && before.currentHealth() == after.currentHealth();
         }
     }
 

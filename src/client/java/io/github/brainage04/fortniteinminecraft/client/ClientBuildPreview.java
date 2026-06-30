@@ -37,7 +37,7 @@ public final class ClientBuildPreview {
     private static final BuildRules RULES = BuildRules.defaults();
     private static final FootprintProjector FOOTPRINTS = new FootprintProjector(RULES);
     private static final SnapGrid SNAP_GRID = new SnapGrid(RULES);
-    private static final float PREVIEW_OUTSET_BLOCKS = 0.01F;
+    private static final float PREVIEW_OUTSET_BLOCKS = 0.08F;
     private static final long SERVER_PREVIEW_TIMEOUT_TICKS = 5L;
     private static final EntityType<Display.BlockDisplay> BLOCK_DISPLAY_TYPE = blockDisplayType();
     private static final List<Display.BlockDisplay> ACTIVE_DISPLAYS = new ArrayList<>();
@@ -99,16 +99,20 @@ public final class ClientBuildPreview {
     }
 
     private static Snapshot computeSnapshot(Minecraft client) {
-        ItemStack stack = client.player.getMainHandItem();
-        BuildPieceItem item = ModItems.asBuildPiece(stack);
-        if (item == null) {
-            serverPreview = ServerPreview.inactive();
-            return Snapshot.inactive();
+        PieceType pieceType = ClientInputHooks.selectedBuildPiece();
+        if (pieceType == null) {
+            ItemStack stack = client.player.getMainHandItem();
+            BuildPieceItem item = ModItems.asBuildPiece(stack);
+            if (item == null) {
+                serverPreview = ServerPreview.inactive();
+                return Snapshot.inactive();
+            }
+            pieceType = item.pieceType();
         }
 
         String dimension = client.level.dimension().identifier().toString();
         ServerPreview preview = serverPreview;
-        if (!preview.matches(dimension, item.pieceType(), client.level.getGameTime())) {
+        if (!preview.matches(dimension, pieceType, client.level.getGameTime())) {
             return Snapshot.inactive();
         }
 

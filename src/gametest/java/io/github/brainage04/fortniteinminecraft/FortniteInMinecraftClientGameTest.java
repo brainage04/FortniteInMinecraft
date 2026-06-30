@@ -10,9 +10,11 @@ import io.github.brainage04.fortniteinminecraft.core.model.Orientation;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceFootprint;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import io.github.brainage04.fortniteinminecraft.core.placement.FootprintProjector;
+import io.github.brainage04.fortniteinminecraft.core.placement.SnapGrid;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.BuildPreviewPayload;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
+import io.github.brainage04.fortniteinminecraft.server.player.GliderState;
 import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
@@ -40,6 +42,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 import java.util.Properties;
 import java.util.UUID;
@@ -51,7 +54,8 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
     private static final String RECORDING_END_MARKER = "FIM_CLIENT_GAMETEST_RECORDING_END";
     private static final BuildRules VISUAL_BUILD_RULES = BuildRules.defaults();
     private static final FootprintProjector VISUAL_FOOTPRINTS = new FootprintProjector(VISUAL_BUILD_RULES);
-
+    private static final SnapGrid VISUAL_SNAP_GRID = new SnapGrid(VISUAL_BUILD_RULES);
+    private static final int VISUAL_BUILD_Z_GRID = 4;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -63,6 +67,7 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
         serverProperties.setProperty("view-distance", "5");
         serverProperties.setProperty("level-type", "minecraft:flat");
         serverProperties.setProperty("generate-structures", "false");
+        serverProperties.setProperty("generator-settings", "{}");
         serverProperties.setProperty("spawn-protection", "0");
 
         try (TestDedicatedServerContext server = context.worldBuilder().createServer(serverProperties)) {
@@ -164,44 +169,72 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
 
     private static void demonstrateBuildPreviewAndHolographicPieces(ClientGameTestContext context, TestDedicatedServerContext server) {
         context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
-        server.runOnServer(minecraftServer -> {
+        int buildGridY = server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             ServerLevel level = player.level();
-            prepareHologramDemoScene(level);
+            int surfaceY = prepareHologramDemoScene(level);
+            String dimension = level.dimension().identifier().toString();
+            int gridY = VISUAL_SNAP_GRID.snap(dimension, 0, surfaceY, 0).y();
             player.setGameMode(GameType.CREATIVE);
-            player.teleportTo(0.5D, 69.0D, 22.5D);
+            player.teleportTo(5.5D, surfaceY, 30.5D);
             player.setYRot(180.0F);
-            player.setXRot(18.0F);
-            placeHolographicBuildPiece(level, player);
+            player.setXRot(8.0F);
+            placeHolographicBuildPiece(level, player, gridY);
+            return gridY;
         });
 
-        context.waitTicks(10);
+        context.waitTicks(20);
         context.runOnClient(client -> client.player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.WALL)));
         String dimension = context.computeOnClient(client -> client.level.dimension().identifier().toString());
-        showBuildPreview(context, server, BuildSlot.of(dimension, 1, 16, 0, PieceType.WALL, Orientation.SOUTH), MaterialType.WOOD, true, 50);
-        showBuildPreview(context, server, BuildSlot.of(dimension, -3, 16, 0, PieceType.WALL, Orientation.SOUTH), MaterialType.STONE, false, 50);
+        showBuildPreview(context, server, BuildSlot.of(dimension, 1, buildGridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH), MaterialType.WOOD, true, 80);
+        showBuildPreview(context, server, BuildSlot.of(dimension, 3, buildGridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH), MaterialType.STONE, false, 80);
         clearBuildPreview(context, server);
     }
 
-    private static void prepareHologramDemoScene(ServerLevel level) {
-        for (int x = -18; x <= 12; x++) {
-            for (int z = -4; z <= 24; z++) {
-                level.setBlock(new BlockPos(x, 62, z), Blocks.SMOOTH_STONE.defaultBlockState(), Block.UPDATE_ALL);
-                for (int y = 63; y <= 72; y++) {
+    private static int prepareHologramDemoScene(ServerLevel level) {
+        int surfaceY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 0, 0);
+        for (int x = -24; x <= 40; x++) {
+            for (int z = -8; z <= 64; z++) {
+                for (int y = surfaceY; y <= surfaceY + 12; y++) {
                     level.setBlock(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
                 }
             }
         }
+        placeChunkCornerPillars(level, surfaceY);
+        placeFallRuler(level, surfaceY);
+        return surfaceY;
     }
 
-    private static void placeHolographicBuildPiece(ServerLevel level, ServerPlayer player) {
-        BuildSlot slot = BuildSlot.of(level.dimension().identifier().toString(), -1, 16, 0, PieceType.WALL, Orientation.SOUTH);
+    private static void placeChunkCornerPillars(ServerLevel level, int surfaceY) {
+        for (int chunkX = -1; chunkX <= 2; chunkX++) {
+            for (int chunkZ = 0; chunkZ <= 4; chunkZ++) {
+                int x = chunkX * 16 + 15;
+                int z = chunkZ * 16 + 15;
+                for (int y = surfaceY; y <= surfaceY + 28; y++) {
+                    Block block = ((y - surfaceY) / 4) % 2 == 0 ? Blocks.WOOL.yellow() : Blocks.WOOL.black();
+                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), Block.UPDATE_ALL);
+                }
+                level.setBlock(new BlockPos(x, surfaceY + 29, z), Blocks.SEA_LANTERN.defaultBlockState(), Block.UPDATE_ALL);
+            }
+        }
+    }
+
+    private static void placeFallRuler(ServerLevel level, int surfaceY) {
+        for (int y = surfaceY; y <= surfaceY + 72; y++) {
+            Block block = ((y - surfaceY) / 4) % 2 == 0 ? Blocks.SEA_LANTERN : Blocks.WOOL.blue();
+            level.setBlock(new BlockPos(10, y, 47), block.defaultBlockState(), Block.UPDATE_ALL);
+            level.setBlock(new BlockPos(11, y, 47), block.defaultBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    private static void placeHolographicBuildPiece(ServerLevel level, ServerPlayer player, int gridY) {
+        BuildSlot slot = BuildSlot.of(level.dimension().identifier().toString(), -1, gridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH);
         BuildPieceState piece = new BuildPieceState(
                 UUID.randomUUID(),
                 player.getUUID(),
                 slot,
                 MaterialType.METAL,
-                MaterialType.METAL.finalHealth() / 2,
+                MaterialType.METAL.finalHealth() / 5,
                 MaterialType.METAL.finalHealth(),
                 level.getGameTime(),
                 level.getGameTime(),
@@ -286,23 +319,28 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
         context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
+            ServerLevel level = player.level();
+            int surfaceY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 0, 0);
             player.setGameMode(GameType.SURVIVAL);
-            player.teleportTo(0.5D, 82.0D, 18.5D);
+            player.teleportTo(6.5D, surfaceY + 42.0D, 44.5D);
             player.setYRot(0.0F);
-            player.setXRot(12.0F);
-            player.setDeltaMovement(0.0D, -0.8D, 0.6D);
+            player.setXRot(55.0F);
+            player.setDeltaMovement(0.0D, -0.8D, 0.45D);
             player.setOnGround(false);
-            MobilityItemInteractions.enableRedeploy(player, 100L);
+            MobilityItemInteractions.enableRedeploy(player, 160L);
             if (!MobilityItemInteractions.toggleGlider(player)) {
                 throw new AssertionError("Expected dedicated-server glider redeploy to start.");
             }
         });
 
-        context.waitTicks(100);
+        context.waitTicks(140);
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             if (!MobilityItemInteractions.isGliding(player)) {
                 throw new AssertionError("Expected dedicated-server glider to stay deployed.");
+            }
+            if (player.getDeltaMovement().y() < GliderState.DEFAULT_MAX_FALL_SPEED - 1.0E-6D) {
+                throw new AssertionError("Expected dedicated-server glider to cap fall speed.");
             }
         });
         context.waitTicks(20);

@@ -16,6 +16,7 @@ public final class ClientBuildHooks {
         ClientGameplayNetworking.initialize();
         ClientBuildPreview.initialize();
         ClientResourceWalletHud.initialize();
+        ClientBuildPieceHud.initialize();
         ClientInputHooks.initialize();
         initialized = true;
     }

@@ -37,12 +37,21 @@ public final class MobilityItemInteractions {
     private static final double GLIDER_MAX_HORIZONTAL_SPEED_BLOCKS_PER_TICK = 0.9D;
     private static final double GLIDER_HORIZONTAL_ACCELERATION_BLOCKS_PER_TICK = 0.0512D;
     private static final long LAUNCH_PAD_RETRIGGER_TICKS = 8L;
+    private static final double SLIDE_MIN_START_SPEED_BLOCKS_PER_TICK = 0.13D;
+    private static final double SLIDE_MIN_CONTINUE_SPEED_BLOCKS_PER_TICK = 0.06D;
+    private static final double SLIDE_FLAT_ACCELERATION_BLOCKS_PER_TICK = 0.025D;
+    private static final double SLIDE_DOWNHILL_ACCELERATION_BLOCKS_PER_TICK = 0.07D;
+    private static final double SLIDE_HORIZONTAL_FRICTION_PER_TICK = 0.94D;
+    private static final double SLIDE_MAX_HORIZONTAL_SPEED_BLOCKS_PER_TICK = 0.72D;
+    private static final long SLIDE_MAX_DURATION_TICKS = 45L;
+    private static final long SLIDE_PARTICLE_INTERVAL_TICKS = 4L;
     private static final double MIN_PRESERVED_HORIZONTAL_SPEED = 1.0E-5D;
     private static final double LAUNCH_PAD_FOOT_EPSILON = 0.05D;
     private static final double RIFT_PORTAL_TRIGGER_RADIUS_BLOCKS = 1.25D;
     private static final double RIFT_PORTAL_TRIGGER_HEIGHT_BLOCKS = 2.5D;
     private static final long RIFT_PORTAL_PARTICLE_INTERVAL_TICKS = 5L;
     private static final Map<UUID, GliderState> GLIDERS = new HashMap<>();
+    private static final Map<UUID, SlideState> SLIDES = new HashMap<>();
     private static final Map<UUID, ImpulseLaunchState> IMPULSE_LAUNCHES = new HashMap<>();
     private static final Map<LaunchPadKey, TrackedLaunchPad> LAUNCH_PADS = new HashMap<>();
     private static final Map<UUID, Long> LAST_LAUNCH_PAD_ACTIVATIONS = new HashMap<>();
@@ -60,6 +69,7 @@ public final class MobilityItemInteractions {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             GLIDERS.remove(handler.player.getUUID());
             IMPULSE_LAUNCHES.remove(handler.player.getUUID());
+            SLIDES.remove(handler.player.getUUID());
             LAST_LAUNCH_PAD_ACTIVATIONS.remove(handler.player.getUUID());
         });
         registered = true;
@@ -211,14 +221,52 @@ public final class MobilityItemInteractions {
         IMPULSE_LAUNCHES.clear();
         LAUNCH_PADS.clear();
         LAST_LAUNCH_PAD_ACTIVATIONS.clear();
+        SLIDES.clear();
         RIFT_PORTALS.clear();
     }
 
     private static void tickLevel(ServerLevel level) {
+        tickSlides(level);
         tickLaunchPads(level);
         tickRiftPortals(level);
         tickGliders(level);
         tickImpulseLaunches(level);
+    }
+
+    private static void tickSlides(ServerLevel level) {
+        long tick = level.getGameTime();
+        for (ServerPlayer player : level.players()) {
+            UUID playerId = player.getUUID();
+            SlideState state = SLIDES.get(playerId);
+            if (player.isSpectator() || !player.isAlive()) {
+                SLIDES.remove(playerId);
+                continue;
+            }
+
+            Vec3 velocity = player.getDeltaMovement();
+            boolean wantsSlide = player.onGround() && player.isSprinting() && player.isShiftKeyDown();
+            double horizontalSpeed = horizontalSpeed(velocity);
+            if (state == null) {
+                if (wantsSlide && horizontalSpeed >= SLIDE_MIN_START_SPEED_BLOCKS_PER_TICK) {
+                    SLIDES.put(playerId, new SlideState(tick, player.getY()));
+                }
+                continue;
+            }
+
+            if (!wantsSlide
+                    || tick - state.startedTick() > SLIDE_MAX_DURATION_TICKS
+                    || horizontalSpeed < SLIDE_MIN_CONTINUE_SPEED_BLOCKS_PER_TICK) {
+                SLIDES.remove(playerId);
+                continue;
+            }
+
+            double verticalDelta = player.getY() - state.lastY();
+            Vec3 nextVelocity = slideVelocity(velocity, player.getLookAngle(), verticalDelta);
+            player.setDeltaMovement(nextVelocity.x(), velocity.y(), nextVelocity.z());
+            player.hurtMarked = true;
+            state.setLastY(player.getY());
+            showSlideTrail(player);
+        }
     }
 
     private static void tickLaunchPads(ServerLevel level) {
@@ -361,6 +409,35 @@ public final class MobilityItemInteractions {
         return new Vec3(horizontal.x(), y, horizontal.z());
     }
 
+    static Vec3 slideVelocity(Vec3 velocity, Vec3 look, double verticalDelta) {
+        Objects.requireNonNull(velocity, "velocity");
+        Objects.requireNonNull(look, "look");
+        Vec3 horizontal = new Vec3(velocity.x(), 0.0D, velocity.z());
+        Vec3 direction = horizontal.lengthSqr() > 1.0E-9D ? horizontal.normalize() : horizontalLook(look);
+        if (direction.lengthSqr() <= 1.0E-9D) {
+            return velocity;
+        }
+
+        double downhill = Math.clamp(-verticalDelta, 0.0D, 0.6D);
+        double uphill = Math.clamp(verticalDelta, 0.0D, 0.6D);
+        double acceleration = SLIDE_FLAT_ACCELERATION_BLOCKS_PER_TICK
+                + downhill * SLIDE_DOWNHILL_ACCELERATION_BLOCKS_PER_TICK
+                - uphill * SLIDE_FLAT_ACCELERATION_BLOCKS_PER_TICK;
+        Vec3 nextHorizontal = horizontal.scale(SLIDE_HORIZONTAL_FRICTION_PER_TICK).add(direction.scale(acceleration));
+        double speedCap = SLIDE_MAX_HORIZONTAL_SPEED_BLOCKS_PER_TICK
+                + downhill * SLIDE_DOWNHILL_ACCELERATION_BLOCKS_PER_TICK;
+        if (nextHorizontal.length() > speedCap) {
+            nextHorizontal = nextHorizontal.normalize().scale(speedCap);
+        }
+        return new Vec3(nextHorizontal.x(), velocity.y(), nextHorizontal.z());
+    }
+
+    private static Vec3 horizontalLook(Vec3 look) {
+        Vec3 horizontalLook = new Vec3(look.x(), 0.0D, look.z());
+        return horizontalLook.lengthSqr() <= 1.0E-9D ? Vec3.ZERO : horizontalLook.normalize();
+    }
+
+
     private static void refreshSlowFalling(ServerPlayer player) {
         MobEffectInstance existing = player.getEffect(MobEffects.SLOW_FALLING);
         if (existing == null || existing.getDuration() <= GLIDER_EFFECT_REFRESH_THRESHOLD_TICKS) {
@@ -375,6 +452,15 @@ public final class MobilityItemInteractions {
         player.level().sendParticles(ParticleTypes.END_ROD, true, true,
                 player.getX(), player.getY() + player.getBbHeight() + 0.35D, player.getZ(),
                 3, 0.55D, 0.06D, 0.55D, 0.01D);
+    }
+
+    private static void showSlideTrail(ServerPlayer player) {
+        if (player.level().getGameTime() % SLIDE_PARTICLE_INTERVAL_TICKS != 0L) {
+            return;
+        }
+        player.level().sendParticles(ParticleTypes.CLOUD, true, true,
+                player.getX(), player.getY() + 0.08D, player.getZ(),
+                4, 0.35D, 0.03D, 0.35D, 0.01D);
     }
 
     private static void showRiftPortal(ServerLevel level, ActiveRiftPortal portal) {
@@ -462,6 +548,10 @@ public final class MobilityItemInteractions {
             return velocity;
         }
         return new Vec3(preservedHorizontalVelocity.x(), velocity.y(), preservedHorizontalVelocity.z());
+    }
+
+    private static double horizontalSpeed(Vec3 velocity) {
+        return Math.sqrt(horizontalSpeedSqr(velocity));
     }
 
     private static double horizontalSpeedSqr(Vec3 velocity) {
@@ -559,6 +649,28 @@ public final class MobilityItemInteractions {
 
         boolean tryUse(UUID playerId) {
             return usedPlayers.add(Objects.requireNonNull(playerId, "playerId"));
+        }
+    }
+
+    private static final class SlideState {
+        private final long startedTick;
+        private double lastY;
+
+        private SlideState(long startedTick, double lastY) {
+            this.startedTick = startedTick;
+            this.lastY = lastY;
+        }
+
+        private long startedTick() {
+            return startedTick;
+        }
+
+        private double lastY() {
+            return lastY;
+        }
+
+        private void setLastY(double lastY) {
+            this.lastY = lastY;
         }
     }
 

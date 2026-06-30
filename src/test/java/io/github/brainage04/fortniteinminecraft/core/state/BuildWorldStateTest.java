@@ -108,6 +108,21 @@ class BuildWorldStateTest {
     }
 
     @Test
+    void buildRepairProgressesConstructionAndCapsAtFinalHealth() {
+        BuildWorldState state = new BuildWorldState();
+        BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
+        assertTrue(state.addIfAbsent(BuildPieceState.placed(slot, MaterialType.WOOD, UUID.randomUUID(), 0)));
+
+        BuildWorldState.DamageResult hit = state.damage(slot, 60, 20);
+        assertEquals(45, hit.after().currentHealth());
+
+        BuildWorldState.RepairResult repair = state.repair(slot, 500, 21);
+
+        assertTrue(repair.repaired());
+        assertEquals(MaterialType.WOOD.finalHealth(), repair.after().currentHealth());
+    }
+
+    @Test
     void placedPiecesUseTypedBaseEditVariant() {
         BuildPieceState piece = BuildPieceState.placed(
                 BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH),

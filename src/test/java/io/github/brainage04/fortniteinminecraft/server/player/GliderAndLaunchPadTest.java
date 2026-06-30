@@ -91,6 +91,23 @@ class GliderAndLaunchPadTest {
     }
 
     @Test
+    void slideVelocityAcceleratesMoreWhenDroppingDownhill() {
+        Vec3 velocity = new Vec3(0.2D, 0.0D, 0.0D);
+        Vec3 flat = MobilityItemInteractions.slideVelocity(velocity, new Vec3(1.0D, 0.0D, 0.0D), 0.0D);
+        Vec3 downhill = MobilityItemInteractions.slideVelocity(velocity, new Vec3(1.0D, 0.0D, 0.0D), -0.5D);
+
+        assertTrue(horizontalDistance(downhill) > horizontalDistance(flat));
+    }
+
+    @Test
+    void slideVelocityUsesLookDirectionWhenStartingFromTinyVelocity() {
+        Vec3 velocity = MobilityItemInteractions.slideVelocity(Vec3.ZERO, new Vec3(0.0D, 0.0D, 1.0D), 0.0D);
+
+        assertTrue(velocity.z() > 0.0D);
+        assertEquals(0.0D, velocity.x(), 1.0E-9D);
+    }
+
+    @Test
     void gliderRequiresFortniteRedeployHeightOrTemporaryRedeployWindow() {
         GliderState state = new GliderState();
 

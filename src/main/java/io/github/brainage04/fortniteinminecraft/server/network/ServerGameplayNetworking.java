@@ -1,5 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.network;
 
+import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.session.BuildSessionManager;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
@@ -76,11 +77,41 @@ public final class ServerGameplayNetworking {
                     BuildEditInteractions.handleEditKey(player, state, rules, materializer);
                 }
             }
+            case EDIT_RESET -> {
+                if (payload.pressed()) {
+                    BuildEditInteractions.handleEditResetKey(player, state, rules, materializer);
+                }
+            }
+            case SELECT_WALL -> selectBuildPiece(player, payload.pressed(), PieceType.WALL);
+            case SELECT_FLOOR -> selectBuildPiece(player, payload.pressed(), PieceType.FLOOR);
+            case SELECT_STAIR -> selectBuildPiece(player, payload.pressed(), PieceType.STAIR);
+            case SELECT_ROOF -> selectBuildPiece(player, payload.pressed(), PieceType.ROOF);
+            case DESELECT_BUILD -> {
+                if (payload.pressed()) {
+                    BuildItemInteractions.deactivateBuildMode(player, sessions);
+                }
+            }
+            case ROTATE_BUILD -> {
+                if (payload.pressed()) {
+                    BuildItemInteractions.rotateSelectedPiece(player, sessions, rules);
+                }
+            }
+            case REPAIR_BUILD -> {
+                if (payload.pressed()) {
+                    BuildItemInteractions.repairTargetedPiece(player, state, materializer);
+                }
+            }
             case GLIDER_TOGGLE -> {
                 if (payload.pressed()) {
                     MobilityItemInteractions.toggleGlider(player);
                 }
             }
+        }
+    }
+
+    private static void selectBuildPiece(ServerPlayer player, boolean pressed, PieceType pieceType) {
+        if (pressed) {
+            BuildItemInteractions.selectPiece(player, pieceType, sessions, rules);
         }
     }
 
@@ -91,6 +122,10 @@ public final class ServerGameplayNetworking {
         if (!pressed) {
             WeaponAutoFire.forgetInput(player);
             BuildItemInteractions.stopPrimaryInput(player, sessions);
+            return;
+        }
+
+        if (BuildItemInteractions.handlePrimaryInput(player, sessions, state, rules, materializer) != InteractionResult.PASS) {
             return;
         }
 
@@ -128,6 +163,11 @@ public final class ServerGameplayNetworking {
             return;
         }
         if (!pressed) {
+            PlayerAimStates.setAiming(player, false);
+            return;
+        }
+
+        if (BuildItemInteractions.handleSecondaryInput(player, sessions) != InteractionResult.PASS) {
             PlayerAimStates.setAiming(player, false);
             return;
         }

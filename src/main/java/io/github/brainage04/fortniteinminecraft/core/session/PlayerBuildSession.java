@@ -15,6 +15,8 @@ public final class PlayerBuildSession {
 
     private PieceType selectedPiece = PieceType.WALL;
     private MaterialType selectedMaterial = MaterialType.WOOD;
+    private boolean buildModeActive;
+    private int rotationSteps;
     private PlacementCandidate previewCandidate;
     private BuildSlot lastPlacedSlot;
     private long lastPlacementTick = NO_TURBO_PLACEMENT_TICK;
@@ -29,6 +31,14 @@ public final class PlayerBuildSession {
 
     public MaterialType selectedMaterial() {
         return selectedMaterial;
+    }
+
+    public boolean buildModeActive() {
+        return buildModeActive;
+    }
+
+    public int rotationSteps() {
+        return rotationSteps;
     }
 
     public PlacementCandidate previewCandidate() {
@@ -63,8 +73,27 @@ public final class PlayerBuildSession {
         Objects.requireNonNull(piece, "piece");
         if (selectedPiece != piece) {
             selectedPiece = piece;
+            rotationSteps = 0;
             clearTransientPlacementState();
         }
+    }
+
+    public void activateBuildMode(PieceType piece) {
+        selectPiece(piece);
+        buildModeActive = true;
+    }
+
+    public void deactivateBuildMode() {
+        if (buildModeActive) {
+            buildModeActive = false;
+            rotationSteps = 0;
+            clearTransientPlacementState();
+        }
+    }
+
+    public void rotatePlacement() {
+        rotationSteps = (rotationSteps + 1) & 3;
+        clearTransientPlacementState();
     }
 
     public void selectMaterial(MaterialType material) {
@@ -111,7 +140,15 @@ public final class PlayerBuildSession {
     public PlacementCandidate candidateAt(BuildGridPos gridPos, Orientation orientation) {
         Objects.requireNonNull(gridPos, "gridPos");
         Objects.requireNonNull(orientation, "orientation");
-        return new PlacementCandidate(new BuildSlot(gridPos, selectedPiece, orientation), selectedMaterial);
+        return new PlacementCandidate(new BuildSlot(gridPos, selectedPiece, rotated(orientation)), selectedMaterial);
+    }
+
+    private Orientation rotated(Orientation orientation) {
+        Orientation rotated = orientation;
+        for (int i = 0; i < rotationSteps; i++) {
+            rotated = rotated.clockwise();
+        }
+        return rotated;
     }
 
     public void rememberPreview(PlacementCandidate candidate) {

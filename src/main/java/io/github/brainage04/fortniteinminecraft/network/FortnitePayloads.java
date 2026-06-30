@@ -38,6 +38,14 @@ public final class FortnitePayloads {
         SECONDARY,
         RELOAD,
         EDIT,
+        EDIT_RESET,
+        SELECT_WALL,
+        SELECT_FLOOR,
+        SELECT_STAIR,
+        SELECT_ROOF,
+        DESELECT_BUILD,
+        ROTATE_BUILD,
+        REPAIR_BUILD,
         GLIDER_TOGGLE
     }
 

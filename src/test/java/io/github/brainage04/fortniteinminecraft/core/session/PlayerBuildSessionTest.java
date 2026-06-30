@@ -38,6 +38,32 @@ class PlayerBuildSessionTest {
   }
 
   @Test
+  void buildModeActivationAndHotbarDeactivationAreExplicit() {
+    PlayerBuildSession session = new PlayerBuildSession();
+
+    assertFalse(session.buildModeActive());
+    session.activateBuildMode(PieceType.FLOOR);
+    assertTrue(session.buildModeActive());
+    assertEquals(PieceType.FLOOR, session.selectedPiece());
+
+    session.deactivateBuildMode();
+    assertFalse(session.buildModeActive());
+    assertNull(session.previewCandidate());
+  }
+
+  @Test
+  void rotationStepsApplyRelativeToSuppliedPlacementOrientation() {
+    PlayerBuildSession session = new PlayerBuildSession();
+    session.selectPiece(PieceType.STAIR);
+    session.rotatePlacement();
+
+    PlacementCandidate candidate = session.candidateAt(new BuildGridPos("overworld", 1, 0, 2), Orientation.NORTH);
+
+    assertEquals(1, session.rotationSteps());
+    assertEquals(BuildSlot.of("overworld", 1, 0, 2, PieceType.STAIR, Orientation.EAST), candidate.slot());
+  }
+
+  @Test
   void managerKeepsPlayerSelectionsIndependent() {
     BuildSessionManager manager = new BuildSessionManager();
     PlayerBuildSession first = manager.getOrCreate(PLAYER_ONE);
