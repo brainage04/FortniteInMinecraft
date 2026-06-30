@@ -33,8 +33,10 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 public final class BuildItemInteractions {
@@ -43,6 +45,7 @@ public final class BuildItemInteractions {
     private static final double REPAIR_HEALTH_FRACTION = 0.2D;
     private static BuildWorldState registeredState;
     private static WorldBuildMaterializer registeredMaterializer;
+    private static final Set<UUID> AUTOMATIC_PREVIEW_SUPPRESSED_PLAYERS = new HashSet<>();
 
     private BuildItemInteractions() {
     }
@@ -61,6 +64,19 @@ public final class BuildItemInteractions {
         registeredMaterializer = materializer;
     }
 
+    public static void suppressAutomaticPreview(ServerPlayer player, boolean suppressed) {
+        Objects.requireNonNull(player, "player");
+        if (suppressed) {
+            AUTOMATIC_PREVIEW_SUPPRESSED_PLAYERS.add(player.getUUID());
+        } else {
+            AUTOMATIC_PREVIEW_SUPPRESSED_PLAYERS.remove(player.getUUID());
+        }
+    }
+
+    public static void clearAutomaticPreviewSuppressions() {
+        AUTOMATIC_PREVIEW_SUPPRESSED_PLAYERS.clear();
+    }
+
     public static void updateHeldItemState(
             ServerPlayer player,
             BuildSessionManager sessions,
@@ -71,6 +87,9 @@ public final class BuildItemInteractions {
         Objects.requireNonNull(rules, "rules");
 
         PlayerMovementTuning.apply(player);
+        if (AUTOMATIC_PREVIEW_SUPPRESSED_PLAYERS.contains(player.getUUID())) {
+            return;
+        }
         PlayerBuildSession session = sessions.get(player.getUUID());
         if (session != null && session.buildModeActive()) {
             updatePreview(player, rules, session, session.selectedPiece());

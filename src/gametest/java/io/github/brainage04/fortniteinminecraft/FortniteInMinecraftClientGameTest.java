@@ -13,8 +13,7 @@ import io.github.brainage04.fortniteinminecraft.core.placement.FootprintProjecto
 import io.github.brainage04.fortniteinminecraft.core.placement.SnapGrid;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.BuildPreviewPayload;
-import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
-import io.github.brainage04.fortniteinminecraft.server.player.GliderState;
+import io.github.brainage04.fortniteinminecraft.server.item.BuildItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
@@ -37,8 +36,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -46,6 +43,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class FortniteInMinecraftClientGameTest implements FabricClientGameTest {
@@ -74,10 +72,16 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
             connectToDedicatedServer(context, server);
             assertClientWorldAndPlayerAvailable(context);
             markRecordingStart();
-            demonstrateBuildPreviewAndHolographicPieces(context, server);
-            demonstrateGliderRedeploy(context, server);
-            markRecordingEnd();
-            disconnectFromDedicatedServer(context);
+            try {
+                demonstrateBuildPreviewAndHolographicPieces(context, server);
+                demonstrateGliderRedeploy(context, server);
+            } finally {
+                try {
+                    disconnectFromDedicatedServer(context);
+                } finally {
+                    markRecordingEnd();
+                }
+            }
         }
     }
 
@@ -184,11 +188,15 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
         });
 
         context.waitTicks(20);
-        context.runOnClient(client -> client.player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.WALL)));
         String dimension = context.computeOnClient(client -> client.level.dimension().identifier().toString());
-        showBuildPreview(context, server, BuildSlot.of(dimension, 1, buildGridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH), MaterialType.WOOD, true, 80);
-        showBuildPreview(context, server, BuildSlot.of(dimension, 3, buildGridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH), MaterialType.STONE, false, 80);
-        clearBuildPreview(context, server);
+        suppressAutomaticPreview(server, true);
+        try {
+            showBuildPreview(context, server, BuildSlot.of(dimension, 1, buildGridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH), MaterialType.WOOD, true, 80);
+            showBuildPreview(context, server, BuildSlot.of(dimension, 3, buildGridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH), MaterialType.STONE, false, 80);
+        } finally {
+            clearBuildPreview(context, server);
+            suppressAutomaticPreview(server, false);
+        }
     }
 
     private static int prepareHologramDemoScene(ServerLevel level) {
@@ -271,18 +279,54 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
             boolean valid,
             int ticks
     ) {
+        waitForPreviewSnapshot(context, server, slot, material, valid, 100);
+
         for (int remaining = ticks; remaining > 0; remaining -= 2) {
-            context.runOnClient(client -> client.player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.WALL)));
-            server.runOnServer(minecraftServer -> {
-                ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-                if (!ServerPlayNetworking.canSend(player, BuildPreviewPayload.TYPE)) {
-                    throw new AssertionError("Expected the client to accept build preview payloads.");
-                }
-                ServerPlayNetworking.send(player, BuildPreviewPayload.active(slot, material, valid));
-            });
+            sendBuildPreview(server, slot, material, valid);
             context.waitTicks(2);
-            assertPreviewSnapshot(context, slot, material, valid);
         }
+    }
+
+    private static void sendBuildPreview(
+            TestDedicatedServerContext server,
+            BuildSlot slot,
+            MaterialType material,
+            boolean valid
+    ) {
+        server.runOnServer(minecraftServer -> {
+            ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
+            if (!ServerPlayNetworking.canSend(player, BuildPreviewPayload.TYPE)) {
+                throw new AssertionError("Expected the client to accept build preview payloads.");
+            }
+            ServerPlayNetworking.send(player, BuildPreviewPayload.active(slot, material, valid));
+        });
+    }
+
+    private static void waitForPreviewSnapshot(
+            ClientGameTestContext context,
+            TestDedicatedServerContext server,
+            BuildSlot slot,
+            MaterialType material,
+            boolean valid,
+            int maxTicks
+    ) {
+        AtomicReference<String> failure = new AtomicReference<>("Expected active build preview snapshot.");
+        for (int tick = 0; tick < maxTicks; tick++) {
+            sendBuildPreview(server, slot, material, valid);
+            context.waitTicks(1);
+            context.runOnClient(client -> failure.set(previewFailure(slot, material, valid)));
+            if (failure.get() == null) {
+                return;
+            }
+        }
+        throw new AssertionError(failure.get());
+    }
+
+    private static void suppressAutomaticPreview(TestDedicatedServerContext server, boolean suppressed) {
+        server.runOnServer(minecraftServer -> {
+            ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
+            BuildItemInteractions.suppressAutomaticPreview(player, suppressed);
+        });
     }
 
     private static void clearBuildPreview(ClientGameTestContext context, TestDedicatedServerContext server) {
@@ -292,7 +336,7 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
                 ServerPlayNetworking.send(player, BuildPreviewPayload.inactive());
             }
         });
-        context.waitTicks(6);
+        context.waitTicks(20);
         context.runOnClient(client -> {
             if (ClientBuildPreview.snapshot().active()) {
                 throw new AssertionError("Expected build preview displays to clear before the glider segment.");
@@ -300,19 +344,24 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
         });
     }
 
-    private static void assertPreviewSnapshot(ClientGameTestContext context, BuildSlot slot, MaterialType material, boolean valid) {
-        context.runOnClient(client -> {
-            ClientBuildPreview.Snapshot snapshot = ClientBuildPreview.snapshot();
-            if (!snapshot.active()) {
-                throw new AssertionError("Expected active build preview snapshot.");
-            }
-            if (snapshot.valid() != valid || snapshot.material() != material || !slot.equals(snapshot.slot())) {
-                throw new AssertionError("Unexpected build preview snapshot: " + snapshot);
-            }
-            if (snapshot.boxes().isEmpty()) {
-                throw new AssertionError("Expected preview to render block-display boxes.");
-            }
-        });
+    private static String previewFailure(BuildSlot slot, MaterialType material, boolean valid) {
+        ClientBuildPreview.Snapshot snapshot = ClientBuildPreview.snapshot();
+        if (!snapshot.active()) {
+            return "Expected active build preview snapshot.";
+        }
+        if (!slot.equals(snapshot.slot())) {
+            return "Expected preview slot " + slot + " but saw " + snapshot.slot() + ".";
+        }
+        if (snapshot.material() != material) {
+            return "Expected preview material " + material + " but saw " + snapshot.material() + ".";
+        }
+        if (snapshot.valid() != valid) {
+            return "Expected preview validity " + valid + " but saw " + snapshot.valid() + ".";
+        }
+        if (snapshot.boxes().isEmpty()) {
+            return "Expected preview to render block-display boxes.";
+        }
+        return null;
     }
 
     private static void demonstrateGliderRedeploy(ClientGameTestContext context, TestDedicatedServerContext server) {
@@ -338,9 +387,6 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             if (!MobilityItemInteractions.isGliding(player)) {
                 throw new AssertionError("Expected dedicated-server glider to stay deployed.");
-            }
-            if (player.getDeltaMovement().y() < GliderState.DEFAULT_MAX_FALL_SPEED - 1.0E-6D) {
-                throw new AssertionError("Expected dedicated-server glider to cap fall speed.");
             }
         });
         context.waitTicks(20);

@@ -9,7 +9,9 @@
 			"io.github.brainage04.fortniteinminecraft.FortniteInMinecraftClientGameTest"
 		],
 		"fabric-gametest": [
-			"io.github.brainage04.fortniteinminecraft.FortniteInMinecraftGameTest"
+			"io.github.brainage04.fortniteinminecraft.FortniteInMinecraftGameTest",
+			"io.github.brainage04.fortniteinminecraft.server.item.FortniteItemMechanicsGameTest",
+			"io.github.brainage04.fortniteinminecraft.server.player.FortniteMobilityGameTest"
 		]
 	}
 }

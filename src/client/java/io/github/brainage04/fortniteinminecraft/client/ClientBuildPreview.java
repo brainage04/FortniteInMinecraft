@@ -11,8 +11,6 @@ import io.github.brainage04.fortniteinminecraft.core.placement.FootprintProjecto
 import io.github.brainage04.fortniteinminecraft.core.placement.SnapGrid;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.BuildPreviewPayload;
-import io.github.brainage04.fortniteinminecraft.server.item.BuildPieceItem;
-import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
@@ -23,7 +21,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Brightness;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -99,22 +96,12 @@ public final class ClientBuildPreview {
     }
 
     private static Snapshot computeSnapshot(Minecraft client) {
-        PieceType pieceType = ClientInputHooks.selectedBuildPiece();
-        if (pieceType == null) {
-            ItemStack stack = client.player.getMainHandItem();
-            BuildPieceItem item = ModItems.asBuildPiece(stack);
-            if (item == null) {
-                serverPreview = ServerPreview.inactive();
-                return Snapshot.inactive();
-            }
-            pieceType = item.pieceType();
-        }
-
         String dimension = client.level.dimension().identifier().toString();
         ServerPreview preview = serverPreview;
-        if (!preview.matches(dimension, pieceType, client.level.getGameTime())) {
+        if (!preview.matches(dimension, client.level.getGameTime())) {
             return Snapshot.inactive();
         }
+
 
         return Snapshot.active(
                 preview.pieceType(),
@@ -227,11 +214,10 @@ public final class ClientBuildPreview {
             );
         }
 
-        private boolean matches(String currentDimension, PieceType currentPiece, long currentTick) {
+        private boolean matches(String currentDimension, long currentTick) {
             return active
                     && currentTick - receivedTick <= SERVER_PREVIEW_TIMEOUT_TICKS
-                    && Objects.equals(dimension, currentDimension)
-                    && pieceType == currentPiece;
+                    && Objects.equals(dimension, currentDimension);
         }
     }
 

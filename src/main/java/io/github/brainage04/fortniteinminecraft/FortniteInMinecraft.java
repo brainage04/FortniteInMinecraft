@@ -72,6 +72,7 @@ public final class FortniteInMinecraft implements ModInitializer {
             PlayerAimStates.clear(handler.player);
             PlayerResourceStates.clear(handler.player);
             PickaxeItem.clearHarvestCooldown(handler.player);
+            BuildItemInteractions.suppressAutomaticPreview(handler.player, false);
         });
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             HitMarkerDisplays.clearAll();
@@ -83,6 +84,7 @@ public final class FortniteInMinecraft implements ModInitializer {
             PlayerAimStates.clearAll();
             PickaxeItem.clearAllHarvestCooldowns();
             BuildEditInteractions.clearAll();
+            BuildItemInteractions.clearAutomaticPreviewSuppressions();
             TerrainResourceHarvest.clearAll();
         });
         LOGGER.info("{} server core initialized.", MOD_NAME);

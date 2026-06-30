@@ -22,6 +22,7 @@ import io.github.brainage04.fortniteinminecraft.server.item.ProjectileWeaponItem
 import io.github.brainage04.fortniteinminecraft.server.item.WeaponItem;
 import io.github.brainage04.fortniteinminecraft.server.player.GliderState;
 import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
+import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -233,6 +234,86 @@ public final class FortniteInMinecraftGameTest {
     }
 
     @GameTest
+    public void damageDestroyAndSupportCollapseUpdateWorldState(GameTestHelper context) {
+        ServerLevel level = context.getLevel();
+        String dimension = level.dimension().identifier().toString();
+        BlockPos basePos = context.absolutePos(new BlockPos(1, 3, 1));
+        BuildGridPos baseGrid = SNAP_GRID.snap(dimension, basePos.getX(), basePos.getY(), basePos.getZ());
+        BuildSlot supportSlot = floorSlot(dimension, baseGrid.x(), baseGrid.y(), baseGrid.z());
+        BuildSlot dependentSlot = floorSlot(dimension, baseGrid.x() + 1, baseGrid.y(), baseGrid.z());
+        BuildSlot standaloneSlot = floorSlot(dimension, baseGrid.x() + 4, baseGrid.y(), baseGrid.z());
+        BuildWorldState state = new BuildWorldState();
+        BuildSupportCascade cascade = new BuildSupportCascade(RULES);
+        WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(RULES);
+
+        BuildPieceState support = fullHealthPiece(supportSlot, MaterialType.WOOD, level.getGameTime());
+        BuildPieceState dependent = fullHealthPiece(dependentSlot, MaterialType.WOOD, level.getGameTime());
+        BuildPieceState standalone = fullHealthPiece(standaloneSlot, MaterialType.WOOD, level.getGameTime());
+        placeTrackedPiece(context, level, state, materializer, support);
+        placeTrackedPiece(context, level, state, materializer, dependent);
+        placeTrackedPiece(context, level, state, materializer, standalone);
+
+        WorldObstruction groundedSupportAndStandalone = obstructionFor(
+                dimension,
+                List.of(supportBlocksUnder(supportSlot), supportBlocksUnder(standaloneSlot))
+                        .stream()
+                        .flatMap(List::stream)
+                        .toList()
+        );
+        context.assertTrue(cascade.unsupportedPieces(state, dimension, groundedSupportAndStandalone).isEmpty(),
+                "Expected support, dependent, and standalone pieces to start supported.");
+
+        BuildWorldState.DamageResult partialDamage = state.damage(supportSlot, MaterialType.WOOD.finalHealth() / 2, level.getGameTime() + 1);
+        context.assertTrue(partialDamage.hit(), "Expected partial damage to hit the support piece.");
+        context.assertTrue(!partialDamage.destroyed(), "Expected partial damage to leave the support piece alive.");
+        WorldBuildWriteResult refreshed = materializer.refresh(level, partialDamage.after());
+        context.assertTrue(refreshed.success(), "Expected partial damage to repaint world blocks: " + refreshed.message());
+        List<BlockPos> supportBlocks = materializer.trackedBlockPositions(supportSlot);
+        long solidBlocks = supportBlocks.stream()
+                .filter(pos -> level.getBlockState(pos).is(Blocks.OAK_PLANKS))
+                .count();
+        long hologramBlocks = supportBlocks.stream()
+                .filter(pos -> level.getBlockState(pos).is(BuildVisualBlocks.HOLOGRAM_WOOD))
+                .count();
+        context.assertTrue(solidBlocks > 0 && hologramBlocks > 0,
+                "Expected partial damage to leave both solid and holographic world blocks.");
+
+        BuildWorldState.DamageResult standaloneDestroyed = state.damage(standaloneSlot, MaterialType.WOOD.finalHealth(), level.getGameTime() + 2);
+        context.assertTrue(standaloneDestroyed.destroyed(), "Expected full damage to destroy the standalone piece.");
+        state.remove(standaloneSlot);
+        WorldBuildWriteResult standaloneCleared = materializer.clear(level, standaloneDestroyed.after());
+        context.assertTrue(standaloneCleared.success(), "Expected standalone destruction to clear world blocks: " + standaloneCleared.message());
+        context.assertTrue(cascade.collapsePlan(state, dimension, groundedSupportAndStandalone, standaloneSlot).isEmpty(),
+                "Expected destroying a standalone supported piece not to collapse dependent builds.");
+
+        BuildWorldState.DamageResult supportDestroyed = state.damage(supportSlot, MaterialType.WOOD.finalHealth(), level.getGameTime() + 3);
+        context.assertTrue(supportDestroyed.destroyed(), "Expected full damage to destroy the support piece.");
+        state.remove(supportSlot);
+        WorldBuildWriteResult supportCleared = materializer.clear(level, supportDestroyed.after());
+        context.assertTrue(supportCleared.success(), "Expected support destruction to clear world blocks: " + supportCleared.message());
+
+        List<BuildSupportCascade.CollapseStep> collapseSteps = cascade.collapsePlan(state, dimension, WorldObstruction.none(), supportSlot);
+        List<BuildSlot> collapseSlots = collapseSteps.stream()
+                .map(step -> step.piece().slot())
+                .toList();
+        context.assertTrue(collapseSlots.equals(List.of(dependentSlot)),
+                "Expected support destruction to schedule only the dependent piece for collapse.");
+        context.assertTrue(state.scheduleCollapse(collapseSteps, level.getGameTime()) == 1,
+                "Expected one dependent collapse to be scheduled.");
+        List<BuildSlot> dueCollapses = state.drainDueCollapses(
+                        dimension,
+                        level.getGameTime() + collapseSteps.getFirst().delayTicks(),
+                        collapseSlots
+                )
+                .stream()
+                .map(BuildPieceState::slot)
+                .toList();
+        context.assertTrue(dueCollapses.equals(List.of(dependentSlot)),
+                "Expected scheduled dependent collapse to drain when due.");
+        context.succeed();
+    }
+
+    @GameTest
     public void editMasksKeepPartialPiecesAndRejectEmptyPieces(GameTestHelper context) {
         BuildSlot wall = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
         BuildPieceState baseWall = fullHealthPiece(wall, MaterialType.WOOD, 1L);
@@ -250,6 +331,32 @@ public final class FortniteInMinecraftGameTest {
                     "Expected one-cell-remaining " + pieceType + " edit to be confirmable.");
         }
         context.succeed();
+    }
+
+    private static void placeTrackedPiece(
+            GameTestHelper context,
+            ServerLevel level,
+            BuildWorldState state,
+            WorldBuildMaterializer materializer,
+            BuildPieceState piece
+    ) {
+        PieceFootprint footprint = FOOTPRINTS.project(piece);
+        context.assertTrue(state.addIfAbsent(piece), "Expected build state to accept " + piece.slot() + ".");
+        WorldBuildWriteResult result = materializer.place(level, piece, footprint);
+        context.assertTrue(result.success(), "Expected " + piece.slot() + " to materialize: " + result.message());
+    }
+
+    private static List<BlockOffset> supportBlocksUnder(BuildSlot slot) {
+        return FOOTPRINTS.project(slot)
+                .absoluteBlocks(SNAP_GRID.blockOrigin(slot.gridPos()))
+                .stream()
+                .map(block -> new BlockOffset(block.x(), block.y() - 1, block.z()))
+                .toList();
+    }
+
+    private static WorldObstruction obstructionFor(String dimension, List<BlockOffset> supports) {
+        return (candidateDimension, x, y, z) ->
+                dimension.equals(candidateDimension) && supports.contains(new BlockOffset(x, y, z));
     }
 
     private static BuildPieceState fullHealthPiece(BuildSlot slot, MaterialType material, long tick) {
