@@ -1,58 +1,43 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
-import eu.pb4.polymer.core.api.item.SimplePolymerItem;
-import io.github.brainage04.fortniteinminecraft.server.player.LaunchPadImpulse;
 import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
-import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
+import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
-public final class LaunchPadItem extends SimplePolymerItem {
+public final class LaunchPadItem extends Item {
+    private static final BlockState PLACED_STATE = Blocks.HEAVY_WEIGHTED_PRESSURE_PLATE.defaultBlockState();
     private final String displayName;
     private final int cooldownTicks;
     private final long redeployTicks;
-    private final Item clientItem;
 
     public LaunchPadItem(String displayName, int cooldownTicks, long redeployTicks, Item.Properties settings, Item clientItem) {
-        super(settings, clientItem);
+        super(settings);
         this.displayName = requireText(displayName, "displayName");
         if (cooldownTicks < 0 || redeployTicks < 0L) {
             throw new IllegalArgumentException("cooldown/redeploy ticks cannot be negative");
         }
         this.cooldownTicks = cooldownTicks;
         this.redeployTicks = redeployTicks;
-        this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
-    }
-
-    @Override
-    public Item getPolymerItem(ItemStack stack, PacketContext context) {
-        return clientItem;
-    }
-
-    @Override
-    public void modifyBasePolymerItemStack(
-            ItemStack out,
-            ItemStack stack,
-            PacketContext context,
-            HolderLookup.Provider registries
-    ) {
-        out.set(DataComponents.ITEM_NAME, Component.literal(displayName));
+        Objects.requireNonNull(clientItem, "clientItem");
     }
 
     @Override
@@ -61,33 +46,56 @@ public final class LaunchPadItem extends SimplePolymerItem {
     }
 
     @Override
-    public void modifyClientTooltip(List<Component> tooltip, ItemStack stack, PacketContext context) {
-        tooltip.add(Component.literal("Portable launch impulse with temporary glider redeploy."));
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
+        tooltip.accept(Component.literal("Places a floor launch pad that fires on contact."));
     }
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
+        return InteractionResult.PASS;
+    }
+
+    @Override
+    public InteractionResult useOn(UseOnContext context) {
+        if (context.getClickedFace() != Direction.UP) {
+            return InteractionResult.PASS;
+        }
+        Level level = context.getLevel();
+        Player player = context.getPlayer();
         if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
         if (!(level instanceof ServerLevel serverLevel) || !(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResult.PASS;
         }
-        ItemStack stack = serverPlayer.getItemInHand(hand);
+
+        ItemStack stack = context.getItemInHand();
         if (serverPlayer.getCooldowns().isOnCooldown(stack)) {
             return InteractionResult.SUCCESS_SERVER;
         }
-        Vec3 impulse = LaunchPadImpulse.defaultImpulse(serverPlayer.getLookAngle());
-        serverPlayer.setDeltaMovement(impulse);
-        serverPlayer.hurtMarked = true;
-        serverPlayer.setOnGround(false);
-        serverPlayer.resetFallDistance();
-        MobilityItemInteractions.enableRedeploy(serverPlayer, redeployTicks);
+
+        BlockPos pos = context.getClickedPos().above();
+        if (!canPlaceLaunchPad(serverLevel, pos)) {
+            serverPlayer.sendSystemMessage(Component.literal("Launch Pad needs an empty floor."), true);
+            return InteractionResult.FAIL;
+        }
+
+        if (!serverLevel.setBlock(pos, PLACED_STATE, Block.UPDATE_ALL)) {
+            serverPlayer.sendSystemMessage(Component.literal("Launch Pad placement failed."), true);
+            return InteractionResult.FAIL;
+        }
+        MobilityItemInteractions.registerLaunchPad(serverLevel, pos, redeployTicks);
         serverPlayer.getCooldowns().addCooldown(stack, cooldownTicks);
-        serverLevel.playSound(null, serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ(), SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 1.0F, 0.85F);
-        serverLevel.sendParticles(ParticleTypes.CLOUD, true, true, serverPlayer.getX(), serverPlayer.getY() + 0.15D, serverPlayer.getZ(), 16, 0.45D, 0.12D, 0.45D, 0.08D);
-        serverPlayer.sendSystemMessage(Component.literal("Launched."), true);
+        serverPlayer.awardStat(Stats.ITEM_USED.get(this));
+        stack.consume(1, serverPlayer);
+        MobilityItemInteractions.activateLaunchPad(serverPlayer, redeployTicks, true);
         return InteractionResult.SUCCESS_SERVER;
+    }
+
+    private static boolean canPlaceLaunchPad(ServerLevel level, BlockPos pos) {
+        return level.isInWorldBounds(pos)
+                && level.getBlockState(pos).canBeReplaced()
+                && PLACED_STATE.canSurvive(level, pos);
     }
 
     private static String requireText(String value, String name) {

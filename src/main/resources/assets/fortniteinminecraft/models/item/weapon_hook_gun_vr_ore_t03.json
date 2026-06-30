@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "fortniteinminecraft:item/weapon_hook_gun_vr_ore_t03"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "fortniteinminecraft:item/weapon_launcher_rocket_athena_r_ore_t03"
+  }
+}

@@ -48,6 +48,10 @@ public record BuildPieceState(
         );
     }
 
+    public BuildPieceState withEditVariant(EditVariantId variant) {
+        return new BuildPieceState(id, owner, slot, material, currentHealth, maxHealth, placedAtTick, lastHealthUpdateTick, variant);
+    }
+
     public BuildPieceState progressedTo(long tick) {
         if (tick <= lastHealthUpdateTick || currentHealth >= maxHealth) {
             return this;

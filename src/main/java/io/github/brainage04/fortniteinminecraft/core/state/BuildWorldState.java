@@ -1,5 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.core.state;
 
+import io.github.brainage04.fortniteinminecraft.core.placement.BuildSupportCascade;
 import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
@@ -7,6 +8,7 @@ import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +21,7 @@ public final class BuildWorldState {
     private final Map<BuildSlot, BuildPieceState> piecesBySlot = new HashMap<>();
     private final Map<BuildSlot, List<BlockOffset>> occupiedBlocksBySlot = new HashMap<>();
     private final Map<OccupiedBlockKey, Set<BuildSlot>> slotsByOccupiedBlock = new HashMap<>();
+    private final Map<BuildSlot, ScheduledCollapse> scheduledCollapsesBySlot = new HashMap<>();
 
     public BuildPieceState get(BuildSlot slot) {
         return piecesBySlot.get(Objects.requireNonNull(slot, "slot"));
@@ -30,7 +33,11 @@ public final class BuildWorldState {
 
     public boolean addIfAbsent(BuildPieceState piece) {
         Objects.requireNonNull(piece, "piece");
-        return piecesBySlot.putIfAbsent(piece.slot(), piece) == null;
+        if (piecesBySlot.putIfAbsent(piece.slot(), piece) != null) {
+            return false;
+        }
+        scheduledCollapsesBySlot.remove(piece.slot());
+        return true;
     }
 
     public boolean addIfNotConflicting(BuildPieceState piece) {
@@ -43,6 +50,7 @@ public final class BuildWorldState {
         if (conflicts(piece.slot(), occupiedBlocks)) {
             return false;
         }
+        scheduledCollapsesBySlot.remove(piece.slot());
         piecesBySlot.put(piece.slot(), piece);
         trackOccupiedBlocks(piece.slot(), occupiedBlocks);
         return true;
@@ -50,6 +58,7 @@ public final class BuildWorldState {
 
     public BuildPieceState remove(BuildSlot slot) {
         Objects.requireNonNull(slot, "slot");
+        scheduledCollapsesBySlot.remove(slot);
         untrackOccupiedBlocks(slot);
         return piecesBySlot.remove(slot);
     }
@@ -79,9 +88,21 @@ public final class BuildWorldState {
     }
 
     public List<BuildPieceState> progressConstruction(long tick) {
+        return progressConstructionInDimension(null, tick);
+    }
+
+    public List<BuildPieceState> progressConstruction(String dimension, long tick) {
+        Objects.requireNonNull(dimension, "dimension");
+        return progressConstructionInDimension(dimension, tick);
+    }
+
+    private List<BuildPieceState> progressConstructionInDimension(String dimension, long tick) {
         ArrayList<BuildPieceState> changed = new ArrayList<>();
         for (Map.Entry<BuildSlot, BuildPieceState> entry : piecesBySlot.entrySet()) {
             BuildPieceState before = entry.getValue();
+            if (dimension != null && !dimension.equals(before.slot().gridPos().dimension())) {
+                continue;
+            }
             BuildPieceState after = before.progressedTo(tick);
             if (!after.equals(before)) {
                 entry.setValue(after);
@@ -100,6 +121,83 @@ public final class BuildWorldState {
         BuildPieceState after = before.damagedBy(damage, tick);
         piecesBySlot.put(slot, after);
         return new DamageResult(before, after);
+    }
+
+    public int scheduleCollapse(Collection<BuildSupportCascade.CollapseStep> steps, long startTick) {
+        Objects.requireNonNull(steps, "steps");
+        int scheduled = 0;
+        for (BuildSupportCascade.CollapseStep step : steps) {
+            BuildPieceState piece = step.piece();
+            BuildSlot slot = piece.slot();
+            BuildPieceState current = piecesBySlot.get(slot);
+            if (current == null || !current.id().equals(piece.id())) {
+                continue;
+            }
+            long dueTick = startTick + Math.max(0, step.delayTicks());
+            ScheduledCollapse existing = scheduledCollapsesBySlot.get(slot);
+            if (existing != null && existing.dueTick() <= dueTick) {
+                continue;
+            }
+            scheduledCollapsesBySlot.put(slot, new ScheduledCollapse(slot, piece.id(), dueTick, step.distance()));
+            scheduled++;
+        }
+        return scheduled;
+    }
+
+    public List<BuildPieceState> drainDueCollapses(String dimension, long tick) {
+        return drainDueCollapses(dimension, tick, null);
+    }
+
+    public List<BuildPieceState> drainDueCollapses(
+            String dimension,
+            long tick,
+            Collection<BuildSlot> stillUnsupportedSlots
+    ) {
+        Objects.requireNonNull(dimension, "dimension");
+        Set<BuildSlot> unsupportedFilter = stillUnsupportedSlots == null ? null : Set.copyOf(stillUnsupportedSlots);
+        ArrayList<ScheduledCollapse> due = new ArrayList<>();
+        for (ScheduledCollapse collapse : List.copyOf(scheduledCollapsesBySlot.values())) {
+            if (!dimension.equals(collapse.slot().gridPos().dimension())) {
+                continue;
+            }
+            BuildPieceState current = piecesBySlot.get(collapse.slot());
+            if (current == null || !current.id().equals(collapse.pieceId())) {
+                scheduledCollapsesBySlot.remove(collapse.slot());
+                continue;
+            }
+            if (collapse.dueTick() <= tick) {
+                scheduledCollapsesBySlot.remove(collapse.slot());
+                if (unsupportedFilter == null || unsupportedFilter.contains(collapse.slot())) {
+                    due.add(collapse);
+                }
+            }
+        }
+        due.sort(scheduledCollapseOrder());
+
+        ArrayList<BuildPieceState> pieces = new ArrayList<>(due.size());
+        for (ScheduledCollapse collapse : due) {
+            BuildPieceState current = piecesBySlot.get(collapse.slot());
+            if (current != null && current.id().equals(collapse.pieceId())) {
+                pieces.add(current);
+            }
+        }
+        return List.copyOf(pieces);
+    }
+
+    public int scheduledCollapseCount() {
+        return scheduledCollapsesBySlot.size();
+    }
+
+    private static Comparator<ScheduledCollapse> scheduledCollapseOrder() {
+        return Comparator
+                .comparingLong(ScheduledCollapse::dueTick)
+                .thenComparingInt(ScheduledCollapse::distance)
+                .thenComparing(collapse -> collapse.slot().gridPos().dimension())
+                .thenComparingInt(collapse -> collapse.slot().gridPos().y())
+                .thenComparingInt(collapse -> collapse.slot().gridPos().x())
+                .thenComparingInt(collapse -> collapse.slot().gridPos().z())
+                .thenComparing(collapse -> collapse.slot().pieceType())
+                .thenComparing(collapse -> collapse.slot().orientation());
     }
 
     public boolean conflicts(BuildSlot slot) {
@@ -173,7 +271,7 @@ public final class BuildWorldState {
     }
 
     private static boolean intendedModelPermitsFootprintOverlap(BuildSlot existing, BuildSlot candidate) {
-        return existing.pieceType() == candidate.pieceType();
+        return existing.pieceType().permitsFootprintOverlapWith(candidate.pieceType());
     }
 
     public record DamageResult(BuildPieceState before, BuildPieceState after) {
@@ -187,6 +285,16 @@ public final class BuildWorldState {
 
         public boolean destroyed() {
             return after != null && after.destroyed();
+        }
+    }
+
+    private record ScheduledCollapse(BuildSlot slot, UUID pieceId, long dueTick, int distance) {
+        private ScheduledCollapse {
+            Objects.requireNonNull(slot, "slot");
+            Objects.requireNonNull(pieceId, "pieceId");
+            if (distance < 0) {
+                throw new IllegalArgumentException("distance cannot be negative");
+            }
         }
     }
 

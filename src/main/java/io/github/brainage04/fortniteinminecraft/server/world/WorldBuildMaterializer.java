@@ -28,55 +28,44 @@ public final class WorldBuildMaterializer {
     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
 
     private final SnapGrid snapGrid;
-    private final EnumMap<MaterialType, List<BlockState>> blockPalettesByMaterial;
+    private final EnumMap<MaterialType, BlockState> solidBlockStatesByMaterial;
+    private final EnumMap<MaterialType, BlockState> hologramBlockStatesByMaterial;
     private final Map<BuildSlot, List<BlockPos>> placedBlocksBySlot = new HashMap<>();
     private final Map<BuildSlot, BuildPieceState> piecesBySlot = new HashMap<>();
     private final Map<WorldBlockKey, LinkedHashSet<BuildSlot>> ownersByBlock = new HashMap<>();
+    private final Map<WorldBlockKey, BlockState> originalStatesByBlock = new HashMap<>();
 
     public WorldBuildMaterializer(BuildRules rules, Map<MaterialType, List<BlockState>> blockPalettesByMaterial) {
         this.snapGrid = new SnapGrid(Objects.requireNonNull(rules, "rules"));
         Objects.requireNonNull(blockPalettesByMaterial, "blockPalettesByMaterial");
-        this.blockPalettesByMaterial = new EnumMap<>(MaterialType.class);
+        this.solidBlockStatesByMaterial = new EnumMap<>(MaterialType.class);
+        this.hologramBlockStatesByMaterial = new EnumMap<>(MaterialType.class);
         for (MaterialType material : MaterialType.values()) {
             List<BlockState> palette = blockPalettesByMaterial.get(material);
             if (palette == null || palette.isEmpty()) {
                 throw new IllegalArgumentException("missing block palette for " + material);
             }
-            this.blockPalettesByMaterial.put(material, List.copyOf(palette));
+            solidBlockStatesByMaterial.put(material, palette.getFirst());
+            hologramBlockStatesByMaterial.put(material, BuildVisualBlocks.hologramState(material));
         }
     }
 
     public static WorldBuildMaterializer defaults(BuildRules rules) {
         EnumMap<MaterialType, List<BlockState>> palettes = new EnumMap<>(MaterialType.class);
-        palettes.put(MaterialType.WOOD, List.of(
-                Blocks.OAK_PLANKS.defaultBlockState(),
-                Blocks.SPRUCE_PLANKS.defaultBlockState(),
-                Blocks.DARK_OAK_PLANKS.defaultBlockState()
-        ));
-        palettes.put(MaterialType.STONE, List.of(
-                Blocks.STONE_BRICKS.defaultBlockState(),
-                Blocks.CRACKED_STONE_BRICKS.defaultBlockState(),
-                Blocks.MOSSY_STONE_BRICKS.defaultBlockState(),
-                Blocks.COBBLESTONE.defaultBlockState(),
-                Blocks.MOSSY_COBBLESTONE.defaultBlockState()
-        ));
-        palettes.put(MaterialType.METAL, List.of(
-                Blocks.COPPER_BLOCK.waxed().unaffected().defaultBlockState(),
-                Blocks.COPPER_BLOCK.waxed().exposed().defaultBlockState(),
-                Blocks.COPPER_BLOCK.waxed().weathered().defaultBlockState(),
-                Blocks.COPPER_BLOCK.waxed().oxidized().defaultBlockState()
-        ));
+        palettes.put(MaterialType.WOOD, List.of(Blocks.OAK_PLANKS.defaultBlockState()));
+        palettes.put(MaterialType.STONE, List.of(Blocks.STONE_BRICKS.defaultBlockState()));
+        palettes.put(MaterialType.METAL, List.of(Blocks.COPPER_BLOCK.waxed().unaffected().defaultBlockState()));
         return new WorldBuildMaterializer(rules, palettes);
     }
 
     public WorldBuildWriteResult place(ServerLevel level, BuildPieceState piece, PieceFootprint footprint) {
         Objects.requireNonNull(level, "level");
-        return place(piece, footprint, (pos, state) -> level.setBlock(pos, state, BLOCK_UPDATE_FLAGS));
+        return place(piece, footprint, new ServerLevelBlockWriter(level));
     }
 
     public WorldBuildWriteResult clear(ServerLevel level, BuildPieceState piece) {
         Objects.requireNonNull(level, "level");
-        return clear(piece, (pos, state) -> level.setBlock(pos, state, BLOCK_UPDATE_FLAGS));
+        return clear(piece, new ServerLevelBlockWriter(level));
     }
 
     public List<BlockPos> blockPositions(PieceFootprint footprint) {
@@ -91,14 +80,15 @@ public final class WorldBuildMaterializer {
     }
 
     public BlockState blockStateFor(MaterialType material) {
-        return blockPalettesByMaterial.get(Objects.requireNonNull(material, "material")).getFirst();
+        return solidBlockStatesByMaterial.get(Objects.requireNonNull(material, "material"));
     }
 
     BlockState blockStateFor(BuildPieceState piece, BlockPos pos) {
         Objects.requireNonNull(piece, "piece");
         Objects.requireNonNull(pos, "pos");
-        List<BlockState> palette = blockPalettesByMaterial.get(piece.material());
-        return palette.get(paletteIndex(piece, pos, palette.size()));
+        return hologramVisible(piece, pos)
+                ? hologramBlockStatesByMaterial.get(piece.material())
+                : blockStateFor(piece.material());
     }
 
     public int trackedBlockCount(BuildSlot slot) {
@@ -118,6 +108,13 @@ public final class WorldBuildMaterializer {
 
     public boolean isTrackedBlock(String dimension, int x, int y, int z) {
         return ownersByBlock.containsKey(new WorldBlockKey(dimension, new BlockPos(x, y, z)));
+    }
+
+    public BlockState originalBlockState(String dimension, int x, int y, int z) {
+        return originalStatesByBlock.get(new WorldBlockKey(
+                Objects.requireNonNull(dimension, "dimension"),
+                new BlockPos(x, y, z)
+        ));
     }
 
     public BuildSlot topOwnerAt(String dimension, BlockPos pos) {
@@ -141,19 +138,25 @@ public final class WorldBuildMaterializer {
         String dimension = slot.gridPos().dimension();
         List<BlockPos> positions = blockPositions(footprint);
         ArrayList<BlockRestore> rewrites = new ArrayList<>(positions.size());
-        ArrayList<OwnershipSnapshot> ownershipSnapshots = new ArrayList<>(positions.size());
+        ArrayList<BlockSnapshot> blockSnapshots = new ArrayList<>(positions.size());
         piecesBySlot.put(slot, piece);
 
         for (BlockPos pos : positions) {
             WorldBlockKey key = new WorldBlockKey(dimension, pos);
-            OwnershipSnapshot snapshot = snapshot(key);
-            ownershipSnapshots.add(snapshot);
-            BlockState previousState = visibleState(snapshot.owners(), pos);
+            BlockSnapshot snapshot = snapshot(key);
+            blockSnapshots.add(snapshot);
+            BlockState previousState;
+            if (snapshot.owners().isEmpty()) {
+                previousState = writer.blockState(pos);
+                originalStatesByBlock.put(key, previousState);
+            } else {
+                previousState = visibleState(snapshot.owners(), snapshot.originalState(), pos);
+            }
             BlockState blockState = blockStateFor(piece, pos);
             if (!previousState.equals(blockState)) {
                 if (!writer.setBlock(pos, blockState)) {
                     rollback(rewrites, writer);
-                    restoreOwnership(ownershipSnapshots);
+                    restoreSnapshots(blockSnapshots);
                     piecesBySlot.remove(slot);
                     return WorldBuildWriteResult.failure(rewrites.size(), "world write failed at " + describe(pos));
                 }
@@ -161,7 +164,6 @@ public final class WorldBuildMaterializer {
             }
             ownersByBlock.computeIfAbsent(key, ignored -> new LinkedHashSet<>()).add(slot);
         }
-
         placedBlocksBySlot.put(slot, List.copyOf(positions));
         return WorldBuildWriteResult.success(rewrites.size(), "world blocks placed");
     }
@@ -177,18 +179,18 @@ public final class WorldBuildMaterializer {
 
         String dimension = slot.gridPos().dimension();
         ArrayList<BlockRestore> rewrites = new ArrayList<>(positions.size());
-        ArrayList<OwnershipSnapshot> ownershipSnapshots = new ArrayList<>(positions.size());
+        ArrayList<BlockSnapshot> blockSnapshots = new ArrayList<>(positions.size());
         for (BlockPos pos : positions) {
             WorldBlockKey key = new WorldBlockKey(dimension, pos);
-            OwnershipSnapshot snapshot = snapshot(key);
+            BlockSnapshot snapshot = snapshot(key);
             LinkedHashSet<BuildSlot> owners = ownersByBlock.get(key);
             if (owners == null || !owners.contains(slot)) {
                 rollback(rewrites, writer);
-                restoreOwnership(ownershipSnapshots);
+                restoreSnapshots(blockSnapshots);
                 return WorldBuildWriteResult.failure(rewrites.size(), "tracked ownership missing at " + describe(pos));
             }
 
-            ownershipSnapshots.add(snapshot);
+            blockSnapshots.add(snapshot);
             boolean visibleOwner = slot.equals(lastOwner(owners));
             owners.remove(slot);
             if (owners.isEmpty()) {
@@ -196,11 +198,17 @@ public final class WorldBuildMaterializer {
             }
 
             if (visibleOwner) {
-                BlockState nextState = owners.isEmpty() ? AIR : blockStateForOwner(lastOwner(owners), pos);
+                BlockState nextState;
+                if (owners.isEmpty()) {
+                    nextState = originalStatesByBlock.getOrDefault(key, AIR);
+                    originalStatesByBlock.remove(key);
+                } else {
+                    nextState = blockStateForOwner(lastOwner(owners), pos);
+                }
                 BlockState previousState = blockStateFor(piece, pos);
                 if (!writer.setBlock(pos, nextState)) {
                     rollback(rewrites, writer);
-                    restoreOwnership(ownershipSnapshots);
+                    restoreSnapshots(blockSnapshots);
                     return WorldBuildWriteResult.failure(rewrites.size(), "world clear failed at " + describe(pos));
                 }
                 rewrites.add(new BlockRestore(pos, previousState));
@@ -214,7 +222,7 @@ public final class WorldBuildMaterializer {
 
     public WorldBuildWriteResult refresh(ServerLevel level, BuildPieceState piece) {
         Objects.requireNonNull(level, "level");
-        return refresh(piece, (pos, state) -> level.setBlock(pos, state, BLOCK_UPDATE_FLAGS));
+        return refresh(piece, new ServerLevelBlockWriter(level));
     }
 
     WorldBuildWriteResult refresh(BuildPieceState piece, BlockWriter writer) {
@@ -250,24 +258,33 @@ public final class WorldBuildMaterializer {
         return WorldBuildWriteResult.success(rewrites.size(), "world blocks refreshed");
     }
 
-    private OwnershipSnapshot snapshot(WorldBlockKey key) {
+    private BlockSnapshot snapshot(WorldBlockKey key) {
         LinkedHashSet<BuildSlot> owners = ownersByBlock.get(key);
-        return new OwnershipSnapshot(key, owners == null ? new LinkedHashSet<>() : new LinkedHashSet<>(owners));
+        return new BlockSnapshot(
+                key,
+                owners == null ? new LinkedHashSet<>() : new LinkedHashSet<>(owners),
+                originalStatesByBlock.get(key)
+        );
     }
 
-    private void restoreOwnership(List<OwnershipSnapshot> snapshots) {
+    private void restoreSnapshots(List<BlockSnapshot> snapshots) {
         for (int i = snapshots.size() - 1; i >= 0; i--) {
-            OwnershipSnapshot snapshot = snapshots.get(i);
+            BlockSnapshot snapshot = snapshots.get(i);
             if (snapshot.owners().isEmpty()) {
                 ownersByBlock.remove(snapshot.key());
             } else {
                 ownersByBlock.put(snapshot.key(), new LinkedHashSet<>(snapshot.owners()));
             }
+            if (snapshot.originalState() == null) {
+                originalStatesByBlock.remove(snapshot.key());
+            } else {
+                originalStatesByBlock.put(snapshot.key(), snapshot.originalState());
+            }
         }
     }
 
-    private BlockState visibleState(LinkedHashSet<BuildSlot> owners, BlockPos pos) {
-        return owners.isEmpty() ? AIR : blockStateForOwner(lastOwner(owners), pos);
+    private BlockState visibleState(LinkedHashSet<BuildSlot> owners, BlockState originalState, BlockPos pos) {
+        return owners.isEmpty() ? Objects.requireNonNullElse(originalState, AIR) : blockStateForOwner(lastOwner(owners), pos);
     }
 
     private BlockState blockStateForOwner(BuildSlot slot, BlockPos pos) {
@@ -279,17 +296,11 @@ public final class WorldBuildMaterializer {
     }
 
 
-    static int paletteIndex(BuildPieceState piece, BlockPos pos, int paletteSize) {
+    static boolean hologramVisible(BuildPieceState piece, BlockPos pos) {
         Objects.requireNonNull(piece, "piece");
         Objects.requireNonNull(pos, "pos");
-        if (paletteSize <= 1) {
-            return 0;
-        }
-        double damageSeverity = (1.0D - Math.clamp(piece.healthRatio(), 0.0D, 1.0D)) * (paletteSize - 1);
-        int base = (int) Math.floor(damageSeverity);
-        double partial = damageSeverity - base;
-        int index = base + (damageDither(pos) < partial ? 1 : 0);
-        return Math.clamp(index, 0, paletteSize - 1);
+        double solidRatio = Math.clamp(piece.healthRatio(), 0.0D, 1.0D);
+        return solidRatio < 1.0D && damageDither(pos) >= solidRatio;
     }
 
     private static double damageDither(BlockPos pos) {
@@ -329,9 +340,10 @@ public final class WorldBuildMaterializer {
         return "[" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + "]";
     }
 
-    @FunctionalInterface
     interface BlockWriter {
         boolean setBlock(BlockPos pos, BlockState state);
+
+        BlockState blockState(BlockPos pos);
     }
 
     private record WorldBlockKey(String dimension, BlockPos pos) {
@@ -341,7 +353,23 @@ public final class WorldBuildMaterializer {
         }
     }
 
-    private record OwnershipSnapshot(WorldBlockKey key, LinkedHashSet<BuildSlot> owners) {
+    private record ServerLevelBlockWriter(ServerLevel level) implements BlockWriter {
+        private ServerLevelBlockWriter {
+            Objects.requireNonNull(level, "level");
+        }
+
+        @Override
+        public boolean setBlock(BlockPos pos, BlockState state) {
+            return level.setBlock(pos, state, BLOCK_UPDATE_FLAGS);
+        }
+
+        @Override
+        public BlockState blockState(BlockPos pos) {
+            return level.getBlockState(pos);
+        }
+    }
+
+    private record BlockSnapshot(WorldBlockKey key, LinkedHashSet<BuildSlot> owners, BlockState originalState) {
     }
 
     private record BlockRestore(BlockPos pos, BlockState previousState) {

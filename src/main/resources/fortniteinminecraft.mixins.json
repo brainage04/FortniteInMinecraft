@@ -5,6 +5,10 @@
 	"mixins": [
 		"ServerGamePacketListenerMixin"
 	],
+	"client": [
+		"AbstractClientPlayerMixin",
+		"ClientMultiPlayerGameModeMixin"
+	],
 	"injectors": {
 		"defaultRequire": 1
 	}

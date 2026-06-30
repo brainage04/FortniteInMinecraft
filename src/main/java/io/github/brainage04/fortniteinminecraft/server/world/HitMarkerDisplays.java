@@ -49,6 +49,17 @@ public final class HitMarkerDisplays {
     }
 
     public static void show(ServerLevel level, ServerPlayer shooter, LivingEntity target, float damage) {
+        show(level, shooter, target, damage, false, target != null && target.getAbsorptionAmount() > 0.0F);
+    }
+
+    public static void show(
+            ServerLevel level,
+            ServerPlayer shooter,
+            LivingEntity target,
+            float damage,
+            boolean headshot,
+            boolean targetShielded
+    ) {
         Objects.requireNonNull(level, "level");
         Objects.requireNonNull(shooter, "shooter");
         Objects.requireNonNull(target, "target");
@@ -61,7 +72,7 @@ public final class HitMarkerDisplays {
         Display.TextDisplay display = new Display.TextDisplay(TEXT_DISPLAY_TYPE, level);
         display.setNoGravity(true);
         display.setPos(origin.x(), origin.y(), origin.z());
-        configureDisplay(display, Component.literal(format(damage)).withStyle(ChatFormatting.YELLOW), scale);
+        configureDisplay(display, Component.literal(format(damage)).withStyle(markerColor(headshot, targetShielded)), scale);
         if (!level.addFreshEntity(display)) {
             display.discard();
             return;
@@ -103,6 +114,13 @@ public final class HitMarkerDisplays {
     private static Vec3 markerPosition(ServerPlayer shooter, LivingEntity target) {
         Vec3 targetCenter = target.getBoundingBox().getCenter().add(0.0D, target.getBbHeight() * 0.12D, 0.0D);
         return clampedMarkerPosition(shooter.getEyePosition(), targetCenter);
+    }
+
+    static ChatFormatting markerColor(boolean headshot, boolean targetShielded) {
+        if (targetShielded) {
+            return ChatFormatting.BLUE;
+        }
+        return headshot ? ChatFormatting.YELLOW : ChatFormatting.WHITE;
     }
 
     private static void configureDisplay(Display.TextDisplay display, Component text, float markerScale) {

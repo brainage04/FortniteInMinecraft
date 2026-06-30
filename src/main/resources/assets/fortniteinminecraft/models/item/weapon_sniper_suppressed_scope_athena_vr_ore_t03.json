@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "fortniteinminecraft:item/weapon_sniper_suppressed_scope_athena_vr_ore_t03"
+  }
+}

@@ -1,3 +1,6 @@
 {
-  "fortniteinminecraft.client.status": "FortniteInMinecraft client hooks initialized; server authority remains active."
+  "fortniteinminecraft.client.status": "FortniteInMinecraft client hooks initialized; server authority remains active.",
+  "key.categories.fortniteinminecraft.controls": "Fortnite in Minecraft",
+  "key.fortniteinminecraft.reload_weapon": "Reload Fortnite weapon",
+  "key.fortniteinminecraft.edit_build": "Edit targeted build"
 }

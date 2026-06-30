@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "fortniteinminecraft:item/weapon_spytech_dual_pistol_suppresseed_athena_sr_t01"
+  }
+}

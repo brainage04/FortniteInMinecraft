@@ -1,5 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.world;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
@@ -56,5 +57,13 @@ class HitMarkerDisplaysTest {
         assertThrows(IllegalArgumentException.class, () -> HitMarkerDisplays.setScaleModel(0.0F, 1.0F));
         assertThrows(IllegalArgumentException.class, () -> HitMarkerDisplays.setScaleModel(1.0F, Float.NaN));
         HitMarkerDisplays.resetScaleModel();
+    }
+
+    @Test
+    void markerColorPrioritizesShieldThenHeadshotThenNormalHit() {
+        assertEquals(ChatFormatting.WHITE, HitMarkerDisplays.markerColor(false, false));
+        assertEquals(ChatFormatting.YELLOW, HitMarkerDisplays.markerColor(true, false));
+        assertEquals(ChatFormatting.BLUE, HitMarkerDisplays.markerColor(false, true));
+        assertEquals(ChatFormatting.BLUE, HitMarkerDisplays.markerColor(true, true));
     }
 }

@@ -30,11 +30,16 @@ public final class WeaponAutoFire {
         registered = true;
     }
 
-    static void rememberInput(ServerPlayer player, InteractionHand hand, WeaponItem item, long tick) {
+    public static void rememberInput(ServerPlayer player, InteractionHand hand, WeaponItem item, long tick) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(hand, "hand");
         Objects.requireNonNull(item, "item");
         ACTIVE_INPUTS.put(player.getUUID(), new ActiveInput(hand, item.definition().path(), tick));
+    }
+
+    public static void forgetInput(ServerPlayer player) {
+        Objects.requireNonNull(player, "player");
+        ACTIVE_INPUTS.remove(player.getUUID());
     }
 
     private static void tickLevel(ServerLevel level) {
@@ -65,7 +70,13 @@ public final class WeaponAutoFire {
             item.fireFromHeldItem(level, player, input.hand());
         }
         for (ServerPlayer player : level.players()) {
-            WeaponItem.showHeldStatus(player);
+            WeaponItem.cancelInactiveReloads(player);
+            ProjectileWeaponItem.cancelInactiveReloads(player);
+            ExplosiveProjectileWeaponItem.cancelInactiveReloads(player);
+            if (!WeaponItem.showHeldStatus(player)
+                    && !ProjectileWeaponItem.showHeldStatus(player)) {
+                ExplosiveProjectileWeaponItem.showHeldStatus(player);
+            }
         }
 
     }

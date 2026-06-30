@@ -16,7 +16,7 @@ class SnapGridTest {
     }
 
     @Test
-    void snapsNegativeBlocksLikeOldRoundBasedAlignment() {
+    void snapsNegativeBlocksToNearestCenteredCell() {
         assertEquals(new BuildGridPos("overworld", 0, 0, 0), grid.snap("overworld", -1, -1, -1));
     }
 

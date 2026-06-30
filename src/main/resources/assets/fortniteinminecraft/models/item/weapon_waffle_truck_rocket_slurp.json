@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "fortniteinminecraft:item/weapon_waffle_truck_rocket_slurp"
+  }
+}

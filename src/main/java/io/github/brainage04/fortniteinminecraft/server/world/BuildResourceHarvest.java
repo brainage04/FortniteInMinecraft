@@ -4,7 +4,6 @@ import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
-import io.github.brainage04.fortniteinminecraft.server.player.PlayerResourceState;
 
 import java.util.Objects;
 
@@ -16,18 +15,12 @@ public final class BuildResourceHarvest {
             BuildWorldState buildWorld,
             BuildSlot slot,
             int damage,
-            int resourceReward,
-            long tick,
-            PlayerResourceState resources
+            long tick
     ) {
         Objects.requireNonNull(buildWorld, "buildWorld");
         Objects.requireNonNull(slot, "slot");
-        Objects.requireNonNull(resources, "resources");
         if (damage < 0) {
             throw new IllegalArgumentException("damage cannot be negative");
-        }
-        if (resourceReward < 0) {
-            throw new IllegalArgumentException("resourceReward cannot be negative");
         }
         if (tick < 0) {
             throw new IllegalArgumentException("tick cannot be negative");
@@ -38,8 +31,7 @@ public final class BuildResourceHarvest {
             return HarvestResult.missing();
         }
         MaterialType material = damageResult.before().material();
-        int granted = resources.addMaterial(material, resourceReward);
-        return new HarvestResult(damageResult.before(), damageResult.after(), material, granted);
+        return new HarvestResult(damageResult.before(), damageResult.after(), material, 0);
     }
 
     public record HarvestResult(

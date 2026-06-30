@@ -8,6 +8,7 @@ import java.util.Objects;
 
 public final class ResourceWallet {
     private final EnumMap<MaterialType, Integer> amounts = new EnumMap<>(MaterialType.class);
+    private boolean infinite;
 
     public ResourceWallet() {
         for (MaterialType material : MaterialType.values()) {
@@ -29,6 +30,14 @@ public final class ResourceWallet {
         return Map.copyOf(amounts);
     }
 
+    public void set(MaterialType material, int amount) {
+        Objects.requireNonNull(material, "material");
+        if (amount < 0) {
+            throw new IllegalArgumentException("amount cannot be negative");
+        }
+        amounts.put(material, amount);
+    }
+
     public void add(MaterialType material, int amount) {
         Objects.requireNonNull(material, "material");
         if (amount < 0) {
@@ -37,19 +46,39 @@ public final class ResourceWallet {
         amounts.merge(material, amount, Integer::sum);
     }
 
+    public void clear(MaterialType material) {
+        set(material, 0);
+    }
+
+    public void clear() {
+        for (MaterialType material : MaterialType.values()) {
+            amounts.put(material, 0);
+        }
+    }
+
+    public boolean infinite() {
+        return infinite;
+    }
+
+    public void setInfinite(boolean infinite) {
+        this.infinite = infinite;
+    }
+
     public boolean canSpend(MaterialType material, int amount) {
         Objects.requireNonNull(material, "material");
         if (amount < 0) {
             throw new IllegalArgumentException("amount cannot be negative");
         }
-        return get(material) >= amount;
+        return infinite || get(material) >= amount;
     }
 
     public boolean spend(MaterialType material, int amount) {
         if (!canSpend(material, amount)) {
             return false;
         }
-        amounts.put(material, get(material) - amount);
+        if (!infinite) {
+            amounts.put(material, get(material) - amount);
+        }
         return true;
     }
 }

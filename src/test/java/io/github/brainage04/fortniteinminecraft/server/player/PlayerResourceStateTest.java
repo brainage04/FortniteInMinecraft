@@ -45,4 +45,33 @@ class PlayerResourceStateTest {
         assertFalse(PickupPayload.gold(25).applyTo(state).granted());
         assertTrue(PickupPayload.ammo(AmmoType.LIGHT, 1).applyTo(state).granted());
     }
+
+    @Test
+    void debugMutatorsSetClearAndToggleInfiniteFlags() {
+        PlayerResourceState state = new PlayerResourceState();
+
+        assertEquals(123, state.setMaterial(MaterialType.WOOD, 123));
+        assertEquals(45, state.setAmmo(AmmoType.ROCKETS, 45));
+        assertEquals(123, state.material(MaterialType.WOOD));
+        assertEquals(45, state.ammo(AmmoType.ROCKETS));
+
+        state.clearMaterial(MaterialType.WOOD);
+        state.clearAmmo(AmmoType.ROCKETS);
+        assertEquals(0, state.material(MaterialType.WOOD));
+        assertEquals(0, state.ammo(AmmoType.ROCKETS));
+
+        state.setInfiniteMaterials(true);
+        state.setInfiniteAmmo(true);
+        assertTrue(state.infiniteMaterials());
+        assertTrue(state.infiniteAmmo());
+        assertTrue(state.materials().spend(MaterialType.METAL, PlayerResourceState.MAX_MATERIAL));
+        assertEquals(0, state.material(MaterialType.METAL));
+
+        state.addMaterial(MaterialType.STONE, 5);
+        state.addAmmo(AmmoType.LIGHT, 7);
+        state.clearMaterials();
+        state.clearAmmo();
+        assertEquals(0, state.material(MaterialType.STONE));
+        assertEquals(0, state.ammo(AmmoType.LIGHT));
+    }
 }

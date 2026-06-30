@@ -71,13 +71,11 @@ public final class BuildPieceHealthDisplays {
         if (state == null || materializer == null) {
             return;
         }
-        for (BuildPieceState changed : state.progressConstruction(level.getGameTime())) {
+        String dimension = level.dimension().identifier().toString();
+        for (BuildPieceState changed : state.progressConstruction(dimension, level.getGameTime())) {
             materializer.refresh(level, changed);
         }
-        String dimension = level.dimension().identifier().toString();
-        for (ServerPlayer player : level.players()) {
-            updatePlayerView(level, dimension, player);
-        }
+        clearAll();
     }
 
     private static void updatePlayerView(ServerLevel level, String dimension, ServerPlayer player) {
@@ -154,7 +152,7 @@ public final class BuildPieceHealthDisplays {
         if (distance <= 1.0E-6D) {
             return pieceCenter;
         }
-        return pieceCenter.add(towardViewer.scale(Math.min(1.0D, distance) / distance));
+        return pieceCenter.add(towardViewer.scale(Math.min(2.0D, distance) / distance));
     }
 
     private static void configure(Display.TextDisplay display) {

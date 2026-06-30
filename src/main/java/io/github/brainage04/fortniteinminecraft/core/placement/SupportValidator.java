@@ -90,7 +90,7 @@ public final class SupportValidator {
             if (!dimension.equals(piece.slot().gridPos().dimension())) {
                 continue;
             }
-            PieceFootprint footprint = footprints.project(piece.slot());
+            PieceFootprint footprint = footprints.project(piece);
             result.addAll(footprint.absoluteBlocks(snapGrid.blockOrigin(piece.slot().gridPos())));
         }
         return result;

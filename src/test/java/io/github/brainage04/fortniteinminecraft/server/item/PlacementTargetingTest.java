@@ -21,18 +21,20 @@ class PlacementTargetingTest {
         BuildGridPos east = PlacementTargeting.destinationGrid("overworld", RULES, PieceType.WALL, Direction.EAST, hitLocation);
 
         assertEquals(new BuildGridPos("overworld", 1, 0, 1), north);
-        assertEquals(new BuildGridPos("overworld", 1, 0, 0), south);
-        assertEquals(new BuildGridPos("overworld", 0, 0, 1), east);
+        assertEquals(new BuildGridPos("overworld", 1, 0, 1), south);
+        assertEquals(new BuildGridPos("overworld", 1, 0, 1), east);
     }
 
     @Test
-    void keepsOldFloorAndStairVerticalPrealignment() {
+    void keepsSeparateFloorAndStairConeVerticalPrealignment() {
         Vec3 hitLocation = new Vec3(2.0D, 2.0D, 2.0D);
 
         BuildGridPos floor = PlacementTargeting.destinationGrid("overworld", RULES, PieceType.FLOOR, Direction.NORTH, hitLocation);
         BuildGridPos stair = PlacementTargeting.destinationGrid("overworld", RULES, PieceType.STAIR, Direction.NORTH, hitLocation);
+        BuildGridPos roof = PlacementTargeting.destinationGrid("overworld", RULES, PieceType.ROOF, Direction.NORTH, hitLocation);
 
         assertEquals(new BuildGridPos("overworld", 0, 1, 0), floor);
         assertEquals(new BuildGridPos("overworld", 0, 0, 0), stair);
+        assertEquals(new BuildGridPos("overworld", 0, 0, 0), roof);
     }
 }

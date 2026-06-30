@@ -4,16 +4,18 @@ import io.github.brainage04.fortniteinminecraft.core.item.ConsumableDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.FortniteRarity;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponCategory;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
-import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
+import io.github.brainage04.fortniteinminecraft.server.player.GrapplerProjectiles;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import net.minecraft.SharedConstants;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -23,7 +25,8 @@ import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -64,6 +67,25 @@ class BuildPieceItemTest {
     }
 
     @Test
+    void weaponRightClickUseDoesNotStartCooldownWithoutClientInput() {
+        WeaponItem weapon = ModItems.WEAPONS.get(0);
+        ProjectileWeaponItem sniper = ModItems.PROJECTILE_WEAPONS.get(0);
+
+        assertEquals(InteractionResult.PASS, weapon.use(null, null, InteractionHand.MAIN_HAND));
+        assertEquals(InteractionResult.PASS, sniper.use(null, null, InteractionHand.MAIN_HAND));
+    }
+
+    @Test
+    void gunAdsUsesSpyglassAnimationWithoutChangingReloadInput() {
+        WeaponItem weapon = ModItems.WEAPONS.get(0);
+        ProjectileWeaponItem sniper = ModItems.PROJECTILE_WEAPONS.get(0);
+
+        assertEquals(net.minecraft.world.item.ItemUseAnimation.SPYGLASS, weapon.getUseAnimation(ItemStack.EMPTY));
+        assertEquals(net.minecraft.world.item.ItemUseAnimation.SPYGLASS, sniper.getUseAnimation(ItemStack.EMPTY));
+        assertEquals("Assault Rifle ADS: 30/30", weapon.statusText(30, true));
+    }
+
+    @Test
     void weaponStatusTextShowsHeldAmmoAndMagazineSize() {
         WeaponItem item = ModItems.WEAPONS.get(0);
 
@@ -82,10 +104,44 @@ class BuildPieceItemTest {
     }
 
     @Test
-    void emptyMagazineFireDoesNotStartAutomaticReload() {
+    void thermalScopedAssaultRifleIsAnAssaultRifle() {
+        WeaponItem thermal = weapon("weapon_thermal_scoped_assault_rifle_legendary");
+
+        assertEquals(WeaponCategory.ASSAULT_RIFLE, thermal.definition().category());
+    }
+
+    @Test
+    void emptyMagazineStartsAutomaticReloadUnlessInfiniteAmmoIsEnabled() {
         assertEquals(WeaponItem.FireAttempt.EMPTY_MAGAZINE, WeaponItem.fireAttempt(0, false));
+        assertTrue(WeaponItem.shouldAutoReload(0, false));
+        assertFalse(WeaponItem.shouldAutoReload(1, false));
+        assertFalse(WeaponItem.shouldAutoReload(0, true));
         assertEquals(WeaponItem.FireAttempt.FIRE, WeaponItem.fireAttempt(1, false));
         assertEquals(WeaponItem.FireAttempt.COOLDOWN, WeaponItem.fireAttempt(0, true));
+    }
+
+    @Test
+    void hitscanRangeAndBloomFollowFortniteSpreadShape() {
+        WeaponItem assault = weapon("weapon_assault_rifle_common");
+        WeaponItem scoped = weapon("weapon_scoped_assault_rifle_legendary");
+        ProjectileWeaponItem bolt = projectileWeapon("weapon_bolt_action_sniper_legendary");
+
+        assertEquals(512.0D, WeaponItem.effectiveHitscanRange(assault.definition()), 0.001D);
+        assertTrue(scoped.adsFovMultiplier() < assault.adsFovMultiplier());
+        assertTrue(bolt.adsFovMultiplier() < assault.adsFovMultiplier());
+
+        WeaponItem.SpreadState idle = new WeaponItem.SpreadState(false, false, false, false, false, 0.0D);
+        WeaponItem.SpreadState moving = new WeaponItem.SpreadState(false, false, false, false, true, 0.0D);
+        WeaponItem.SpreadState crouching = new WeaponItem.SpreadState(false, true, false, false, false, 0.0D);
+        WeaponItem.SpreadState ads = new WeaponItem.SpreadState(true, false, false, false, false, 0.0D);
+        WeaponItem.SpreadState repeated = new WeaponItem.SpreadState(false, false, false, false, false, 0.35D);
+
+        double idleSpread = WeaponItem.spreadDegrees(assault.definition(), idle);
+        assertTrue(WeaponItem.spreadDegrees(assault.definition(), moving) > idleSpread);
+        assertTrue(WeaponItem.spreadDegrees(assault.definition(), crouching) < WeaponItem.spreadDegrees(assault.definition(), moving));
+        assertTrue(WeaponItem.spreadDegrees(assault.definition(), crouching) > 0.0D);
+        assertTrue(WeaponItem.spreadDegrees(assault.definition(), ads) < idleSpread);
+        assertTrue(WeaponItem.spreadDegrees(assault.definition(), repeated) > idleSpread);
     }
 
     @Test
@@ -111,7 +167,7 @@ class BuildPieceItemTest {
 
     @Test
     void weaponCatalogIncludesExpandedSourceBackedHitscanFamilies() {
-        assertTrue(ModItems.WEAPONS.size() >= 57);
+        assertTrue(ModItems.WEAPONS.size() >= 223);
         assertFalse(ModItems.WEAPONS.stream()
                 .anyMatch(weapon -> weapon.definition().path().contains("bolt_action_sniper")));
 
@@ -168,7 +224,7 @@ class BuildPieceItemTest {
     @Test
     void shieldConsumablesRaiseZeroVanillaAbsorptionCap() {
         ConsumableDefinition smallShield = new ConsumableDefinition(
-                "test_small_shield", "Small Shield", 2.03D, 0, 0, 25, 50, true, "small_shield"
+                "test_small_shield", "Small Shield", FortniteRarity.UNCOMMON, 2.03D, 0, 0, 25, 50, true, "small_shield"
         );
 
         assertEquals(10.0F, ConsumableItem.shieldCap(smallShield, 0.0F, 0.0F), 0.001F);
@@ -178,7 +234,7 @@ class BuildPieceItemTest {
     @Test
     void shieldConsumablesRespectFortniteShieldCap() {
         ConsumableDefinition smallShield = new ConsumableDefinition(
-                "test_small_shield", "Small Shield", 2.03D, 0, 0, 25, 50, true, "small_shield"
+                "test_small_shield", "Small Shield", FortniteRarity.UNCOMMON, 2.03D, 0, 0, 25, 50, true, "small_shield"
         );
 
         assertEquals(10.0F, ConsumableItem.shieldAfterUse(smallShield, 8.0F, 0.0F), 0.001F);
@@ -188,10 +244,10 @@ class BuildPieceItemTest {
     @Test
     void consumablesCannotStartWhenTheyWouldHaveNoEffect() {
         ConsumableDefinition smallShield = new ConsumableDefinition(
-                "test_small_shield", "Small Shield", 2.03D, 0, 0, 25, 50, true, "small_shield"
+                "test_small_shield", "Small Shield", FortniteRarity.UNCOMMON, 2.03D, 0, 0, 25, 50, true, "small_shield"
         );
         ConsumableDefinition bandage = new ConsumableDefinition(
-                "test_bandage", "Bandage", 3.53D, 15, 75, 0, 0, true, "bandage"
+                "test_bandage", "Bandage", FortniteRarity.COMMON, 3.53D, 15, 75, 0, 0, true, "bandage"
         );
 
         assertTrue(ConsumableItem.canBenefit(smallShield, 20.0F, 20.0F, 8.0F, 20.0F));
@@ -201,9 +257,21 @@ class BuildPieceItemTest {
     }
 
     @Test
+    void effectiveConsumablesRestoreHealthFirstThenShield() {
+        ConsumableDefinition slurpFish = new ConsumableDefinition(
+                "test_slurp_fish", "Slurp Fish", FortniteRarity.RARE, 1.0D, 0, 0, 0, 0, false, "slurp_fish", 40
+        );
+
+        assertTrue(ConsumableItem.canBenefit(slurpFish, 20.0F, 20.0F, 0.0F, 20.0F));
+        assertFalse(ConsumableItem.canBenefit(slurpFish, 20.0F, 20.0F, 8.0F, 8.0F));
+        assertEquals(20.0F, ConsumableItem.healthAfterUse(slurpFish, 14.0F, 20.0F), 0.001F);
+        assertEquals(8.0F, ConsumableItem.shieldAfterUse(slurpFish, 0.0F, 0.0F), 0.001F);
+    }
+
+    @Test
     void consumableProgressTextUsesElapsedAndNeededSecondsFromTicks() {
         ConsumableDefinition smallShield = new ConsumableDefinition(
-                "test_small_shield", "Small Shield", 2.03D, 0, 0, 25, 50, true, "small_shield"
+                "test_small_shield", "Small Shield", FortniteRarity.UNCOMMON, 2.03D, 0, 0, 25, 50, true, "small_shield"
         );
 
         assertEquals(41, ConsumableItem.useTicks(smallShield));
@@ -225,7 +293,7 @@ class BuildPieceItemTest {
 
     @Test
     void consumableCatalogIncludesAdditionalSupportedSourceBackedFood() {
-        assertTrue(ModItems.CONSUMABLES.size() >= 7);
+        assertTrue(ModItems.CONSUMABLES.size() >= 11);
 
         ConsumableItem apple = consumable("consumable_apple");
         assertEquals("Apple", apple.definition().displayName());
@@ -237,11 +305,38 @@ class BuildPieceItemTest {
         assertEquals("Banana", banana.definition().displayName());
         assertEquals("WID_Athena_Banana", banana.definition().sourceItemId());
         assertEquals(5, banana.definition().healthRestore());
+
+        ConsumableItem cabbage = consumable("consumable_cabbage");
+        assertEquals("Cabbage", cabbage.definition().displayName());
+        assertEquals("WID_Athena_Cabbage", cabbage.definition().sourceItemId());
+        assertEquals(5, cabbage.definition().healthRestore());
+
+        ConsumableItem slurpFish = consumable("consumable_effective_fish");
+        assertEquals("Slurp Fish", slurpFish.definition().displayName());
+        assertEquals(40, slurpFish.definition().effectiveRestore());
+        assertFalse(slurpFish.definition().movementLocked());
+    }
+
+    @Test
+    void consumableRaritiesMatchSourceBackedFortniteData() {
+        ConsumableItem bandage = consumable("consumable_bandage");
+        ConsumableItem medkit = consumable("consumable_medkit");
+        ConsumableItem smallShield = consumable("consumable_small_shield");
+        ConsumableItem shieldPotion = consumable("consumable_shield_potion");
+        ConsumableItem chugJug = consumable("consumable_full_restore_jug");
+
+        assertEquals(FortniteRarity.COMMON, bandage.definition().rarity());
+        assertEquals(FortniteRarity.UNCOMMON, medkit.definition().rarity());
+        assertEquals(FortniteRarity.UNCOMMON, smallShield.definition().rarity());
+        assertEquals(FortniteRarity.RARE, shieldPotion.definition().rarity());
+        assertEquals(FortniteRarity.LEGENDARY, chugJug.definition().rarity());
+        assertEquals("Athena_SuperMedkit", chugJug.definition().sourceItemId());
+        assertEquals(TextColor.fromLegacyFormat(net.minecraft.ChatFormatting.GOLD), chugJug.getName(ItemStack.EMPTY).getStyle().getColor());
     }
 
     @Test
     void projectileWeaponCatalogSeparatesBallisticSnipersFromHitscan() {
-        assertEquals(9, ModItems.PROJECTILE_WEAPONS.size());
+        assertTrue(ModItems.PROJECTILE_WEAPONS.size() >= 64);
 
         ProjectileWeaponItem bolt = projectileWeapon("weapon_bolt_action_sniper_legendary");
         ProjectileWeaponItem huntingRifle = projectileWeapon("weapon_hunting_rifle_legendary");
@@ -256,13 +351,25 @@ class BuildPieceItemTest {
     }
 
     @Test
-    void deferredWeaponCatalogKeepsExplosiveFamiliesAsPlaceholders() {
-        assertEquals(5, ModItems.DEFERRED_WEAPONS.size());
-        Item rocket = named(ModItems.DEFERRED_WEAPONS, "Rocket Launcher");
-        Item proximity = named(ModItems.DEFERRED_WEAPONS, "Proximity Grenade Launcher");
+    void explosiveWeaponCatalogIncludesLaunchersAndBoomBow() {
+        assertTrue(ModItems.EXPLOSIVE_WEAPONS.size() >= 50);
 
-        assertFalse(rocket instanceof WeaponItem);
-        assertFalse(proximity instanceof ProjectileWeaponItem);
+        ExplosiveProjectileWeaponItem rocket = explosiveWeapon("weapon_rocket_launcher_legendary");
+        ExplosiveProjectileWeaponItem proximity = explosiveWeapon("weapon_proximity_grenade_launcher_legendary");
+        ExplosiveProjectileWeaponItem boomBow = explosiveWeapon("weapon_boom_bow_legendary");
+        ExplosiveProjectileWeaponItem shockwaveLauncher = explosiveWeapon("weapon_shockwave_launcher_epic");
+
+        assertEquals("Rocket Launcher", rocket.definition().displayName());
+        assertEquals(WeaponCategory.EXPLOSIVE, rocket.definition().category());
+        assertEquals(TextColor.fromLegacyFormat(net.minecraft.ChatFormatting.GOLD), rocket.getName(ItemStack.EMPTY).getStyle().getColor());
+        assertTrue(ModItems.isGun(rocket));
+        assertEquals(net.minecraft.world.item.ItemUseAnimation.SPYGLASS, rocket.getUseAnimation(ItemStack.EMPTY));
+        assertEquals("Rocket Launcher ADS: 1/1", rocket.statusText(1, true));
+        assertTrue(rocket.explosiveDefinition().gravityFreeProjectile());
+        assertTrue(proximity.explosiveDefinition().proximityTriggered());
+        assertTrue(shockwaveLauncher.explosiveDefinition().hasImpulseOnly());
+        assertEquals(ModItems.SHOCKWAVE_LAUNCHER_IMPACT_DELAY_TICKS, shockwaveLauncher.explosiveDefinition().impactExplosionDelayTicks());
+        assertEquals(0L, boomBow.explosiveDefinition().impactExplosionDelayTicks());
         assertTrue(ModItems.COMBAT_ITEMS.contains(rocket));
         assertTrue(ModItems.ALL_ITEMS.contains(proximity));
     }
@@ -286,11 +393,10 @@ class BuildPieceItemTest {
 
     @Test
     void allItemsCatalogCombinesBuildCombatUtilityAndPickupCategories() {
-        assertEquals(ModItems.WEAPONS.size() + ModItems.PROJECTILE_WEAPONS.size() + ModItems.DEFERRED_WEAPONS.size()
+        assertEquals(ModItems.WEAPONS.size() + ModItems.PROJECTILE_WEAPONS.size() + ModItems.EXPLOSIVE_WEAPONS.size()
                         + ModItems.THROWABLES.size() + ModItems.UTILITY_ITEMS.size() + ModItems.CONSUMABLES.size(),
                 ModItems.COMBAT_ITEMS.size());
-        assertEquals(ModItems.BUILD_PIECES.size() + ModItems.COMBAT_ITEMS.size() + ModItems.PICKUPS.size()
-                        + ModItems.RESOURCE_NODE_ITEMS.size(),
+        assertEquals(ModItems.BUILD_PIECES.size() + ModItems.COMBAT_ITEMS.size() + ModItems.PICKUPS.size(),
                 ModItems.ALL_ITEMS.size());
         assertTrue(ModItems.ALL_ITEMS.containsAll(ModItems.BUILD_PIECES));
         assertTrue(ModItems.ALL_ITEMS.containsAll(ModItems.COMBAT_ITEMS));
@@ -303,8 +409,36 @@ class BuildPieceItemTest {
     }
 
     @Test
+    void hitFeedbackSoundDistinguishesHeadshotsFromNormalHits() {
+        assertSame(SoundEvents.PLAYER_ATTACK_CRIT, WeaponItem.hitSound(false));
+        assertSame(SoundEvents.PLAYER_LEVELUP, WeaponItem.hitSound(true));
+        assertEquals(1.35F, WeaponItem.hitSoundPitch(false), 0.001F);
+        assertEquals(1.65F, WeaponItem.hitSoundPitch(true), 0.001F);
+    }
+
+    @Test
     void heldWeaponInputGraceCanOutrunVanillaRightClickDelay() {
         assertTrue(WeaponAutoFire.HELD_USE_GRACE_TICKS > 4L);
+    }
+
+    @Test
+    void harvestingToolCadenceRequiresFifteenTicksBetweenHits() {
+        assertEquals(15, PickaxeItem.HARVEST_SWING_INTERVAL_TICKS);
+        assertEquals(4.0F, PickaxeItem.DEFAULT_ENTITY_DAMAGE, 0.001F);
+        assertFalse(PickaxeItem.canHarvestAt(100L, 114L));
+        assertTrue(PickaxeItem.canHarvestAt(100L, 115L));
+    }
+
+    @Test
+    void modCombatAndBuildItemsSuppressVanillaBlockBreaking() {
+        assertTrue(ModItems.suppressesVanillaBlockBreaking(ModItems.WALL));
+        assertTrue(ModItems.suppressesVanillaBlockBreaking(ModItems.PICKAXE));
+        assertTrue(ModItems.suppressesVanillaBlockBreaking(ModItems.WEAPONS.get(0)));
+        assertTrue(ModItems.suppressesVanillaBlockBreaking(ModItems.PROJECTILE_WEAPONS.get(0)));
+        assertTrue(ModItems.suppressesVanillaBlockBreaking(ModItems.EXPLOSIVE_WEAPONS.get(0)));
+        assertTrue(ModItems.suppressesVanillaBlockBreaking(ModItems.CLINGER));
+        assertTrue(ModItems.suppressesVanillaBlockBreaking(ModItems.RIFT_TO_GO));
+        assertFalse(ModItems.suppressesVanillaBlockBreaking(Items.DIRT));
     }
 
     @Test
@@ -328,13 +462,33 @@ class BuildPieceItemTest {
     }
 
     @Test
-    void utilityCatalogIncludesMobilityToolsAndResourceNodes() {
+    void utilityCatalogIncludesMobilityToolsOnly() {
         assertTrue(ModItems.UTILITY_ITEMS.contains(ModItems.PICKAXE));
         assertTrue(ModItems.UTILITY_ITEMS.contains(ModItems.GRAPPLER));
         assertTrue(ModItems.UTILITY_ITEMS.contains(ModItems.LAUNCH_PAD));
-        assertTrue(ModItems.UTILITY_ITEMS.contains(ModItems.GLIDER));
-        assertEquals(3, ModItems.RESOURCE_NODE_ITEMS.size());
-        assertTrue(ModItems.ALL_ITEMS.containsAll(ModItems.RESOURCE_NODE_ITEMS));
+        assertTrue(ModItems.UTILITY_ITEMS.contains(ModItems.CLINGER));
+        assertTrue(ModItems.UTILITY_ITEMS.contains(ModItems.BOUNCER));
+        assertTrue(ModItems.UTILITY_ITEMS.contains(ModItems.RIFT_TO_GO));
+        assertTrue(ModItems.UTILITY_ITEMS.contains(ModItems.PORT_A_FORT));
+    }
+
+    @Test
+    void utilityItemsAreRealPlayableItems() {
+        assertTrue(ModItems.CLINGER instanceof ExplosiveThrowableItem);
+        assertTrue(ModItems.BOUNCER instanceof BouncerItem);
+        assertTrue(ModItems.RIFT_TO_GO instanceof RiftToGoItem);
+        assertTrue(ModItems.PORT_A_FORT instanceof PortAFortItem);
+        assertTrue(ModItems.ALL_ITEMS.contains(ModItems.CLINGER));
+        assertTrue(ModItems.ALL_ITEMS.contains(ModItems.BOUNCER));
+        assertTrue(ModItems.ALL_ITEMS.contains(ModItems.RIFT_TO_GO));
+        assertTrue(ModItems.ALL_ITEMS.contains(ModItems.PORT_A_FORT));
+        assertEquals(FortniteRarity.RARE, ModItems.CLINGER.definition().rarity());
+        assertEquals(FortniteRarity.EPIC, ModItems.RIFT_TO_GO.definition().rarity());
+    }
+
+    @Test
+    void riftToGoPortalUsesFortniteActiveDuration() {
+        assertEquals(200L, RiftToGoItem.DEFAULT_RIFT_PORTAL_ACTIVE_DURATION_TICKS);
     }
 
     @Test
@@ -346,28 +500,80 @@ class BuildPieceItemTest {
     }
 
     @Test
+    void projectileWeaponsUseMagazineStateAndManualReload() {
+        ProjectileWeaponItem bolt = projectileWeapon("weapon_bolt_action_sniper_legendary");
+
+        assertEquals("Bolt-Action Sniper Rifle: 1/1", bolt.statusText(1, false));
+        assertEquals(WeaponItem.ManualReloadResult.STARTED,
+                WeaponItem.manualReloadDecision(0, bolt.definition().stats().magazineSize(), 0L, 100L));
+        assertEquals(WeaponItem.ManualReloadResult.ALREADY_RELOADING,
+                WeaponItem.manualReloadDecision(0, bolt.definition().stats().magazineSize(), 200L, 100L));
+    }
+
+    @Test
+    void headshotDamageUsesCriticalMultiplierAfterCartridgeCap() {
+        WeaponItem assault = weapon("weapon_assault_rifle_legendary");
+        assertEquals(7.2F, WeaponItem.minecraftDamage(assault.definition()), 0.001F);
+        assertEquals(10.8F, WeaponItem.minecraftDamage(assault.definition(), true), 0.001F);
+
+        ProjectileWeaponItem bolt = projectileWeapon("weapon_bolt_action_sniper_legendary");
+        assertEquals(24.2F, ProjectileWeaponItem.minecraftDamage(bolt.definition()), 0.001F);
+        assertEquals(60.5F, ProjectileWeaponItem.minecraftDamage(bolt.definition(), true), 0.001F);
+
+        WeaponItem pump = weapon("weapon_pump_shotgun_legendary");
+        assertEquals(25.6F, WeaponItem.minecraftDamage(pump.definition()), 0.001F);
+        assertEquals(47.36F, WeaponItem.minecraftDamage(pump.definition(), true), 0.001F);
+    }
+
+    @Test
     void sniperScopeSteadiesProjectileSpreadWithoutChangingBaseConfig() {
         assertEquals(0.4F, ProjectileWeaponItem.scopedInaccuracy(0.4F, false), 0.001F);
         assertEquals(0.1F, ProjectileWeaponItem.scopedInaccuracy(0.4F, true), 0.001F);
     }
 
     @Test
-    void grapplerPullVelocityAimsAtTargetAndAddsLift() {
-        Vec3 velocity = GrapplerItem.pullVelocity(new Vec3(0.0D, 64.0D, 0.0D), new Vec3(4.0D, 64.0D, 0.0D), 1.6D, 0.25D);
+    void throwableImpulseCatalogUsesFortniteLaunchTuning() {
+        ThrowableImpulseItem shockwave = throwable("shockwave_grenade");
+        ThrowableImpulseItem impulse = throwable("impulse_grenade");
 
-        assertEquals(1.6D, velocity.x(), 1.0E-9D);
-        assertEquals(0.25D, velocity.y(), 1.0E-9D);
-        assertEquals(0.0D, velocity.z(), 1.0E-9D);
+        assertEquals(5.0D, shockwave.definition().radius(), 1.0E-9D);
+        assertEquals(1.9D, shockwave.definition().horizontalStrength(), 1.0E-9D);
+        assertEquals(1.9D, shockwave.definition().verticalStrength(), 1.0E-9D);
+        assertTrue(shockwave.definition().resetsFallDistance());
+        assertEquals(3.15D, impulse.definition().horizontalStrength(), 1.0E-9D);
+        assertEquals(2.1D, impulse.definition().verticalStrength(), 1.0E-9D);
     }
 
     @Test
-    void resourceNodeFootprintsOffsetFromPlacementAnchor() {
-        List<BlockPos> positions = ResourceNodeItem.positions(
-                new BlockPos(10, 64, -4),
-                List.of(new BlockOffset(0, 0, 0), new BlockOffset(1, 2, -1))
-        );
+    void grapplerUsesThirtyBlockProjectileWithFasterRope() {
+        assertEquals(30.0D, ModItems.GRAPPLER.definition().rangeBlocks(), 1.0E-9D);
+        assertEquals(1.8D, ModItems.GRAPPLER.definition().pullSpeed(), 1.0E-9D);
+        assertEquals(0.85D, ModItems.GRAPPLER.definition().upwardBoost(), 1.0E-9D);
+        assertEquals(4.0D, GrapplerProjectiles.PROJECTILE_SPEED_BLOCKS_PER_TICK, 1.0E-9D);
+    }
 
-        assertEquals(List.of(new BlockPos(10, 64, -4), new BlockPos(11, 66, -5)), positions);
+    @Test
+    void grapplerPullVelocityAimsAtTargetWithReducedLift() {
+        Vec3 velocity = GrapplerItem.pullVelocity(new Vec3(0.0D, 64.0D, 0.0D), new Vec3(4.0D, 64.0D, 0.0D), 1.6D, 0.25D);
+
+        assertEquals(1.6D, velocity.x(), 1.0E-9D);
+        assertEquals(0.1125D, velocity.y(), 1.0E-9D);
+        assertEquals(0.0D, velocity.z(), 1.0E-9D);
+    }
+
+
+    @Test
+    void everyRegisteredItemHasGeneratedClientAssets() {
+        Path itemDefinitionDir = Path.of("src/main/resources/assets/fortniteinminecraft/items");
+        Path itemModelDir = Path.of("src/main/resources/assets/fortniteinminecraft/models/item");
+        Path textureDir = Path.of("src/main/resources/assets/fortniteinminecraft/textures/item");
+
+        for (Item item : ModItems.ALL_ITEMS) {
+            String path = BuiltInRegistries.ITEM.getKey(item).getPath();
+            assertTrue(Files.exists(itemDefinitionDir.resolve(path + ".json")), path + " item definition missing");
+            assertTrue(Files.exists(itemModelDir.resolve(path + ".json")), path + " model missing");
+            assertTrue(Files.exists(textureDir.resolve(path + ".png")), path + " texture missing");
+        }
     }
 
 
@@ -381,6 +587,20 @@ class BuildPieceItemTest {
 
     private static ProjectileWeaponItem projectileWeapon(String path) {
         return ModItems.PROJECTILE_WEAPONS.stream()
+                .filter(item -> item.definition().path().equals(path))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static ExplosiveProjectileWeaponItem explosiveWeapon(String path) {
+        return ModItems.EXPLOSIVE_WEAPONS.stream()
+                .filter(item -> item.definition().path().equals(path))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static ThrowableImpulseItem throwable(String path) {
+        return ModItems.THROWABLES.stream()
                 .filter(item -> item.definition().path().equals(path))
                 .findFirst()
                 .orElseThrow();
@@ -400,12 +620,6 @@ class BuildPieceItemTest {
                 .orElseThrow();
     }
 
-    private static Item named(List<? extends Item> items, String displayName) {
-        return items.stream()
-                .filter(item -> item.getName(ItemStack.EMPTY).getString().equals(displayName))
-                .findFirst()
-                .orElseThrow();
-    }
     private static Item.Properties properties(String path) {
         ResourceKey<Item> key = ResourceKey.create(
                 BuiltInRegistries.ITEM.key(),

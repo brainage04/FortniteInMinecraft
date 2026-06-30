@@ -86,15 +86,33 @@ class WorldBuildMaterializerTest {
     }
 
     @Test
+    void clearRestoresTerrainThatBuildOverwrote() {
+        WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
+        BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.FLOOR, Orientation.NORTH);
+        BuildPieceState piece = piece(slot, MaterialType.WOOD, MaterialType.WOOD.finalHealth());
+        PieceFootprint footprint = footprint(slot);
+        InMemoryBlocks blocks = new InMemoryBlocks();
+        BlockPos terrain = materializer.blockPositions(footprint).getFirst();
+        blocks.blocks.put(terrain, Blocks.GRASS_BLOCK.defaultBlockState());
+
+        WorldBuildWriteResult placed = materializer.place(piece, footprint, blocks);
+        WorldBuildWriteResult cleared = materializer.clear(piece, blocks);
+
+        assertTrue(placed.success(), placed.message());
+        assertTrue(cleared.success(), cleared.message());
+        assertEquals(Blocks.GRASS_BLOCK.defaultBlockState(), blocks.stateAt(terrain));
+    }
+
+    @Test
     void overlappingPiecesKeepSharedBlocksUntilLastOwnerClears() {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
         BuildSlot firstSlot = BuildSlot.of("overworld", 0, 0, 0, PieceType.FLOOR, Orientation.NORTH);
-        BuildSlot secondSlot = BuildSlot.of("overworld", 1, 0, 0, PieceType.FLOOR, Orientation.NORTH);
+        BuildSlot secondSlot = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.SOUTH);
         BuildPieceState firstPiece = piece(firstSlot, MaterialType.WOOD, MaterialType.WOOD.finalHealth());
         BuildPieceState secondPiece = piece(secondSlot, MaterialType.STONE, MaterialType.STONE.finalHealth());
         PieceFootprint firstFootprint = footprint(firstSlot);
         PieceFootprint secondFootprint = footprint(secondSlot);
-        BlockPos shared = new BlockPos(3, -1, -1);
+        BlockPos shared = new BlockPos(-1, -1, 3);
         InMemoryBlocks blocks = new InMemoryBlocks();
 
         WorldBuildWriteResult firstPlaced = materializer.place(firstPiece, firstFootprint, blocks);
@@ -171,17 +189,17 @@ class WorldBuildMaterializerTest {
 
 
     @Test
-    void damagePalettesUseRequestedBlockFamilies() {
+    void damagedPiecesUseHolographicBlocksProportionalToHealth() {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
         BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
         BlockPos pos = new BlockPos(0, 0, 0);
 
         assertSame(Blocks.OAK_PLANKS, materializer.blockStateFor(piece(slot, MaterialType.WOOD, MaterialType.WOOD.finalHealth()), pos).getBlock());
-        assertSame(Blocks.DARK_OAK_PLANKS, materializer.blockStateFor(piece(slot, MaterialType.WOOD, 0), pos).getBlock());
+        assertSame(BuildVisualBlocks.HOLOGRAM_WOOD, materializer.blockStateFor(piece(slot, MaterialType.WOOD, 0), pos).getBlock());
         assertSame(Blocks.STONE_BRICKS, materializer.blockStateFor(piece(slot, MaterialType.STONE, MaterialType.STONE.finalHealth()), pos).getBlock());
-        assertSame(Blocks.MOSSY_COBBLESTONE, materializer.blockStateFor(piece(slot, MaterialType.STONE, 0), pos).getBlock());
+        assertSame(BuildVisualBlocks.HOLOGRAM_STONE, materializer.blockStateFor(piece(slot, MaterialType.STONE, 0), pos).getBlock());
         assertSame(Blocks.COPPER_BLOCK.waxed().unaffected(), materializer.blockStateFor(piece(slot, MaterialType.METAL, MaterialType.METAL.finalHealth()), pos).getBlock());
-        assertSame(Blocks.COPPER_BLOCK.waxed().oxidized(), materializer.blockStateFor(piece(slot, MaterialType.METAL, 0), pos).getBlock());
+        assertSame(BuildVisualBlocks.HOLOGRAM_METAL, materializer.blockStateFor(piece(slot, MaterialType.METAL, 0), pos).getBlock());
     }
 
     @Test
@@ -197,30 +215,19 @@ class WorldBuildMaterializerTest {
         assertTrue(refreshed.success(), refreshed.message());
         assertEquals(25, refreshed.blockCount());
         for (BlockPos pos : materializer.blockPositions(footprint)) {
-            assertEquals(Blocks.DARK_OAK_PLANKS.defaultBlockState(), blocks.stateAt(pos));
+            assertEquals(BuildVisualBlocks.HOLOGRAM_WOOD.defaultBlockState(), blocks.stateAt(pos));
         }
     }
 
     @Test
-    void resourceNodeRegistryDamagesTrackedCustomResourceBlocks() {
-        ResourceNodeRegistry.clearAll();
-        BlockPos first = new BlockPos(1, 64, 1);
-        BlockPos second = new BlockPos(2, 64, 1);
-
-        ResourceNodeRegistry.register("overworld", List.of(first, second), MaterialType.STONE, 100, 12);
-
-        ResourceNodeRegistry.ResourceHit chipped = ResourceNodeRegistry.hit("overworld", first, 40);
-        assertTrue(chipped.hit());
-        assertFalse(chipped.destroyed());
-        assertEquals(MaterialType.STONE, chipped.material());
-        assertEquals(12, chipped.resourceReward());
-        assertEquals(60, chipped.remainingHealth());
-
-        ResourceNodeRegistry.ResourceHit destroyed = ResourceNodeRegistry.hit("overworld", first, 60);
-        assertTrue(destroyed.destroyed());
-        assertFalse(ResourceNodeRegistry.tracked("overworld", first));
-        assertTrue(ResourceNodeRegistry.tracked("overworld", second));
-        ResourceNodeRegistry.clearAll();
+    void terrainResourceHarvestMapsNaturalBlocks() {
+        assertEquals(MaterialType.WOOD, TerrainResourceHarvest.resourceFor(Blocks.OAK_LOG.defaultBlockState()).material());
+        assertEquals(MaterialType.STONE, TerrainResourceHarvest.resourceFor(Blocks.STONE.defaultBlockState()).material());
+        assertEquals(MaterialType.STONE, TerrainResourceHarvest.resourceFor(Blocks.COBBLESTONE.defaultBlockState()).material());
+        assertEquals(MaterialType.STONE, TerrainResourceHarvest.resourceFor(Blocks.TUFF.defaultBlockState()).material());
+        assertEquals(MaterialType.METAL, TerrainResourceHarvest.resourceFor(Blocks.COPPER_ORE.defaultBlockState()).material());
+        assertEquals(MaterialType.METAL, TerrainResourceHarvest.resourceFor(Blocks.COPPER_BLOCK.weathering().unaffected().defaultBlockState()).material());
+        assertFalse(TerrainResourceHarvest.isHarvestable(Blocks.DIRT.defaultBlockState()));
     }
 
     private static BuildPieceState piece(BuildSlot slot, MaterialType material, int health) {
@@ -253,6 +260,11 @@ class WorldBuildMaterializerTest {
             }
             blocks.put(pos, state);
             return true;
+        }
+
+        @Override
+        public BlockState blockState(BlockPos pos) {
+            return stateAt(pos);
         }
 
         private BlockState stateAt(BlockPos pos) {

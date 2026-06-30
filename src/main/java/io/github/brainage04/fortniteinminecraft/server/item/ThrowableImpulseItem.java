@@ -1,48 +1,54 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
-import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
+import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.HitResult;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.Optional;
 
-public final class ThrowableImpulseItem extends SimplePolymerItem {
+public final class ThrowableImpulseItem extends Item {
     private static final float THROW_POWER = 1.5F;
     private static final float THROW_INACCURACY = 1.0F;
+    private static final long IMPACT_EXPLOSION_DELAY_TICKS = 10L;
     private static final ArrayList<ActiveGrenade> ACTIVE_GRENADES = new ArrayList<>();
+    private static final EntityType<Display.ItemDisplay> ITEM_DISPLAY_TYPE = itemDisplayType();
     private static boolean tickRegistered;
 
     private final Definition definition;
     private final Item clientItem;
 
     public ThrowableImpulseItem(Definition definition, Item.Properties settings, Item clientItem) {
-        super(settings, clientItem);
+        super(settings);
         this.definition = Objects.requireNonNull(definition, "definition");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
         registerTicker();
@@ -61,35 +67,20 @@ public final class ThrowableImpulseItem extends SimplePolymerItem {
     }
 
     @Override
-    public Item getPolymerItem(ItemStack stack, PacketContext context) {
-        return clientItem;
-    }
-
-    @Override
-    public void modifyBasePolymerItemStack(
-            ItemStack out,
-            ItemStack stack,
-            PacketContext context,
-            HolderLookup.Provider registries
-    ) {
-        out.set(DataComponents.ITEM_NAME, displayNameComponent());
-        out.set(DataComponents.USE_COOLDOWN, cooldownComponent(definition));
-    }
-
-    @Override
     public Component getName(ItemStack stack) {
         return displayNameComponent();
     }
 
     @Override
-    public void modifyClientTooltip(List<Component> tooltip, ItemStack stack, PacketContext context) {
-        tooltip.add(Component.literal("Radius: " + format(definition.radius()) + " blocks"));
-        tooltip.add(Component.literal("Impulse: " + format(definition.horizontalStrength())
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
+        tooltip.accept(Component.literal("Radius: " + format(definition.radius()) + " blocks"));
+        tooltip.accept(Component.literal("Impulse: " + format(definition.horizontalStrength())
                 + " horizontal / " + format(definition.verticalStrength()) + " vertical"));
-        tooltip.add(Component.literal("Fuse: " + format(definition.fuseTicks() / 20.0D) + "s; cooldown: "
+        tooltip.accept(Component.literal("Fuse: " + format(definition.fuseTicks() / 20.0D) + "s; cooldown: "
                 + format(definition.cooldownTicks() / 20.0D) + "s"));
+        tooltip.accept(Component.literal("Sticks for 0.5s after impact before exploding"));
         if (definition.resetsFallDistance()) {
-            tooltip.add(Component.literal("Cancels fall distance on launch"));
+            tooltip.accept(Component.literal("Cancels fall distance on launch"));
         }
     }
 
@@ -109,13 +100,15 @@ public final class ThrowableImpulseItem extends SimplePolymerItem {
         }
 
         ItemStack projectileStack = new ItemStack(clientItem);
-        Snowball projectile = new Snowball(serverLevel, player, projectileStack);
+        TrackedImpulseSnowball projectile = new TrackedImpulseSnowball(serverLevel, player, projectileStack);
         projectile.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, THROW_POWER, THROW_INACCURACY);
         if (!serverLevel.addFreshEntity(projectile)) {
             return InteractionResult.FAIL;
         }
 
-        ACTIVE_GRENADES.add(new ActiveGrenade(projectile, serverLevel.dimension(), serverLevel.getGameTime(), definition));
+        ActiveGrenade active = new ActiveGrenade(projectile, serverLevel.dimension(), serverLevel.getGameTime(), definition, clientItem);
+        projectile.setActiveGrenade(active);
+        ACTIVE_GRENADES.add(active);
         player.getCooldowns().addCooldown(stack, definition.cooldownTicks());
         player.awardStat(Stats.ITEM_USED.get(this));
         stack.consume(1, player);
@@ -143,13 +136,23 @@ public final class ThrowableImpulseItem extends SimplePolymerItem {
             }
 
             Snowball projectile = active.projectile();
+            if (active.stuck()) {
+                if (level.getGameTime() >= active.impactTick()) {
+                    active.discardStuckDisplay();
+                    detonate(level, active.impactPosition(), active.definition(), projectile);
+                    iterator.remove();
+                } else {
+                    level.sendParticles(ParticleTypes.ELECTRIC_SPARK, true, true,
+                            active.impactPosition().x(), active.impactPosition().y(), active.impactPosition().z(),
+                            1, 0.03D, 0.03D, 0.03D, 0.0D);
+                }
+                continue;
+            }
             if (projectile.isRemoved() || !projectile.isAlive()) {
-                detonate(level, active.lastPosition(), active.definition(), projectile);
-                iterator.remove();
+                active.stick(level, level.getGameTime(), projectile.position());
                 continue;
             }
 
-            active.setLastPosition(projectile.position());
             if (level.getGameTime() - active.spawnTick() >= active.definition().fuseTicks()) {
                 Vec3 detonation = projectile.position();
                 projectile.discard();
@@ -188,9 +191,34 @@ public final class ThrowableImpulseItem extends SimplePolymerItem {
             }
             target.addDeltaMovement(impulse);
             target.hurtMarked = true;
-            if (definition.resetsFallDistance()) {
+            if (target instanceof ServerPlayer player) {
+                MobilityItemInteractions.enableImpulseLaunch(player, definition.resetsFallDistance());
+            } else if (definition.resetsFallDistance()) {
                 target.resetFallDistance();
             }
+        }
+    }
+
+    private static final class TrackedImpulseSnowball extends Snowball {
+        private ActiveGrenade activeGrenade;
+
+        private TrackedImpulseSnowball(Level level, Player owner, ItemStack stack) {
+            super(level, owner, stack);
+        }
+
+        private void setActiveGrenade(ActiveGrenade activeGrenade) {
+            this.activeGrenade = Objects.requireNonNull(activeGrenade, "activeGrenade");
+        }
+
+        @Override
+        protected void onHit(HitResult result) {
+            if (!level().isClientSide()
+                    && level() instanceof ServerLevel serverLevel
+                    && activeGrenade != null
+                    && !activeGrenade.stuck()) {
+                activeGrenade.stick(serverLevel, serverLevel.getGameTime(), result.getLocation());
+            }
+            super.onHit(result);
         }
     }
 
@@ -203,6 +231,15 @@ public final class ThrowableImpulseItem extends SimplePolymerItem {
             return Integer.toString((int) Math.rint(value));
         }
         return String.format(java.util.Locale.ROOT, "%.2f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static EntityType<Display.ItemDisplay> itemDisplayType() {
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace("item_display"));
+        if (type == null) {
+            throw new IllegalStateException("missing minecraft:item_display entity type");
+        }
+        return (EntityType<Display.ItemDisplay>) type;
     }
 
     public record Definition(
@@ -253,19 +290,23 @@ public final class ThrowableImpulseItem extends SimplePolymerItem {
         private final net.minecraft.resources.ResourceKey<Level> dimension;
         private final long spawnTick;
         private final Definition definition;
-        private Vec3 lastPosition;
+        private final Item stuckItem;
+        private Vec3 impactPosition;
+        private long impactTick = -1L;
+        private Display.ItemDisplay stuckDisplay;
 
         private ActiveGrenade(
                 Snowball projectile,
                 net.minecraft.resources.ResourceKey<Level> dimension,
                 long spawnTick,
-                Definition definition
+                Definition definition,
+                Item stuckItem
         ) {
             this.projectile = Objects.requireNonNull(projectile, "projectile");
             this.dimension = Objects.requireNonNull(dimension, "dimension");
             this.spawnTick = spawnTick;
             this.definition = Objects.requireNonNull(definition, "definition");
-            this.lastPosition = projectile.position();
+            this.stuckItem = Objects.requireNonNull(stuckItem, "stuckItem");
         }
 
         private Snowball projectile() {
@@ -284,12 +325,36 @@ public final class ThrowableImpulseItem extends SimplePolymerItem {
             return definition;
         }
 
-        private Vec3 lastPosition() {
-            return lastPosition;
+        private boolean stuck() {
+            return impactPosition != null;
         }
 
-        private void setLastPosition(Vec3 lastPosition) {
-            this.lastPosition = Objects.requireNonNull(lastPosition, "lastPosition");
+        private Vec3 impactPosition() {
+            return impactPosition;
+        }
+
+        private long impactTick() {
+            return impactTick;
+        }
+
+        private void stick(ServerLevel level, long tick, Vec3 position) {
+            impactPosition = Objects.requireNonNull(position, "position");
+            impactTick = tick + IMPACT_EXPLOSION_DELAY_TICKS;
+            stuckDisplay = new Display.ItemDisplay(ITEM_DISPLAY_TYPE, level);
+            stuckDisplay.setNoGravity(true);
+            stuckDisplay.setPos(position.x(), position.y(), position.z());
+            stuckDisplay.getSlot(0).set(new ItemStack(stuckItem));
+            if (!level.addFreshEntity(stuckDisplay)) {
+                stuckDisplay.discard();
+                stuckDisplay = null;
+            }
+        }
+
+        private void discardStuckDisplay() {
+            if (stuckDisplay != null) {
+                stuckDisplay.discard();
+                stuckDisplay = null;
+            }
         }
     }
 }

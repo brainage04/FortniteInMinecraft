@@ -17,19 +17,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BuildResourceHarvestTest {
     @Test
-    void harvestDamagesTrackedBuildAndGrantsMatchingMaterial() {
+    void harvestDamagesTrackedBuildWithoutGrantingMaterial() {
         BuildWorldState world = new BuildWorldState();
         BuildSlot slot = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
         assertTrue(world.addIfAbsent(BuildPieceState.placed(slot, MaterialType.WOOD, UUID.randomUUID(), 0L)));
         PlayerResourceState resources = new PlayerResourceState();
 
-        BuildResourceHarvest.HarvestResult result = BuildResourceHarvest.harvest(world, slot, 25, 5, 1L, resources);
+        BuildResourceHarvest.HarvestResult result = BuildResourceHarvest.harvest(world, slot, 25, 1L);
 
         assertTrue(result.hit());
         assertFalse(result.destroyed());
         assertEquals(MaterialType.WOOD, result.material());
-        assertEquals(5, result.grantedResources());
-        assertEquals(5, resources.material(MaterialType.WOOD));
+        assertEquals(0, result.grantedResources());
+        assertEquals(0, resources.material(MaterialType.WOOD));
         assertEquals(world.get(slot).currentHealth(), result.after().currentHealth());
     }
 
@@ -43,9 +43,7 @@ class BuildResourceHarvestTest {
                 world,
                 slot,
                 MaterialType.STONE.finalHealth(),
-                10,
-                1L,
-                new PlayerResourceState()
+                1L
         );
 
         assertTrue(result.destroyed());
@@ -58,7 +56,7 @@ class BuildResourceHarvestTest {
         PlayerResourceState resources = new PlayerResourceState();
         BuildSlot missing = BuildSlot.of("overworld", 2, 0, 0, PieceType.FLOOR, Orientation.NORTH);
 
-        BuildResourceHarvest.HarvestResult result = BuildResourceHarvest.harvest(world, missing, 25, 5, 1L, resources);
+        BuildResourceHarvest.HarvestResult result = BuildResourceHarvest.harvest(world, missing, 25, 1L);
 
         assertFalse(result.hit());
         assertEquals(0, resources.material(MaterialType.WOOD));

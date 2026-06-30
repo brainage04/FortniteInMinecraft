@@ -37,4 +37,11 @@ class PlayerPlacementRescueTest {
 
         assertEquals(2.000001D, offset, 1.0E-9D);
     }
+
+    @Test
+    void rescueCapAllowsOnlyTwoBlocksOfTeleportDisplacement() {
+        assertTrue(PlayerPlacementRescue.withinRescueCap(2.000001D));
+        assertEquals(2.0D, PlayerPlacementRescue.cappedRescueOffset(2.000001D), 1.0E-9D);
+        assertFalse(PlayerPlacementRescue.withinRescueCap(2.25D));
+    }
 }

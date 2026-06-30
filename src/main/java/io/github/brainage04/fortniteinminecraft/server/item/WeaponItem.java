@@ -1,23 +1,22 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
-import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponDefinition;
+import io.github.brainage04.fortniteinminecraft.core.item.WeaponCategory;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
-import io.github.brainage04.fortniteinminecraft.core.placement.BuildSupportCascade;
-import io.github.brainage04.fortniteinminecraft.core.placement.WorldObstruction;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
-import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
+import io.github.brainage04.fortniteinminecraft.server.player.PlayerAimStates;
+import io.github.brainage04.fortniteinminecraft.server.player.PlayerResourceStates;
+import io.github.brainage04.fortniteinminecraft.server.world.BuildCollapseScheduler;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPieceHealthDisplays;
+import io.github.brainage04.fortniteinminecraft.server.world.BuildWeakPoints;
 import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
-import net.fabricmc.fabric.api.networking.v1.context.PacketContext;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -26,8 +25,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -35,51 +36,80 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemUseAnimation;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.Optional;
 
-public final class WeaponItem extends SimplePolymerItem {
+public final class WeaponItem extends Item {
     private static final String MAGAZINE_KEY = "magazine";
     private static final String NEXT_FIRE_TICK_KEY = "next_fire_tick";
     private static final String RELOAD_COMPLETE_TICK_KEY = "reload_complete_tick";
+    private static final String SHOT_HEAT_KEY = "shot_heat";
+    private static final String LAST_SHOT_TICK_KEY = "last_shot_tick";
     private static final double FORTNITE_TO_MINECRAFT_DAMAGE = 0.2D;
     private static final double ENTITY_HITBOX_INFLATE_BLOCKS = 0.3D;
     private static final double BULLET_TRACE_STEP_BLOCKS = 1.25D;
+    private static final double MIN_HITSCAN_RANGE_BLOCKS = 512.0D;
+    private static final float DEFAULT_ADS_FOV_MULTIPLIER = 0.70F;
+    private static final float SCOPED_ADS_FOV_MULTIPLIER = 0.35F;
     private static final int MAX_TRACE_PARTICLES = 64;
+    private static final SpreadProfile ASSAULT_RIFLE_SPREAD = new SpreadProfile(0.15D, 0.60D, 0.55D, 0.80D, 1.0D, 1.50D, 1.25D, 0.06D, 0.75D, 0.045D);
+    private static final SpreadProfile SHOTGUN_SPREAD = new SpreadProfile(0.90909094D, 0.80D, 0.92D, 0.85D, 1.0D, 1.10D, 1.05D, 0.12D, 1.20D, 0.05D);
+    private static final SpreadProfile SMG_SPREAD = new SpreadProfile(0.20D, 0.75D, 0.75D, 0.95D, 1.0D, 1.50D, 1.25D, 0.08D, 0.80D, 0.06D);
+    private static final SpreadProfile PISTOL_SPREAD = new SpreadProfile(0.20D, 0.65D, 0.70D, 0.85D, 1.0D, 1.35D, 1.20D, 0.06D, 0.65D, 0.055D);
+    private static final SpreadProfile DEFAULT_SPREAD = ASSAULT_RIFLE_SPREAD;
     private static BuildWorldState buildWorldState;
     private static WorldBuildMaterializer buildMaterializer;
-    private static BuildSupportCascade supportCascade;
 
     static final ClipContext.Block BULLET_BLOCK_MODE = ClipContext.Block.COLLIDER;
 
     private final WeaponDefinition definition;
-    private final Item clientItem;
 
     public WeaponItem(WeaponDefinition definition, Item.Properties settings, Item clientItem) {
-        super(settings, clientItem);
+        super(settings);
         this.definition = Objects.requireNonNull(definition, "definition");
-        this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
+        Objects.requireNonNull(clientItem, "clientItem");
     }
 
     public static void configureBuildDamage(BuildWorldState state, WorldBuildMaterializer materializer, BuildRules rules) {
         buildWorldState = Objects.requireNonNull(state, "state");
         buildMaterializer = Objects.requireNonNull(materializer, "materializer");
-        supportCascade = new BuildSupportCascade(Objects.requireNonNull(rules, "rules"));
+        Objects.requireNonNull(rules, "rules");
     }
 
     public WeaponDefinition definition() {
         return definition;
+    }
+
+    public float adsFovMultiplier() {
+        return adsFovMultiplier(definition);
+    }
+
+    static float adsFovMultiplier(WeaponDefinition definition) {
+        return usesScopedAdsZoom(definition) ? SCOPED_ADS_FOV_MULTIPLIER : DEFAULT_ADS_FOV_MULTIPLIER;
+    }
+
+    static boolean usesScopedAdsZoom(WeaponDefinition definition) {
+        Objects.requireNonNull(definition, "definition");
+        String path = definition.path().toLowerCase(Locale.ROOT);
+        String displayName = definition.displayName().toLowerCase(Locale.ROOT);
+        return definition.category() == WeaponCategory.SNIPER
+                || path.contains("scoped")
+                || displayName.contains("scoped")
+                || displayName.contains("sniper");
     }
 
     static UseCooldown cooldownComponent(WeaponDefinition definition) {
@@ -88,22 +118,6 @@ public final class WeaponItem extends SimplePolymerItem {
                 FortniteInMinecraft.MOD_ID,
                 definition.path()
         )));
-    }
-
-    @Override
-    public Item getPolymerItem(ItemStack stack, PacketContext context) {
-        return clientItem;
-    }
-
-    @Override
-    public void modifyBasePolymerItemStack(
-            ItemStack out,
-            ItemStack stack,
-            PacketContext context,
-            HolderLookup.Provider registries
-    ) {
-        out.set(DataComponents.ITEM_NAME, displayNameComponent());
-        out.set(DataComponents.USE_COOLDOWN, cooldownComponent(definition));
     }
 
     @Override
@@ -126,34 +140,51 @@ public final class WeaponItem extends SimplePolymerItem {
     }
 
     @Override
-    public void modifyClientTooltip(List<Component> tooltip, ItemStack stack, PacketContext context) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
         WeaponStats stats = definition.stats();
-        tooltip.add(Component.literal(definition.category().label() + " / " + definition.rarity().label()));
-        tooltip.add(Component.literal("Damage: " + format(stats.damage())
+        tooltip.accept(Component.literal(definition.category().label() + " / " + definition.rarity().label()));
+        tooltip.accept(Component.literal("Damage: " + format(stats.damage())
                 + (stats.pellets() > 1 ? " x" + stats.pellets() : "")));
-        tooltip.add(Component.literal("Fire rate: " + format(stats.fireRatePerSecond()) + "/s; magazine: " + stats.magazineSize()));
-        tooltip.add(Component.literal("Reload: " + format(stats.reloadSeconds()) + "s; crit: " + format(stats.criticalMultiplier()) + "x"));
-        tooltip.add(Component.literal("Source: " + definition.sourceStatRow()));
+        tooltip.accept(Component.literal("Fire rate: " + format(stats.fireRatePerSecond()) + "/s; magazine: " + stats.magazineSize()));
+        tooltip.accept(Component.literal("Reload: " + format(stats.reloadSeconds()) + "s; crit: " + format(stats.criticalMultiplier()) + "x"));
+        tooltip.accept(Component.literal("Source: " + definition.sourceStatRow()));
     }
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
-        if (level.isClientSide()) {
-            return InteractionResult.SUCCESS;
-        }
-        if (!(level instanceof ServerLevel serverLevel) || !(player instanceof ServerPlayer serverPlayer)) {
+        if (level == null || player == null) {
             return InteractionResult.PASS;
         }
-        if (MobilityItemInteractions.isGliding(serverPlayer)) {
-            serverPlayer.sendSystemMessage(Component.literal("Cannot fire while gliding."), true);
-            return InteractionResult.SUCCESS_SERVER;
+        ItemStack stack = player.getItemInHand(hand);
+        if (stack.getItem() != this) {
+            return InteractionResult.PASS;
         }
-
-        WeaponAutoFire.rememberInput(serverPlayer, hand, this, serverLevel.getGameTime());
-        return fireFromHeldItem(serverLevel, serverPlayer, hand);
+        player.startUsingItem(hand);
+        if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer) {
+            PlayerAimStates.setAiming(serverPlayer, true);
+        }
+        return level.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.SUCCESS_SERVER;
     }
 
-    InteractionResult fireFromHeldItem(ServerLevel level, ServerPlayer player, InteractionHand hand) {
+    @Override
+    public ItemUseAnimation getUseAnimation(ItemStack stack) {
+        return ItemUseAnimation.SPYGLASS;
+    }
+
+    @Override
+    public int getUseDuration(ItemStack stack, LivingEntity entity) {
+        return 72000;
+    }
+
+    @Override
+    public boolean releaseUsing(ItemStack stack, Level level, LivingEntity entity, int timeCharged) {
+        if (!level.isClientSide() && entity instanceof ServerPlayer player) {
+            PlayerAimStates.setAiming(player, false);
+        }
+        return false;
+    }
+
+    public InteractionResult fireFromHeldItem(ServerLevel level, ServerPlayer player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (stack.getItem() != this) {
             return InteractionResult.PASS;
@@ -163,37 +194,53 @@ public final class WeaponItem extends SimplePolymerItem {
         }
 
         long tick = level.getGameTime();
+        completeReloadIfReady(stack, tick);
         long nextFireTick = customData(stack).getLongOr(NEXT_FIRE_TICK_KEY, 0L);
         int magazine = magazine(stack);
+        boolean infiniteAmmo = hasInfiniteAmmo(player);
+        int magazineSize = definition.stats().magazineSize();
+        if (infiniteAmmo && magazine < magazineSize) {
+            setGunState(stack, magazineSize, tick);
+            magazine = magazineSize;
+        }
         FireAttempt attempt = fireAttempt(magazine, tick < nextFireTick || player.getCooldowns().isOnCooldown(stack));
         if (attempt == FireAttempt.COOLDOWN) {
             resyncCooldownOverlay(player, stack);
             return InteractionResult.SUCCESS_SERVER;
         }
         if (attempt == FireAttempt.EMPTY_MAGAZINE) {
-            player.sendSystemMessage(Component.literal("Empty " + definition.displayName() + ". Left-click to reload."), true);
+            if (startReloadAndNotify(level, player, stack, tick)) {
+                return InteractionResult.SUCCESS_SERVER;
+            }
+            player.sendSystemMessage(Component.literal("Empty " + definition.displayName() + "."), true);
             return InteractionResult.SUCCESS_SERVER;
         }
 
-        magazine--;
+        int magazineAfterShot = infiniteAmmo ? magazine : magazine - 1;
         int fireDelayTicks = fireDelayTicks();
-        setGunState(stack, magazine, tick + fireDelayTicks);
+        setGunState(stack, magazineAfterShot, tick + fireDelayTicks);
         player.getCooldowns().addCooldown(stack, fireDelayTicks);
 
-        ShotTrace trace = traceShot(level, player, definition.stats().rangeBlocks());
+        double heat = shotHeat(stack, tick);
+        ShotTrace trace = traceShot(level, player, definition, heat);
+        recordShotHeat(stack, tick, heat);
         playShotEffects(level, player, trace);
+        boolean autoReloadStarted = shouldAutoReload(magazineAfterShot, infiniteAmmo)
+                && startReloadAndNotify(level, player, stack, tick);
         if (trace.target() != null) {
-            DamageReport report = damageTarget(level, player, trace.target());
-            playHitEffects(level, player, trace.hitLocation(), report.damage());
-            HitMarkerDisplays.show(level, player, trace.target(), report.damage());
-        } else if (!damageBuild(level, player, trace, magazine)) {
-            player.sendSystemMessage(Component.literal("Fired " + definition.displayName()
-                    + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
+            boolean headshot = isHeadshot(trace.target(), trace.hitLocation());
+            DamageReport report = damageTarget(level, player, trace.target(), headshot);
+            playHitEffects(level, player, trace.hitLocation(), report.damage(), headshot);
+            HitMarkerDisplays.show(level, player, trace.target(), report.damage(), headshot, report.shielded());
+        } else if (!damageBuild(level, player, trace, magazineAfterShot)) {
+            player.sendSystemMessage(Component.literal(autoReloadStarted
+                    ? statusText(stack, PlayerAimStates.isAiming(player))
+                    : statusText(magazineAfterShot, PlayerAimStates.isAiming(player))), true);
         }
         return InteractionResult.SUCCESS_SERVER;
     }
 
-    public static InteractionResult handleManualReloadOnSwing(ServerPlayer player, InteractionHand hand) {
+    public static InteractionResult handleManualReload(ServerPlayer player, InteractionHand hand) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(hand, "hand");
         ItemStack stack = player.getItemInHand(hand);
@@ -202,8 +249,14 @@ public final class WeaponItem extends SimplePolymerItem {
         }
         ServerLevel level = player.level();
         long tick = level.getGameTime();
-        if (player.getCooldowns().isOnCooldown(stack)
-                && item.customData(stack).getLongOr(RELOAD_COMPLETE_TICK_KEY, 0L) <= tick) {
+        item.completeReloadIfReady(stack, tick);
+        if (hasInfiniteAmmo(player)) {
+            item.setGunState(stack, item.definition.stats().magazineSize(), tick);
+            player.sendSystemMessage(Component.literal(item.statusText(stack, PlayerAimStates.isAiming(player))), true);
+            return InteractionResult.SUCCESS_SERVER;
+        }
+        if (player.getCooldowns().isOnCooldown(stack) && item.isReloading(stack, tick)) {
+            resyncCooldownOverlay(player, stack);
             return InteractionResult.SUCCESS_SERVER;
         }
         ManualReloadResult result = item.tryStartManualReloadOnGun(stack, tick);
@@ -233,42 +286,71 @@ public final class WeaponItem extends SimplePolymerItem {
         if (!(stack.getItem() instanceof WeaponItem item)) {
             return;
         }
-        int remainingTicks = item.remainingCooldownTicks(stack, player.level().getGameTime());
+        long tick = player.level().getGameTime();
+        item.completeReloadIfReady(stack, tick);
+        int remainingTicks = item.remainingCooldownTicks(stack, tick);
         if (remainingTicks > 0 && !player.getCooldowns().isOnCooldown(stack)) {
             player.getCooldowns().addCooldown(stack, remainingTicks);
         }
     }
 
-    public static void showHeldStatus(ServerPlayer player) {
+    public static void cancelInactiveReloads(ServerPlayer player) {
+        Objects.requireNonNull(player, "player");
+        long tick = player.level().getGameTime();
+        ItemStack mainHand = player.getItemInHand(InteractionHand.MAIN_HAND);
+        ItemStack offHand = player.getItemInHand(InteractionHand.OFF_HAND);
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (stack == mainHand || stack == offHand) {
+                continue;
+            }
+            if (stack.getItem() instanceof WeaponItem item) {
+                item.cancelReload(stack, tick);
+            }
+        }
+    }
+
+    public static boolean showHeldStatus(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
         if (showHeldStatus(player, player.getItemInHand(InteractionHand.MAIN_HAND))) {
-            return;
+            return true;
         }
-        showHeldStatus(player, player.getItemInHand(InteractionHand.OFF_HAND));
+        return showHeldStatus(player, player.getItemInHand(InteractionHand.OFF_HAND));
     }
 
     private static boolean showHeldStatus(ServerPlayer player, ItemStack stack) {
         if (!(stack.getItem() instanceof WeaponItem item)) {
             return false;
         }
-        player.sendSystemMessage(Component.literal(item.statusText(stack)), true);
+        long tick = player.level().getGameTime();
+        item.completeReloadIfReady(stack, tick);
+        player.sendSystemMessage(Component.literal(item.statusText(stack, PlayerAimStates.isAiming(player))), true);
         return true;
     }
 
-    String statusText(ItemStack stack) {
-        return statusText(magazine(stack));
+    String statusText(ItemStack stack, boolean aiming) {
+        int magazine = magazine(stack);
+        if (customData(stack).getLongOr(RELOAD_COMPLETE_TICK_KEY, 0L) > 0L) {
+            return definition.displayName() + (aiming ? " ADS" : "") + ": " + magazine + "/" + definition.stats().magazineSize() + " (reloading)";
+        }
+        return statusText(magazine, aiming);
     }
 
     String statusText(int magazine) {
-        WeaponStats stats = definition.stats();
-        return definition.displayName() + ": " + magazine + "/" + stats.magazineSize();
+        return statusText(magazine, false);
     }
 
-    private DamageReport damageTarget(ServerLevel level, ServerPlayer shooter, LivingEntity target) {
-        float before = target.getHealth() + target.getAbsorptionAmount();
+    String statusText(int magazine, boolean aiming) {
+        WeaponStats stats = definition.stats();
+        return definition.displayName() + (aiming ? " ADS" : "") + ": " + magazine + "/" + stats.magazineSize();
+    }
+
+    private DamageReport damageTarget(ServerLevel level, ServerPlayer shooter, LivingEntity target, boolean headshot) {
+        float shieldBeforeHit = target.getAbsorptionAmount();
+        float before = target.getHealth() + shieldBeforeHit;
         Vec3 velocityBeforeHit = target.getDeltaMovement();
         prepareBulletHit(target);
-        boolean damaged = target.hurtServer(level, shooter.damageSources().playerAttack(shooter), minecraftDamage());
+        boolean damaged = target.hurtServer(level, shooter.damageSources().playerAttack(shooter), minecraftDamage(headshot));
         if (damaged) {
             reduceBulletInvulnerability(target);
             if (CombatSettings.preventBulletKnockback() && !(target instanceof ServerPlayer)) {
@@ -277,71 +359,69 @@ public final class WeaponItem extends SimplePolymerItem {
             }
         }
         float after = Math.max(0.0F, target.getHealth()) + target.getAbsorptionAmount();
-        return new DamageReport(damaged, Math.max(0.0F, before - after));
+        return new DamageReport(Math.max(0.0F, before - after), shieldBeforeHit > 0.0F);
     }
 
     private boolean damageBuild(ServerLevel level, ServerPlayer shooter, ShotTrace trace, int magazine) {
-        if (buildWorldState == null || buildMaterializer == null || trace.blockHitPos() == null) {
+        if (trace.blockHitPos() == null) {
+            return false;
+        }
+        String statusSuffix = " (" + magazine + "/" + definition.stats().magazineSize() + ")";
+        return damageBuild(level, shooter, trace.blockHitPos(), trace.hitLocation(), buildDamage(), statusSuffix);
+    }
+
+    static boolean damageBuild(
+            ServerLevel level,
+            ServerPlayer shooter,
+            BlockPos hitPos,
+            Vec3 hitLocation,
+            int damage,
+            String statusSuffix
+    ) {
+        if (buildWorldState == null || buildMaterializer == null) {
             return false;
         }
         String dimension = level.dimension().identifier().toString();
-        BuildSlot slot = buildMaterializer.topOwnerAt(dimension, trace.blockHitPos());
+        BuildSlot slot = buildMaterializer.topOwnerAt(dimension, hitPos);
         if (slot == null) {
             return false;
         }
-        int damage = buildDamage();
-        BuildWorldState.DamageResult result = buildWorldState.damage(slot, damage, level.getGameTime());
+        BuildWeakPoints.Damage weakPointDamage = BuildWeakPoints.damageForHit(level, slot, hitLocation, damage);
+        BuildWorldState.DamageResult result = buildWorldState.damage(slot, weakPointDamage.amount(), level.getGameTime());
         if (!result.hit()) {
             return false;
         }
-        playBuildHitEffects(level, trace.hitLocation());
+        playBuildHitEffects(level, hitLocation);
         if (result.destroyed()) {
             WorldBuildWriteResult clearResult = buildMaterializer.clear(level, result.after());
             if (clearResult.success()) {
                 buildWorldState.remove(slot);
-                int collapsed = clearUnsupportedBuilds(level);
+                BuildWeakPoints.clear(slot);
+                int collapsed = BuildCollapseScheduler.scheduleAfterSupportRemoved(level, slot, level.getGameTime());
                 shooter.sendSystemMessage(Component.literal("Destroyed " + result.before().material().name().toLowerCase(Locale.ROOT)
                         + " " + result.before().slot().pieceType().name().toLowerCase(Locale.ROOT)
-                        + " (" + magazine + "/" + definition.stats().magazineSize() + ")"
+                        + statusSuffix
                         + collapseMessage(collapsed)), true);
             } else {
-                shooter.sendSystemMessage(Component.literal("Build destroyed but world clear failed: " + clearResult.message()), false);
+                FortniteInMinecraft.LOGGER.warn("Build clear failed after weapon damage at {}: {}", hitPos, clearResult.message());
             }
         } else {
             WorldBuildWriteResult refreshResult = buildMaterializer.refresh(level, result.after());
             if (!refreshResult.success()) {
-                shooter.sendSystemMessage(Component.literal("Build damaged but world refresh failed: " + refreshResult.message()), false);
+                FortniteInMinecraft.LOGGER.warn("Build refresh failed after weapon damage at {}: {}", hitPos, refreshResult.message());
             }
             shooter.sendSystemMessage(Component.literal(BuildPieceHealthDisplays.healthText(result.after())
-                    + " (" + magazine + "/" + definition.stats().magazineSize() + ")."), true);
+                    + statusSuffix + "."), true);
         }
         return true;
     }
 
-    private static int clearUnsupportedBuilds(ServerLevel level) {
-        if (supportCascade == null) {
-            return 0;
-        }
-        String dimension = level.dimension().identifier().toString();
-        WorldObstruction staticWorld = (candidateDimension, x, y, z) -> dimension.equals(candidateDimension)
-                && !buildMaterializer.isTrackedBlock(candidateDimension, x, y, z)
-                && level.getBlockState(new BlockPos(x, y, z)).isSolid();
-        int collapsed = 0;
-        for (BuildPieceState unsupported : supportCascade.unsupportedPieces(buildWorldState, dimension, staticWorld)) {
-            WorldBuildWriteResult clearResult = buildMaterializer.clear(level, unsupported);
-            if (clearResult.success()) {
-                buildWorldState.remove(unsupported.slot());
-                collapsed++;
-            }
-        }
-        return collapsed;
-    }
 
     private static String collapseMessage(int collapsed) {
         if (collapsed <= 0) {
             return ".";
         }
-        return "; collapsed " + collapsed + " unsupported " + (collapsed == 1 ? "piece" : "pieces") + ".";
+        return "; destabilized " + collapsed + " unsupported " + (collapsed == 1 ? "piece" : "pieces") + ".";
     }
 
     static void prepareBulletHit(LivingEntity target) {
@@ -363,11 +443,26 @@ public final class WeaponItem extends SimplePolymerItem {
         target.hurtDuration = Math.min(target.hurtDuration, 1);
     }
 
-    private float minecraftDamage() {
-        return (float) Math.max(1.0D, definition.stats().totalDamagePerShot() * FORTNITE_TO_MINECRAFT_DAMAGE);
+    private float minecraftDamage(boolean headshot) {
+        return minecraftDamage(definition, headshot);
+    }
+
+    static float minecraftDamage(WeaponDefinition definition) {
+        return minecraftDamage(definition, false);
+    }
+
+    static float minecraftDamage(WeaponDefinition definition, boolean headshot) {
+        Objects.requireNonNull(definition, "definition");
+        WeaponStats stats = definition.stats();
+        double headshotMultiplier = headshot ? stats.criticalMultiplier() : 1.0D;
+        return (float) Math.max(1.0D, stats.totalDamagePerShot() * headshotMultiplier * FORTNITE_TO_MINECRAFT_DAMAGE);
     }
 
     int buildDamage() {
+        return buildDamage(definition);
+    }
+
+    static int buildDamage(WeaponDefinition definition) {
         return Math.max(1, (int) Math.round(definition.stats().totalDamagePerShot()));
     }
 
@@ -377,8 +472,54 @@ public final class WeaponItem extends SimplePolymerItem {
 
     private void startReload(ItemStack stack, long tick) {
         int reloadTicks = reloadTicks();
-        setGunState(stack, definition.stats().magazineSize(), tick + reloadTicks);
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putLong(RELOAD_COMPLETE_TICK_KEY, tick + reloadTicks));
+        int magazine = magazine(stack);
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+            tag.putInt(MAGAZINE_KEY, magazine);
+            tag.putLong(NEXT_FIRE_TICK_KEY, tick + reloadTicks);
+            tag.putLong(RELOAD_COMPLETE_TICK_KEY, tick + reloadTicks);
+        });
+    }
+
+    private boolean startReloadAndNotify(ServerLevel level, ServerPlayer player, ItemStack stack, long tick) {
+        if (hasInfiniteAmmo(player)) {
+            setGunState(stack, definition.stats().magazineSize(), tick);
+            return false;
+        }
+        ManualReloadResult result = tryStartManualReloadOnGun(stack, tick);
+        if (result == ManualReloadResult.STARTED) {
+            player.getCooldowns().addCooldown(stack, remainingCooldownTicks(stack, tick));
+            playReloadSound(level, player);
+            player.sendSystemMessage(Component.literal("Reloading " + definition.displayName() + "."), true);
+            return true;
+        }
+        if (result == ManualReloadResult.ALREADY_RELOADING) {
+            resyncCooldownOverlay(player, stack);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean completeReloadIfReady(ItemStack stack, long tick) {
+        long reloadCompleteTick = customData(stack).getLongOr(RELOAD_COMPLETE_TICK_KEY, 0L);
+        if (reloadCompleteTick <= 0L || reloadCompleteTick > tick) {
+            return false;
+        }
+        setGunState(stack, definition.stats().magazineSize(), tick);
+        return true;
+    }
+
+    private boolean isReloading(ItemStack stack, long tick) {
+        return customData(stack).getLongOr(RELOAD_COMPLETE_TICK_KEY, 0L) > tick;
+    }
+
+    private void cancelReload(ItemStack stack, long tick) {
+        if (!isReloading(stack, tick)) {
+            return;
+        }
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+            tag.putLong(NEXT_FIRE_TICK_KEY, tick);
+            tag.remove(RELOAD_COMPLETE_TICK_KEY);
+        });
     }
 
     private ManualReloadResult tryStartManualReloadOnGun(ItemStack stack, long tick) {
@@ -411,6 +552,15 @@ public final class WeaponItem extends SimplePolymerItem {
         return magazine <= 0 ? FireAttempt.EMPTY_MAGAZINE : FireAttempt.FIRE;
     }
 
+    static boolean shouldAutoReload(int magazine, boolean infiniteAmmo) {
+        return !infiniteAmmo && magazine <= 0;
+    }
+
+    public static boolean hasInfiniteAmmo(ServerPlayer player) {
+        Objects.requireNonNull(player, "player");
+        return PlayerResourceStates.stateFor(player).infiniteAmmo();
+    }
+
     void setGunState(ItemStack stack, int magazine, long nextFireTick) {
         CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
             tag.putInt(MAGAZINE_KEY, magazine);
@@ -437,16 +587,45 @@ public final class WeaponItem extends SimplePolymerItem {
     }
 
     int remainingCooldownTicks(ItemStack stack, long tick) {
-        long nextFireTick = customData(stack).getLongOr(NEXT_FIRE_TICK_KEY, 0L);
+        CompoundTag data = customData(stack);
+        long reloadCompleteTick = data.getLongOr(RELOAD_COMPLETE_TICK_KEY, 0L);
+        if (reloadCompleteTick > 0L && reloadCompleteTick <= tick) {
+            return 0;
+        }
+        long nextFireTick = data.getLongOr(NEXT_FIRE_TICK_KEY, 0L);
         if (nextFireTick <= tick) {
             return 0;
         }
         return (int) Math.min(Integer.MAX_VALUE, nextFireTick - tick);
     }
 
-    private static ShotTrace traceShot(ServerLevel level, ServerPlayer player, double rangeBlocks) {
+    private double shotHeat(ItemStack stack, long tick) {
+        SpreadProfile profile = spreadProfile(definition);
+        CompoundTag data = customData(stack);
+        double heat = data.getDoubleOr(SHOT_HEAT_KEY, 0.0D);
+        long lastShotTick = data.getLongOr(LAST_SHOT_TICK_KEY, tick);
+        long elapsed = Math.max(0L, tick - lastShotTick);
+        return Math.max(0.0D, heat - elapsed * profile.coolPerTick());
+    }
+
+    private void recordShotHeat(ItemStack stack, long tick, double previousHeat) {
+        SpreadProfile profile = spreadProfile(definition);
+        double heat = Math.min(profile.maxHeat(), previousHeat + profile.heatPerShot());
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+            tag.putDouble(SHOT_HEAT_KEY, heat);
+            tag.putLong(LAST_SHOT_TICK_KEY, tick);
+        });
+    }
+
+    static double effectiveHitscanRange(WeaponDefinition definition) {
+        Objects.requireNonNull(definition, "definition");
+        return Math.max(MIN_HITSCAN_RANGE_BLOCKS, definition.stats().rangeBlocks());
+    }
+
+    private static ShotTrace traceShot(ServerLevel level, ServerPlayer player, WeaponDefinition definition, double heat) {
         Vec3 start = player.getEyePosition();
-        Vec3 look = player.getLookAngle();
+        Vec3 look = applySpread(player, player.getLookAngle(), spreadDegrees(definition, spreadState(player, heat)));
+        double rangeBlocks = effectiveHitscanRange(definition);
         Vec3 rayEnd = start.add(look.scale(rangeBlocks));
         BlockHitResult blockHit = null;
         HitResult hitResult = level.clip(new ClipContext(start, rayEnd, BULLET_BLOCK_MODE, ClipContext.Fluid.NONE, player));
@@ -480,8 +659,85 @@ public final class WeaponItem extends SimplePolymerItem {
         );
     }
 
+    private static SpreadState spreadState(ServerPlayer player, double heat) {
+        Vec3 movement = player.getDeltaMovement();
+        boolean moving = movement.x() * movement.x() + movement.z() * movement.z() > 0.0036D;
+        return new SpreadState(
+                PlayerAimStates.isAiming(player),
+                player.isCrouching(),
+                player.isSprinting(),
+                !player.onGround(),
+                moving,
+                heat
+        );
+    }
+
+    static double spreadDegrees(WeaponDefinition definition, SpreadState state) {
+        Objects.requireNonNull(definition, "definition");
+        Objects.requireNonNull(state, "state");
+        SpreadProfile profile = spreadProfile(definition);
+        double spread = profile.baseSpread();
+        if (state.aiming()) {
+            spread *= profile.adsMultiplier();
+            if (usesScopedAdsZoom(definition)) {
+                spread *= 0.35D;
+            }
+        }
+        if (state.airborne()) {
+            spread *= profile.airborneMultiplier();
+        } else if (state.sprinting()) {
+            spread *= profile.sprintingMultiplier();
+        } else if (state.crouching()) {
+            spread *= profile.crouchingMultiplier();
+        } else if (state.moving()) {
+            spread *= profile.movingMultiplier();
+        } else {
+            spread *= profile.standingStillMultiplier();
+        }
+        return Math.max(0.0D, spread + Math.max(0.0D, state.heat()));
+    }
+
+    private static SpreadProfile spreadProfile(WeaponDefinition definition) {
+        return switch (definition.category()) {
+            case ASSAULT_RIFLE -> ASSAULT_RIFLE_SPREAD;
+            case SHOTGUN -> SHOTGUN_SPREAD;
+            case SMG -> SMG_SPREAD;
+            case PISTOL -> PISTOL_SPREAD;
+            default -> DEFAULT_SPREAD;
+        };
+    }
+
+    private static Vec3 applySpread(ServerPlayer player, Vec3 look, double spreadDegrees) {
+        Vec3 forward = look.normalize();
+        if (spreadDegrees <= 1.0E-6D) {
+            return forward;
+        }
+        RandomSource random = player.getRandom();
+        double cone = Math.tan(Math.toRadians(spreadDegrees));
+        Vec3 right = forward.cross(Vec3.Y_AXIS);
+        if (right.lengthSqr() < 1.0E-6D) {
+            right = Vec3.X_AXIS;
+        } else {
+            right = right.normalize();
+        }
+        Vec3 up = right.cross(forward).normalize();
+        double horizontal = (random.nextDouble() * 2.0D - 1.0D) * cone;
+        double vertical = (random.nextDouble() * 2.0D - 1.0D) * cone;
+        return forward.add(right.scale(horizontal)).add(up.scale(vertical)).normalize();
+    }
+
     private static boolean canShoot(Entity entity) {
         return entity instanceof LivingEntity && entity.isAlive() && entity.isPickable() && !entity.isSpectator();
+    }
+
+    static boolean isHeadshot(LivingEntity target, Vec3 hitLocation) {
+        Objects.requireNonNull(target, "target");
+        Objects.requireNonNull(hitLocation, "hitLocation");
+        return isHeadshot(hitLocation.y(), target.getEyeY());
+    }
+
+    static boolean isHeadshot(double hitY, double eyeY) {
+        return hitY >= eyeY - 0.15D;
     }
 
     private static void playShotEffects(ServerLevel level, ServerPlayer shooter, ShotTrace trace) {
@@ -509,10 +765,22 @@ public final class WeaponItem extends SimplePolymerItem {
         level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.CROSSBOW_LOADING_START, SoundSource.PLAYERS, 0.8F, 0.75F);
     }
 
-    private static void playHitEffects(ServerLevel level, ServerPlayer shooter, Vec3 hitLocation, float damage) {
-        level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 0.7F, 1.35F);
+    static void playHitEffects(ServerLevel level, ServerPlayer shooter, Vec3 hitLocation, float damage) {
+        playHitEffects(level, shooter, hitLocation, damage, false);
+    }
+
+    static void playHitEffects(ServerLevel level, ServerPlayer shooter, Vec3 hitLocation, float damage, boolean headshot) {
+        level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(), hitSound(headshot), SoundSource.PLAYERS, 0.7F, hitSoundPitch(headshot));
         int damageParticles = Math.max(1, Math.min(12, Math.round(damage)));
         level.sendParticles(ParticleTypes.DAMAGE_INDICATOR, true, true, hitLocation.x(), hitLocation.y(), hitLocation.z(), damageParticles, 0.2D, 0.3D, 0.2D, 0.05D);
+    }
+
+    static SoundEvent hitSound(boolean headshot) {
+        return headshot ? SoundEvents.PLAYER_LEVELUP : SoundEvents.PLAYER_ATTACK_CRIT;
+    }
+
+    static float hitSoundPitch(boolean headshot) {
+        return headshot ? 1.65F : 1.35F;
     }
 
     private static void playBuildHitEffects(ServerLevel level, Vec3 hitLocation) {
@@ -555,7 +823,24 @@ public final class WeaponItem extends SimplePolymerItem {
         COOLDOWN
     }
 
-    record DamageReport(boolean damaged, float damage) {
+    record SpreadState(boolean aiming, boolean crouching, boolean sprinting, boolean airborne, boolean moving, double heat) {
+    }
+
+    private record SpreadProfile(
+            double baseSpread,
+            double adsMultiplier,
+            double standingStillMultiplier,
+            double crouchingMultiplier,
+            double movingMultiplier,
+            double sprintingMultiplier,
+            double airborneMultiplier,
+            double heatPerShot,
+            double maxHeat,
+            double coolPerTick
+    ) {
+    }
+
+    record DamageReport(float damage, boolean shielded) {
     }
 
     private record ShotTrace(Vec3 start, Vec3 end, LivingEntity target, Vec3 hitLocation, BlockPos blockHitPos) {

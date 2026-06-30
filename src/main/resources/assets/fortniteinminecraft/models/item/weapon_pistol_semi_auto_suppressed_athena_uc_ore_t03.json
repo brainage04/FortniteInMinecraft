@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "fortniteinminecraft:item/weapon_pistol_semi_auto_suppressed_athena_uc_ore_t03"
+  }
+}

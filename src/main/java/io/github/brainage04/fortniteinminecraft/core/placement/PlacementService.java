@@ -116,7 +116,7 @@ public final class PlacementService {
             if (intendedModelPermitsFootprintOverlap(existingSlot, candidateSlot)) {
                 continue;
             }
-            PieceFootprint existingFootprint = footprints.project(existingSlot);
+            PieceFootprint existingFootprint = footprints.project(existing);
             BlockOffset existingOrigin = snapGrid.blockOrigin(existingSlot.gridPos());
             for (BlockOffset existingBlock : existingFootprint.absoluteBlocks(existingOrigin)) {
                 if (candidateSet.contains(existingBlock)) {
@@ -128,7 +128,7 @@ public final class PlacementService {
     }
 
     private static boolean intendedModelPermitsFootprintOverlap(BuildSlot existing, BuildSlot candidate) {
-        return existing.pieceType() == candidate.pieceType();
+        return existing.pieceType().permitsFootprintOverlapWith(candidate.pieceType());
     }
 
     private static int requiredUnobstructedBlocks(int totalBlocks) {

@@ -15,6 +15,7 @@ import java.util.Objects;
 public final class PlayerPlacementRescue {
     private static final double COLLISION_EPSILON = 1.0E-6D;
     private static final double UPWARD_SCAN_STEP_BLOCKS = 0.25D;
+    private static final double MAX_RESCUE_OFFSET_BLOCKS = 2.0D;
 
     private PlayerPlacementRescue() {
     }
@@ -38,8 +39,12 @@ public final class PlayerPlacementRescue {
             return false;
         }
 
-        double offset = upwardOffset(playerBox, blocks);
-        double maxOffset = Math.max(offset, rules.wallHeightBlocks() + 2.0D);
+        double requiredOffset = upwardOffset(playerBox, blocks);
+        if (!withinRescueCap(requiredOffset)) {
+            return false;
+        }
+        double offset = cappedRescueOffset(requiredOffset);
+        double maxOffset = MAX_RESCUE_OFFSET_BLOCKS;
         while (offset <= maxOffset) {
             AABB candidateBox = playerBox.move(0.0D, offset, 0.0D).deflate(COLLISION_EPSILON);
             if (level.noCollision(player, candidateBox)) {
@@ -81,6 +86,14 @@ public final class PlayerPlacementRescue {
             }
         }
         return Math.max(0.0D, highestTop - playerBox.minY + COLLISION_EPSILON);
+    }
+
+    static boolean withinRescueCap(double requiredOffset) {
+        return requiredOffset <= MAX_RESCUE_OFFSET_BLOCKS + COLLISION_EPSILON;
+    }
+
+    static double cappedRescueOffset(double requiredOffset) {
+        return Math.min(requiredOffset, MAX_RESCUE_OFFSET_BLOCKS);
     }
 
     private static void teleportUp(ServerPlayer player, double offset) {

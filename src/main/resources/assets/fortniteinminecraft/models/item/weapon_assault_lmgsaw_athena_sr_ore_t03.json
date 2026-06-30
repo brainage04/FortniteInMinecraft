@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "fortniteinminecraft:item/weapon_assault_lmgsaw_athena_sr_ore_t03"
+  }
+}

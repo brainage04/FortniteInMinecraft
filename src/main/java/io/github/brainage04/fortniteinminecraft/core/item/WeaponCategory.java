@@ -5,7 +5,8 @@ public enum WeaponCategory {
     SHOTGUN("Shotgun"),
     SMG("SMG"),
     PISTOL("Pistol"),
-    SNIPER("Sniper");
+    SNIPER("Sniper"),
+    EXPLOSIVE("Explosive");
 
     private final String label;
 

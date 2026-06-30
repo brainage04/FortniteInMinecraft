@@ -5,7 +5,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Objects;
 
 public final class LaunchPadImpulse {
-    public static final double DEFAULT_UPWARD_VELOCITY = 1.25D;
+    public static final double DEFAULT_UPWARD_VELOCITY = 2.4D;
     public static final double DEFAULT_FORWARD_VELOCITY = 0.55D;
 
     private LaunchPadImpulse() {

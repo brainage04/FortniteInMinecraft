@@ -57,6 +57,35 @@ class BuildSupportCascadeTest {
         assertEquals(List.of(floating), unsupported.stream().map(BuildPieceState::slot).toList());
     }
 
+    @Test
+    void collapsePlanDelaysUnsupportedPiecesByDistanceFromRemovedSupport() {
+        BuildWorldState state = new BuildWorldState();
+        BuildSlot near = floorSlot(1, 0, 0);
+        BuildSlot middle = floorSlot(2, 0, 0);
+        BuildSlot far = floorSlot(3, 0, 0);
+        state.addIfAbsent(BuildPieceState.placed(near, MaterialType.WOOD, PLAYER, 1));
+        state.addIfAbsent(BuildPieceState.placed(middle, MaterialType.WOOD, PLAYER, 1));
+        state.addIfAbsent(BuildPieceState.placed(far, MaterialType.WOOD, PLAYER, 1));
+
+        List<BuildSupportCascade.CollapseStep> plan = CASCADE.collapsePlan(
+                state,
+                "overworld",
+                WorldObstruction.none(),
+                floorSlot(0, 0, 0)
+        );
+
+        assertEquals(List.of(near, middle, far), plan.stream().map(step -> step.piece().slot()).toList());
+        assertEquals(List.of(0, 1, 2), plan.stream().map(BuildSupportCascade.CollapseStep::distance).toList());
+        assertEquals(
+                List.of(
+                        BuildSupportCascade.COLLAPSE_INITIAL_DELAY_TICKS,
+                        BuildSupportCascade.COLLAPSE_INITIAL_DELAY_TICKS + BuildSupportCascade.COLLAPSE_DISTANCE_DELAY_TICKS,
+                        BuildSupportCascade.COLLAPSE_INITIAL_DELAY_TICKS + 2 * BuildSupportCascade.COLLAPSE_DISTANCE_DELAY_TICKS
+                ),
+                plan.stream().map(BuildSupportCascade.CollapseStep::delayTicks).toList()
+        );
+    }
+
     private static BuildSlot floorSlot(int x, int y, int z) {
         return BuildSlot.of("overworld", x, y, z, PieceType.FLOOR, Orientation.NORTH);
     }

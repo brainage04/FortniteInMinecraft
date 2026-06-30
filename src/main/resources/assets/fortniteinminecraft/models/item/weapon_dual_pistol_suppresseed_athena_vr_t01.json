@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "fortniteinminecraft:item/weapon_dual_pistol_suppresseed_athena_vr_t01"
+  }
+}

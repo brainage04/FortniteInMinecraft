@@ -15,7 +15,6 @@ public final class PlayerBuildSession {
 
     private PieceType selectedPiece = PieceType.WALL;
     private MaterialType selectedMaterial = MaterialType.WOOD;
-    private PreviewMode previewMode = PreviewMode.GLASS;
     private PlacementCandidate previewCandidate;
     private BuildSlot lastPlacedSlot;
     private long lastPlacementTick = NO_TURBO_PLACEMENT_TICK;
@@ -30,10 +29,6 @@ public final class PlayerBuildSession {
 
     public MaterialType selectedMaterial() {
         return selectedMaterial;
-    }
-
-    public PreviewMode previewMode() {
-        return previewMode;
     }
 
     public PlacementCandidate previewCandidate() {
@@ -111,14 +106,6 @@ public final class PlayerBuildSession {
         return lastBuildUseTick != NO_TURBO_PLACEMENT_TICK
                 && tick >= lastBuildUseTick
                 && tick - lastBuildUseTick <= BUILD_USE_SWING_SUPPRESSION_TICKS;
-    }
-
-    public void selectPreviewMode(PreviewMode previewMode) {
-        Objects.requireNonNull(previewMode, "previewMode");
-        if (this.previewMode != previewMode) {
-            this.previewMode = previewMode;
-            clearPreview();
-        }
     }
 
     public PlacementCandidate candidateAt(BuildGridPos gridPos, Orientation orientation) {

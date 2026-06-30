@@ -9,4 +9,16 @@ public enum PieceType {
     public boolean ignoresOrientation() {
         return this == FLOOR || this == ROOF;
     }
+
+    public boolean usesStairConeGrid() {
+        return this == STAIR || this == ROOF;
+    }
+
+    public boolean permitsFootprintOverlapWith(PieceType other) {
+        return this == other || usesStairConeGrid() != other.usesStairConeGrid() || sharesFloorWallGridWith(other);
+    }
+
+    private boolean sharesFloorWallGridWith(PieceType other) {
+        return !usesStairConeGrid() && !other.usesStairConeGrid();
+    }
 }

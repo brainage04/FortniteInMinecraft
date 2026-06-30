@@ -1,5 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.core.state;
 
+import io.github.brainage04.fortniteinminecraft.core.placement.BuildSupportCascade;
 import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
@@ -33,16 +34,30 @@ class BuildWorldStateTest {
     }
 
     @Test
-    void indexedFootprintConflictsRejectDifferentPieceTypesButPermitSameTypeSeams() {
+    void indexedFootprintConflictsAllowSharedBuildTypeSeamsAndCrossTypeIntersections() {
         BuildWorldState state = new BuildWorldState();
         BuildSlot floor = BuildSlot.of("overworld", 0, 0, 0, PieceType.FLOOR, Orientation.NORTH);
         BuildSlot adjacentFloor = BuildSlot.of("overworld", 1, 0, 0, PieceType.FLOOR, Orientation.NORTH);
+        BuildSlot stair = BuildSlot.of("overworld", 0, 0, 0, PieceType.STAIR, Orientation.NORTH);
         BuildSlot wall = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.SOUTH);
         List<BlockOffset> sharedBlock = List.of(new BlockOffset(0, 0, 0));
 
         assertTrue(state.addIfNotConflicting(BuildPieceState.placed(floor, MaterialType.WOOD, UUID.randomUUID(), 1), sharedBlock));
         assertTrue(state.addIfNotConflicting(BuildPieceState.placed(adjacentFloor, MaterialType.WOOD, UUID.randomUUID(), 2), sharedBlock));
-        assertFalse(state.addIfNotConflicting(BuildPieceState.placed(wall, MaterialType.WOOD, UUID.randomUUID(), 3), sharedBlock));
+        assertTrue(state.addIfNotConflicting(BuildPieceState.placed(stair, MaterialType.WOOD, UUID.randomUUID(), 3), sharedBlock));
+        assertTrue(state.addIfNotConflicting(BuildPieceState.placed(wall, MaterialType.WOOD, UUID.randomUUID(), 4), sharedBlock));
+        assertEquals(4, state.size());
+    }
+
+    @Test
+    void roofConeFootprintCanShareFloorWallGridBlock() {
+        BuildWorldState state = new BuildWorldState();
+        BuildSlot floor = BuildSlot.of("overworld", 0, 0, 0, PieceType.FLOOR, Orientation.NORTH);
+        BuildSlot roof = BuildSlot.of("overworld", 0, 0, 0, PieceType.ROOF, Orientation.NORTH);
+        List<BlockOffset> sharedBlock = List.of(new BlockOffset(0, 0, 0));
+
+        assertTrue(state.addIfNotConflicting(BuildPieceState.placed(floor, MaterialType.WOOD, UUID.randomUUID(), 1), sharedBlock));
+        assertTrue(state.addIfNotConflicting(BuildPieceState.placed(roof, MaterialType.WOOD, UUID.randomUUID(), 2), sharedBlock));
         assertEquals(2, state.size());
     }
 
@@ -57,6 +72,21 @@ class BuildWorldStateTest {
 
         state.progressConstruction(80);
         assertEquals(150, state.get(slot).currentHealth());
+    }
+
+    @Test
+    void constructionProgressCanBeScopedToDimension() {
+        BuildWorldState state = new BuildWorldState();
+        BuildSlot overworld = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
+        BuildSlot nether = BuildSlot.of("the_nether", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
+        assertTrue(state.addIfAbsent(BuildPieceState.placed(overworld, MaterialType.WOOD, UUID.randomUUID(), 0)));
+        assertTrue(state.addIfAbsent(BuildPieceState.placed(nether, MaterialType.WOOD, UUID.randomUUID(), 0)));
+
+        List<BuildPieceState> changed = state.progressConstruction("the_nether", 40);
+
+        assertEquals(List.of(nether), changed.stream().map(BuildPieceState::slot).toList());
+        assertEquals(90, state.get(overworld).currentHealth());
+        assertEquals(120, state.get(nether).currentHealth());
     }
 
     @Test
@@ -111,5 +141,57 @@ class BuildWorldStateTest {
         assertSame(original, state.get(slot));
         assertTrue(state.replaceIfCurrent(slot, original.id(), edited));
         assertSame(edited, state.get(slot));
+    }
+
+    @Test
+    void scheduledCollapsesDrainByDueTickAndSkipRemovedPieces() {
+        BuildWorldState state = new BuildWorldState();
+        BuildPieceState near = BuildPieceState.placed(
+                BuildSlot.of("overworld", 0, 0, 0, PieceType.FLOOR, Orientation.NORTH),
+                MaterialType.WOOD,
+                UUID.randomUUID(),
+                0
+        );
+        BuildPieceState far = BuildPieceState.placed(
+                BuildSlot.of("overworld", 1, 0, 0, PieceType.FLOOR, Orientation.NORTH),
+                MaterialType.WOOD,
+                UUID.randomUUID(),
+                0
+        );
+        state.addIfAbsent(near);
+        state.addIfAbsent(far);
+
+        int scheduled = state.scheduleCollapse(List.of(
+                new BuildSupportCascade.CollapseStep(near, 0, 4),
+                new BuildSupportCascade.CollapseStep(far, 1, 7)
+        ), 10);
+
+        assertEquals(2, scheduled);
+        assertTrue(state.drainDueCollapses("overworld", 13).isEmpty());
+        assertEquals(List.of(near.slot()), state.drainDueCollapses("overworld", 14).stream().map(BuildPieceState::slot).toList());
+        assertEquals(1, state.scheduledCollapseCount());
+
+        state.remove(far.slot());
+
+        assertTrue(state.drainDueCollapses("overworld", 17).isEmpty());
+        assertEquals(0, state.scheduledCollapseCount());
+    }
+
+    @Test
+    void revalidatedDrainDropsDueCollapsesThatRegainedSupport() {
+        BuildWorldState state = new BuildWorldState();
+        BuildPieceState piece = BuildPieceState.placed(
+                BuildSlot.of("overworld", 0, 0, 0, PieceType.FLOOR, Orientation.NORTH),
+                MaterialType.WOOD,
+                UUID.randomUUID(),
+                0
+        );
+        state.addIfAbsent(piece);
+        assertEquals(1, state.scheduleCollapse(List.of(
+                new BuildSupportCascade.CollapseStep(piece, 0, 4)
+        ), 10));
+
+        assertTrue(state.drainDueCollapses("overworld", 14, List.of()).isEmpty());
+        assertEquals(0, state.scheduledCollapseCount());
     }
 }
