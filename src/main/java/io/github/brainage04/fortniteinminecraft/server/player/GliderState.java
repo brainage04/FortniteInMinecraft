@@ -1,7 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.server.player;
 
 public final class GliderState {
-    public static final double DEFAULT_MAX_FALL_SPEED = -0.25D;
+    public static final double DEFAULT_MAX_FALL_SPEED = -0.125D;
     public static final double MIN_REDEPLOY_GROUND_DISTANCE_BLOCKS = 35.0D;
 
     private long redeployUntilTick = -1L;

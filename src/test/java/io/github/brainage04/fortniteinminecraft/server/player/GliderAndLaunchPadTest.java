@@ -78,8 +78,8 @@ class GliderAndLaunchPadTest {
 
     @Test
     void gliderFallSpeedCapsOnlyFastFalls() {
-        assertEquals(-0.25D, GliderState.fallSpeed(-1.0D, -0.25D), 1.0E-9D);
-        assertEquals(-0.1D, GliderState.fallSpeed(-0.1D, -0.25D), 1.0E-9D);
+        assertEquals(-0.125D, GliderState.fallSpeed(-1.0D, -0.125D), 1.0E-9D);
+        assertEquals(-0.1D, GliderState.fallSpeed(-0.1D, -0.125D), 1.0E-9D);
     }
 
     @Test
@@ -87,7 +87,7 @@ class GliderAndLaunchPadTest {
         Vec3 velocity = MobilityItemInteractions.glideVelocity(new Vec3(0.5D, -1.0D, 0.0D), Vec3.ZERO);
 
         assertTrue(velocity.x() > 0.49D);
-        assertEquals(-0.25D, velocity.y(), 1.0E-9D);
+        assertEquals(-0.125D, velocity.y(), 1.0E-9D);
     }
 
     @Test
