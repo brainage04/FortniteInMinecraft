@@ -140,6 +140,11 @@ public final class ClientBuildPreview {
         display.setBlockState(state);
         display.setBrightnessOverride(Brightness.FULL_BRIGHT);
         float outset = PREVIEW_OUTSET_BLOCKS;
+        display.setViewRange(1.0F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        display.setWidth(Math.max(box.sizeX(), box.sizeZ()) + outset * 2.0F);
+        display.setHeight(box.sizeY() + outset * 2.0F);
         display.setTransformation(new Transformation(
                 new Vector3f(-outset, -outset, -outset),
                 new Quaternionf(),

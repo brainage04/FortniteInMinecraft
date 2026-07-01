@@ -3,6 +3,7 @@ package io.github.brainage04.fortniteinminecraft;
 import io.github.brainage04.fortniteinminecraft.client.ClientBuildHooks;
 import io.github.brainage04.fortniteinminecraft.client.ClientBuildPreview;
 import io.github.brainage04.fortniteinminecraft.client.ClientResourceWalletHud;
+import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
@@ -32,6 +33,7 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
@@ -53,7 +55,7 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
     private static final BuildRules VISUAL_BUILD_RULES = BuildRules.defaults();
     private static final FootprintProjector VISUAL_FOOTPRINTS = new FootprintProjector(VISUAL_BUILD_RULES);
     private static final SnapGrid VISUAL_SNAP_GRID = new SnapGrid(VISUAL_BUILD_RULES);
-    private static final int VISUAL_BUILD_Z_GRID = 4;
+    private static final int VISUAL_BUILD_Z_GRID = 8;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -172,27 +174,30 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
     }
 
     private static void demonstrateBuildPreviewAndHolographicPieces(ClientGameTestContext context, TestDedicatedServerContext server) {
-        context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+        context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         int buildGridY = server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             ServerLevel level = player.level();
             int surfaceY = prepareHologramDemoScene(level);
             String dimension = level.dimension().identifier().toString();
             int gridY = VISUAL_SNAP_GRID.snap(dimension, 0, surfaceY, 0).y();
+            BuildSlot previewSlot = BuildSlot.of(dimension, 1, gridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH);
             player.setGameMode(GameType.CREATIVE);
-            player.teleportTo(5.5D, surfaceY, 30.5D);
-            player.setYRot(180.0F);
-            player.setXRot(8.0F);
+            player.teleportTo(5.5D, surfaceY, 27.5D);
+            player.setYRot(0.0F);
+            player.setXRot(0.0F);
+            placePreviewBackdrop(level, previewSlot);
             placeHolographicBuildPiece(level, player, gridY);
             return gridY;
         });
 
         context.waitTicks(20);
         String dimension = context.computeOnClient(client -> client.level.dimension().identifier().toString());
+        BuildSlot previewSlot = BuildSlot.of(dimension, 1, buildGridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH);
         suppressAutomaticPreview(server, true);
         try {
-            showBuildPreview(context, server, BuildSlot.of(dimension, 1, buildGridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH), MaterialType.WOOD, true, 80);
-            showBuildPreview(context, server, BuildSlot.of(dimension, 3, buildGridY, VISUAL_BUILD_Z_GRID, PieceType.WALL, Orientation.SOUTH), MaterialType.STONE, false, 80);
+            showBuildPreview(context, server, previewSlot, MaterialType.WOOD, true, 100);
+            showBuildPreview(context, server, previewSlot, MaterialType.STONE, false, 100);
         } finally {
             clearBuildPreview(context, server);
             suppressAutomaticPreview(server, false);
@@ -232,6 +237,15 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
             Block block = ((y - surfaceY) / 4) % 2 == 0 ? Blocks.SEA_LANTERN : Blocks.WOOL.blue();
             level.setBlock(new BlockPos(10, y, 47), block.defaultBlockState(), Block.UPDATE_ALL);
             level.setBlock(new BlockPos(11, y, 47), block.defaultBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    private static void placePreviewBackdrop(ServerLevel level, BuildSlot slot) {
+        PieceFootprint footprint = VISUAL_FOOTPRINTS.project(slot);
+        BlockOffset origin = VISUAL_SNAP_GRID.blockOrigin(slot.gridPos());
+        for (BlockOffset local : footprint.localBlocks()) {
+            BlockPos previewPos = new BlockPos(origin.x() + local.x(), origin.y() + local.y(), origin.z() + local.z());
+            level.setBlock(previewPos.relative(Direction.SOUTH), Blocks.WOOL.black().defaultBlockState(), Block.UPDATE_ALL);
         }
     }
 
@@ -365,7 +379,7 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
     }
 
     private static void demonstrateGliderRedeploy(ClientGameTestContext context, TestDedicatedServerContext server) {
-        context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+        context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             ServerLevel level = player.level();
