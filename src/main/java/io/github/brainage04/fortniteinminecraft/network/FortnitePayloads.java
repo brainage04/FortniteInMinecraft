@@ -1,6 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.network;
 
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
+import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.model.Orientation;
@@ -26,6 +27,7 @@ public final class FortnitePayloads {
         PayloadTypeRegistry.clientboundPlay().register(EditModePayload.TYPE, EditModePayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(ResourceStatePayload.TYPE, ResourceStatePayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(BuildPreviewPayload.TYPE, BuildPreviewPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(LootContainerProgressPayload.TYPE, LootContainerProgressPayload.CODEC);
         registered = true;
     }
 
@@ -77,19 +79,99 @@ public final class FortnitePayloads {
         }
     }
 
-    public record EditModePayload(boolean active) implements CustomPacketPayload {
+    public record EditModePayload(
+            boolean active,
+            String dimension,
+            int gridX,
+            int gridY,
+            int gridZ,
+            PieceType pieceType,
+            Orientation orientation,
+            MaterialType material,
+            int selectedMask
+    ) implements CustomPacketPayload {
         public static final Type<EditModePayload> TYPE = new Type<>(id("edit_mode"));
         public static final StreamCodec<RegistryFriendlyByteBuf, EditModePayload> CODEC = StreamCodec.ofMember(
                 EditModePayload::write,
                 EditModePayload::read
         );
 
+        public EditModePayload {
+            if (active) {
+                if (dimension == null || dimension.isBlank()) {
+                    throw new IllegalArgumentException("dimension cannot be blank for active edit previews");
+                }
+            } else {
+                dimension = "";
+                gridX = 0;
+                gridY = 0;
+                gridZ = 0;
+                pieceType = PieceType.WALL;
+                orientation = Orientation.NORTH;
+                material = MaterialType.WOOD;
+                selectedMask = 0;
+            }
+            if (pieceType == null) {
+                throw new IllegalArgumentException("pieceType cannot be null");
+            }
+            if (orientation == null) {
+                throw new IllegalArgumentException("orientation cannot be null");
+            }
+            if (material == null) {
+                throw new IllegalArgumentException("material cannot be null");
+            }
+        }
+
+        public static EditModePayload inactive() {
+            return new EditModePayload(false, "", 0, 0, 0, PieceType.WALL, Orientation.NORTH, MaterialType.WOOD, 0);
+        }
+
+        public static EditModePayload active(BuildPieceState piece, int selectedMask) {
+            BuildSlot slot = piece.slot();
+            return new EditModePayload(
+                    true,
+                    slot.gridPos().dimension(),
+                    slot.gridPos().x(),
+                    slot.gridPos().y(),
+                    slot.gridPos().z(),
+                    slot.pieceType(),
+                    slot.orientation(),
+                    piece.material(),
+                    selectedMask
+            );
+        }
+
         private static EditModePayload read(RegistryFriendlyByteBuf buffer) {
-            return new EditModePayload(buffer.readBoolean());
+            boolean active = buffer.readBoolean();
+            if (!active) {
+                return inactive();
+            }
+            return new EditModePayload(
+                    true,
+                    buffer.readUtf(),
+                    buffer.readVarInt(),
+                    buffer.readVarInt(),
+                    buffer.readVarInt(),
+                    buffer.readEnum(PieceType.class),
+                    buffer.readEnum(Orientation.class),
+                    buffer.readEnum(MaterialType.class),
+                    buffer.readVarInt()
+            );
         }
 
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeBoolean(active);
+            if (!active) {
+                return;
+            }
+            buffer.writeUtf(dimension);
+            buffer.writeVarInt(gridX);
+            buffer.writeVarInt(gridY);
+            buffer.writeVarInt(gridZ);
+            buffer.writeEnum(pieceType);
+            buffer.writeEnum(orientation);
+            buffer.writeEnum(material);
+            buffer.writeVarInt(selectedMask);
         }
 
         @Override
@@ -245,6 +327,62 @@ public final class FortnitePayloads {
             buffer.writeEnum(orientation);
             buffer.writeEnum(material);
             buffer.writeBoolean(valid);
+        }
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    public record LootContainerProgressPayload(
+            boolean active,
+            String label,
+            int elapsedTicks,
+            int totalTicks
+    ) implements CustomPacketPayload {
+        public static final Type<LootContainerProgressPayload> TYPE = new Type<>(id("loot_container_progress"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, LootContainerProgressPayload> CODEC = StreamCodec.ofMember(
+                LootContainerProgressPayload::write,
+                LootContainerProgressPayload::read
+        );
+
+        public LootContainerProgressPayload {
+            if (active) {
+                if (label == null || label.isBlank()) {
+                    throw new IllegalArgumentException("label cannot be blank for active loot container progress");
+                }
+                if (totalTicks <= 0) {
+                    throw new IllegalArgumentException("totalTicks must be positive for active loot container progress");
+                }
+                elapsedTicks = Math.clamp(elapsedTicks, 0, totalTicks);
+            } else {
+                label = "";
+                elapsedTicks = 0;
+                totalTicks = 0;
+            }
+        }
+
+        public static LootContainerProgressPayload inactive() {
+            return new LootContainerProgressPayload(false, "", 0, 0);
+        }
+
+        private static LootContainerProgressPayload read(RegistryFriendlyByteBuf buffer) {
+            boolean active = buffer.readBoolean();
+            if (!active) {
+                return inactive();
+            }
+            return new LootContainerProgressPayload(true, buffer.readUtf(), buffer.readVarInt(), buffer.readVarInt());
+        }
+
+        private void write(RegistryFriendlyByteBuf buffer) {
+            buffer.writeBoolean(active);
+            if (!active) {
+                return;
+            }
+            buffer.writeUtf(label);
+            buffer.writeVarInt(elapsedTicks);
+            buffer.writeVarInt(totalTicks);
         }
 
         @Override

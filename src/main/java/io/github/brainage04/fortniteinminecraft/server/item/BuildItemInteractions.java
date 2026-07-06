@@ -43,6 +43,7 @@ public final class BuildItemInteractions {
     static final long TURBO_PLACEMENT_INTERVAL_TICKS = 1L;
     static final long TURBO_INPUT_GRACE_TICKS = 8L;
     private static final double REPAIR_HEALTH_FRACTION = 0.2D;
+    private static BuildSessionManager registeredSessions;
     private static BuildWorldState registeredState;
     private static WorldBuildMaterializer registeredMaterializer;
     private static final Set<UUID> AUTOMATIC_PREVIEW_SUPPRESSED_PLAYERS = new HashSet<>();
@@ -60,6 +61,7 @@ public final class BuildItemInteractions {
         Objects.requireNonNull(state, "state");
         Objects.requireNonNull(rules, "rules");
         Objects.requireNonNull(materializer, "materializer");
+        registeredSessions = sessions;
         registeredState = state;
         registeredMaterializer = materializer;
     }
@@ -118,6 +120,11 @@ public final class BuildItemInteractions {
         return session != null && session.buildModeActive();
     }
 
+    public static boolean hasActiveBuildMode(ServerPlayer player) {
+        Objects.requireNonNull(player, "player");
+        return registeredSessions != null && hasActiveBuildMode(player, registeredSessions);
+    }
+
     public static InteractionResult selectPiece(
             ServerPlayer player,
             PieceType pieceType,
@@ -132,7 +139,6 @@ public final class BuildItemInteractions {
         PlayerBuildSession session = sessions.getOrCreate(player.getUUID());
         session.activateBuildMode(pieceType);
         updatePreview(player, rules, session, pieceType);
-        player.sendSystemMessage(Component.literal("Selected " + label(pieceType) + " build piece."), true);
         return InteractionResult.SUCCESS_SERVER;
     }
 
@@ -158,6 +164,9 @@ public final class BuildItemInteractions {
         Objects.requireNonNull(rules, "rules");
         PlayerBuildSession session = sessions.get(player.getUUID());
         if (session == null || !session.buildModeActive()) {
+            return InteractionResult.PASS;
+        }
+        if (!canRotate(session.selectedPiece())) {
             return InteractionResult.PASS;
         }
         session.rotatePlacement();
@@ -376,6 +385,10 @@ public final class BuildItemInteractions {
         }
 
         return placeCandidate(player, level, session, candidate, state, rules, materializer, tick, true, true);
+    }
+
+    private static boolean canRotate(PieceType pieceType) {
+        return pieceType == PieceType.STAIR || pieceType == PieceType.ROOF;
     }
 
     private static InteractionResult placeSelected(

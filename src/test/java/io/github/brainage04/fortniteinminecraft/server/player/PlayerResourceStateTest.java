@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlayerResourceStateTest {
@@ -44,6 +45,41 @@ class PlayerResourceStateTest {
 
         assertFalse(PickupPayload.gold(25).applyTo(state).granted());
         assertTrue(PickupPayload.ammo(AmmoType.LIGHT, 1).applyTo(state).granted());
+    }
+
+    @Test
+    void ammoAndGoldSpendingRejectsOverspendAndConsumesExactAmounts() {
+        PlayerResourceState state = new PlayerResourceState();
+        state.addAmmo(AmmoType.MEDIUM, 18);
+        state.addGold(250);
+
+        assertFalse(state.spendAmmo(AmmoType.MEDIUM, 19));
+        assertEquals(18, state.ammo(AmmoType.MEDIUM));
+        assertTrue(state.spendAmmo(AmmoType.MEDIUM, 12));
+        assertEquals(6, state.ammo(AmmoType.MEDIUM));
+
+        assertFalse(state.spendGold(300));
+        assertEquals(250, state.gold());
+        assertTrue(state.spendGold(200));
+        assertEquals(50, state.gold());
+    }
+
+    @Test
+    void infiniteAmmoSpendingDoesNotDrainReserve() {
+        PlayerResourceState state = new PlayerResourceState();
+        state.addAmmo(AmmoType.LIGHT, 3);
+        state.setInfiniteAmmo(true);
+
+        assertTrue(state.spendAmmo(AmmoType.LIGHT, 999));
+        assertEquals(3, state.ammo(AmmoType.LIGHT));
+    }
+
+    @Test
+    void spendingRejectsNegativeAmounts() {
+        PlayerResourceState state = new PlayerResourceState();
+
+        assertThrows(IllegalArgumentException.class, () -> state.spendAmmo(AmmoType.ROCKETS, -1));
+        assertThrows(IllegalArgumentException.class, () -> state.spendGold(-1));
     }
 
     @Test

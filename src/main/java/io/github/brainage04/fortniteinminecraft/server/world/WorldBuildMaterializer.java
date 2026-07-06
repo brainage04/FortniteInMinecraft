@@ -205,13 +205,15 @@ public final class WorldBuildMaterializer {
                 } else {
                     nextState = blockStateForOwner(lastOwner(owners), pos);
                 }
-                BlockState previousState = blockStateFor(piece, pos);
-                if (!writer.setBlock(pos, nextState)) {
-                    rollback(rewrites, writer);
-                    restoreSnapshots(blockSnapshots);
-                    return WorldBuildWriteResult.failure(rewrites.size(), "world clear failed at " + describe(pos));
+                BlockState previousState = writer.blockState(pos);
+                if (!previousState.equals(nextState)) {
+                    if (!writer.setBlock(pos, nextState)) {
+                        rollback(rewrites, writer);
+                        restoreSnapshots(blockSnapshots);
+                        return WorldBuildWriteResult.failure(rewrites.size(), "world clear failed at " + describe(pos));
+                    }
+                    rewrites.add(new BlockRestore(pos, previousState));
                 }
-                rewrites.add(new BlockRestore(pos, previousState));
             }
         }
 

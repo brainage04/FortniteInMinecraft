@@ -1,5 +1,5 @@
 {
-  "parent": "minecraft:item/generated",
+  "parent": "minecraft:item/handheld",
   "textures": {
     "layer0": "fortniteinminecraft:item/weapon_spytech_dual_pistol_semi_auto_athena_sr_ore_t03"
   }

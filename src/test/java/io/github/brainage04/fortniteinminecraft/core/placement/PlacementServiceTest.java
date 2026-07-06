@@ -236,10 +236,10 @@ class PlacementServiceTest {
     }
 
     @Test
-    void lessThanTwentyPercentUnobstructedRejectsPlacement() {
+    void fullyObstructedFootprintStillAllowsPlacement() {
         BuildWorldState state = new BuildWorldState();
         ResourceWallet wallet = ResourceWallet.with(MaterialType.WOOD, 50);
-        WorldObstruction obstruction = (dimension, x, y, z) -> y == -1 && !(x == 3 && z >= 0 && z <= 3);
+        WorldObstruction obstruction = (dimension, x, y, z) -> y == -1;
         PlacementService service = new PlacementService(state, RULES, obstruction);
         BuildSlot slot = floorSlot(0, 0, 0);
         PlacementCandidate candidate = new PlacementCandidate(slot, MaterialType.WOOD);
@@ -247,10 +247,10 @@ class PlacementServiceTest {
         PlacementPreview preview = service.preview(candidate, PlayerBuildContext.creative(PLAYER));
         PlacementResult result = service.place(candidate, PlayerBuildContext.survival(PLAYER, wallet), 1);
 
-        assertEquals(PlacementFailure.OBSTRUCTED, preview.failure());
-        assertEquals(PlacementFailure.OBSTRUCTED, result.failure());
-        assertEquals(50, wallet.get(MaterialType.WOOD));
-        assertEquals(0, state.size());
+        assertTrue(preview.valid(), preview.message());
+        assertTrue(result.placed(), result.message());
+        assertEquals(40, wallet.get(MaterialType.WOOD));
+        assertEquals(1, state.size());
     }
 
     @Test

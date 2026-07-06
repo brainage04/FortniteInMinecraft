@@ -75,7 +75,6 @@ public final class BuildVisualBlocks {
                 .mapColor(color)
                 .sound(SoundType.GLASS)
                 .noOcclusion()
-                .lightLevel(state -> 7)
                 .noLootTable()
                 .setId(key));
     }

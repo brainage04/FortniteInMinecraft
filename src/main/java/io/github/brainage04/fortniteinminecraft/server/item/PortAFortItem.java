@@ -145,7 +145,7 @@ public final class PortAFortItem extends Item {
         return buildState != null && buildRules != null && buildMaterializer != null;
     }
 
-    private static int deployFort(ServerLevel level, Definition definition, UUID owner, Orientation orientation, HitResult impact) {
+    static int deployFort(ServerLevel level, Definition definition, UUID owner, Orientation orientation, HitResult impact) {
         if (!configured()) {
             return 0;
         }

@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=up": {
+      "model": "fortniteinminecraft:block/deployable_trap_trigger"
+    },
+    "facing=down": {
+      "model": "fortniteinminecraft:block/deployable_trap_trigger",
+      "x": 180
+    },
+    "facing=north": {
+      "model": "fortniteinminecraft:block/deployable_trap_trigger",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "fortniteinminecraft:block/deployable_trap_trigger",
+      "x": 90,
+      "y": 180
+    },
+    "facing=west": {
+      "model": "fortniteinminecraft:block/deployable_trap_trigger",
+      "x": 90,
+      "y": 270
+    },
+    "facing=east": {
+      "model": "fortniteinminecraft:block/deployable_trap_trigger",
+      "x": 90,
+      "y": 90
+    }
+  }
+}

@@ -46,6 +46,7 @@ final class ItemCatalog {
             List<WeaponEntry> weapons,
             List<ConsumableEntry> consumables,
             List<PickupEntry> pickups,
+            List<LootContainerEntry> lootContainers,
             List<ThrowableImpulseEntry> throwableImpulses,
             List<UtilityEntry> utilities
     ) {
@@ -55,6 +56,7 @@ final class ItemCatalog {
             weapons = copy(weapons, "weapons");
             consumables = copy(consumables, "consumables");
             pickups = copy(pickups, "pickups");
+            lootContainers = copy(lootContainers, "lootContainers");
             throwableImpulses = copy(throwableImpulses, "throwableImpulses");
             utilities = copy(utilities, "utilities");
         }
@@ -120,9 +122,15 @@ final class ItemCatalog {
             double reloadSeconds,
             int pellets,
             double rangeBlocks,
-            double maxDamagePerShot
+            double maxDamagePerShot,
+            int cartridgePerFire,
+            double burstFiringRatePerSecond
     ) {
         WeaponStats toStats() {
+            int effectiveCartridgePerFire = cartridgePerFire <= 0 ? 1 : cartridgePerFire;
+            double effectiveBurstFiringRate = burstFiringRatePerSecond <= 0.0D
+                    ? fireRatePerSecond
+                    : burstFiringRatePerSecond;
             return new WeaponStats(
                     damage,
                     criticalMultiplier,
@@ -131,7 +139,9 @@ final class ItemCatalog {
                     reloadSeconds,
                     pellets,
                     rangeBlocks,
-                    maxDamagePerShot
+                    maxDamagePerShot,
+                    effectiveCartridgePerFire,
+                    effectiveBurstFiringRate
             );
         }
     }
@@ -221,6 +231,70 @@ final class ItemCatalog {
     record PickupPayloadEntry(PickupPayloadKind kind, MaterialType material, AmmoType ammoType, int amount) {
         PickupPayloadEntry {
             Objects.requireNonNull(kind, "kind");
+        }
+    }
+
+    enum LootContainerKind {
+        CHEST,
+        AMMO_BOX
+    }
+
+    record LootContainerEntry(
+            String path,
+            String displayName,
+            LootContainerKind kind,
+            String clientItem,
+            int openTicks,
+            LootTableEntry loot
+    ) {
+        LootContainerEntry {
+            path = requireText(path, "path");
+            displayName = requireText(displayName, "displayName");
+            Objects.requireNonNull(kind, "kind");
+            clientItem = requireText(clientItem, "clientItem");
+            if (openTicks <= 0) {
+                throw new IllegalArgumentException("openTicks must be positive");
+            }
+            Objects.requireNonNull(loot, "loot");
+        }
+    }
+
+    record LootTableEntry(
+            List<LootRarityWeight> weaponRarityWeights,
+            List<LootPathEntry> consumables,
+            List<LootAmmoWeight> ammoTypeWeights
+    ) {
+        LootTableEntry {
+            weaponRarityWeights = copy(weaponRarityWeights, "weaponRarityWeights");
+            consumables = copy(consumables, "consumables");
+            ammoTypeWeights = copy(ammoTypeWeights, "ammoTypeWeights");
+        }
+    }
+
+    record LootRarityWeight(FortniteRarity rarity, double weight) {
+        LootRarityWeight {
+            Objects.requireNonNull(rarity, "rarity");
+            if (weight < 0.0D) {
+                throw new IllegalArgumentException("rarity weight cannot be negative");
+            }
+        }
+    }
+
+    record LootPathEntry(String path, double weight) {
+        LootPathEntry {
+            path = requireText(path, "path");
+            if (weight < 0.0D) {
+                throw new IllegalArgumentException("path weight cannot be negative");
+            }
+        }
+    }
+
+    record LootAmmoWeight(AmmoType ammoType, double weight) {
+        LootAmmoWeight {
+            Objects.requireNonNull(ammoType, "ammoType");
+            if (weight < 0.0D) {
+                throw new IllegalArgumentException("ammo weight cannot be negative");
+            }
         }
     }
 

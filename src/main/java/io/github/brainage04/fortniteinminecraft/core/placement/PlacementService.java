@@ -76,22 +76,6 @@ public final class PlacementService {
         if (state.conflicts(slot) || overlapsExistingFootprint(slot, absoluteBlocks)) {
             return Validation.rejected(footprint, absoluteBlocks, PlacementFailure.OCCUPIED, "build footprint overlaps an occupied build piece");
         }
-        int obstructedBlocks = 0;
-        for (BlockOffset block : absoluteBlocks) {
-            if (obstruction.isSolid(gridPos.dimension(), block.x(), block.y(), block.z())) {
-                obstructedBlocks++;
-            }
-        }
-        int requiredUnobstructedBlocks = requiredUnobstructedBlocks(absoluteBlocks.size());
-        int unobstructedBlocks = absoluteBlocks.size() - obstructedBlocks;
-        if (unobstructedBlocks < requiredUnobstructedBlocks) {
-            return Validation.rejected(
-                    footprint,
-                    absoluteBlocks,
-                    PlacementFailure.OBSTRUCTED,
-                    "less than " + BuildConstants.MIN_UNOBSTRUCTED_PLACEMENT_PERCENT + "% of the footprint is unobstructed"
-            );
-        }
 
         if (!supportValidator.hasRequiredSupport(state, footprint, absoluteBlocks, obstruction)) {
             return Validation.rejected(footprint, absoluteBlocks, PlacementFailure.UNSUPPORTED, "placement has fewer than " + BuildConstants.MIN_SUPPORTED_PLACEMENT_BLOCKS + " supported blocks");
@@ -129,10 +113,6 @@ public final class PlacementService {
 
     private static boolean intendedModelPermitsFootprintOverlap(BuildSlot existing, BuildSlot candidate) {
         return existing.pieceType().permitsFootprintOverlapWith(candidate.pieceType());
-    }
-
-    private static int requiredUnobstructedBlocks(int totalBlocks) {
-        return Math.max(1, (totalBlocks * BuildConstants.MIN_UNOBSTRUCTED_PLACEMENT_PERCENT + 99) / 100);
     }
 
     private record Validation(boolean valid, PieceFootprint footprint, List<BlockOffset> absoluteBlocks, PlacementFailure failure, String message) {

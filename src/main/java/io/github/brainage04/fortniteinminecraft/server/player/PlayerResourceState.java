@@ -87,6 +87,28 @@ public final class PlayerResourceState {
         this.infiniteAmmo = infiniteAmmo;
     }
 
+    public boolean spendAmmo(AmmoType type, int amount) {
+        Objects.requireNonNull(type, "type");
+        if (infiniteAmmo) {
+            requireNonNegative(amount);
+            return true;
+        }
+        int current = ammo(type);
+        if (!canSpend(current, amount)) {
+            return false;
+        }
+        ammo.put(type, current - amount);
+        return true;
+    }
+
+    public boolean spendGold(int amount) {
+        if (!canSpend(gold, amount)) {
+            return false;
+        }
+        gold -= amount;
+        return true;
+    }
+
     public int addMaterial(MaterialType material, int amount) {
         Objects.requireNonNull(material, "material");
         int accepted = acceptedAmount(material(material), amount, MAX_MATERIAL);
@@ -125,5 +147,16 @@ public final class PlayerResourceState {
             return 0;
         }
         return Math.min(amount, cap - current);
+    }
+
+    private static boolean canSpend(int current, int amount) {
+        requireNonNegative(amount);
+        return current >= amount;
+    }
+
+    private static void requireNonNegative(int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("amount cannot be negative");
+        }
     }
 }

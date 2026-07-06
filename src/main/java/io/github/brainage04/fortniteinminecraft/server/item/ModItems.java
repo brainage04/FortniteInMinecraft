@@ -24,10 +24,16 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public final class ModItems {
     static final long SHOCKWAVE_LAUNCHER_IMPACT_DELAY_TICKS = 10L;
@@ -45,6 +51,11 @@ public final class ModItems {
     public static final List<ExplosiveProjectileWeaponItem> EXPLOSIVE_WEAPONS = registerExplosiveWeapons(CATALOG.weapons());
     public static final List<ConsumableItem> CONSUMABLES = registerConsumables(CATALOG.consumables());
     public static final List<PickupItem> PICKUPS = registerPickups(CATALOG.pickups());
+    public static final List<LootContainerBlock> LOOT_CONTAINERS = registerLootContainers(CATALOG.lootContainers());
+    public static final LootContainerBlock LOOT_CHEST = lootContainer("loot_chest");
+    public static final LootContainerBlock AMMO_BOX = lootContainer("ammo_box");
+    public static final List<Item> LOOT_CONTAINER_ITEMS = lootContainerItems();
+    public static final BlockEntityType<LootContainerBlockEntity> LOOT_CONTAINER_BLOCK_ENTITY_TYPE = registerLootContainerBlockEntity();
     public static final List<ThrowableImpulseItem> THROWABLES = registerThrowableImpulses(CATALOG.throwableImpulses());
     public static final List<Item> UTILITY_ITEMS = registerUtilityItems(CATALOG.utilities());
 
@@ -72,6 +83,7 @@ public final class ModItems {
             registerCreativeTabs();
             creativeTabsRegistered = true;
         }
+        LootContainerInteractions.register();
     }
 
     public static BuildPieceItem asBuildPiece(ItemStack stack) {
@@ -139,19 +151,12 @@ public final class ModItems {
     }
 
     private static void registerCreativeTabs() {
-        CreativeModeTab buildTab = FabricCreativeModeTab.builder()
-                .title(Component.literal("Build Pieces"))
-                .icon(() -> new ItemStack(WALL))
-                .displayItems((parameters, output) -> BUILD_PIECES.forEach(output::accept))
-                .build();
-        Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id("build_pieces"), buildTab);
-
-        CreativeModeTab combatTab = FabricCreativeModeTab.builder()
-                .title(Component.literal("Fortnite Items"))
+        CreativeModeTab fortniteTab = FabricCreativeModeTab.builder()
+                .title(Component.literal(FortniteInMinecraft.MOD_NAME))
                 .icon(() -> new ItemStack(WEAPONS.get(0)))
-                .displayItems((parameters, output) -> COMBAT_ITEMS.forEach(output::accept))
+                .displayItems((parameters, output) -> ALL_ITEMS.forEach(output::accept))
                 .build();
-        Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id("items"), combatTab);
+        Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id("items"), fortniteTab);
 
         registerVanillaCreativeTabEntries();
     }
@@ -166,6 +171,7 @@ public final class ModItems {
             acceptAll(output, EXPLOSIVE_WEAPONS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
             acceptAll(output, THROWABLES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
             acceptAll(output, UTILITY_ITEMS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+            acceptAll(output, LOOT_CONTAINER_ITEMS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
         });
         CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("food_and_drinks")).register(
                 output -> acceptAll(output, CONSUMABLES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS)
@@ -267,6 +273,14 @@ public final class ModItems {
         }
         return List.copyOf(items);
     }
+    private static List<LootContainerBlock> registerLootContainers(List<ItemCatalog.LootContainerEntry> entries) {
+        ArrayList<LootContainerBlock> blocks = new ArrayList<>(entries.size());
+        for (ItemCatalog.LootContainerEntry entry : entries) {
+            blocks.add(registerLootContainer(entry));
+        }
+        return List.copyOf(blocks);
+    }
+
 
     private static List<ThrowableImpulseItem> registerThrowableImpulses(List<ItemCatalog.ThrowableImpulseEntry> entries) {
         ArrayList<ThrowableImpulseItem> items = new ArrayList<>(entries.size());
@@ -370,6 +384,32 @@ public final class ModItems {
                 new PickupItem(entry.displayName(), pickupPayload(entry.payload()), stackedProperties(key, entry.stackSize()), clientItem(entry.clientItem()))
         );
     }
+    private static LootContainerBlock registerLootContainer(ItemCatalog.LootContainerEntry entry) {
+        ResourceKey<Block> blockKey = blockKey(entry.path());
+        Item clientItem = clientItem(entry.clientItem());
+        LootDropTable drops = new LootDropTable(entry, WEAPONS, PROJECTILE_WEAPONS, EXPLOSIVE_WEAPONS, CONSUMABLES, PICKUPS);
+        LootContainerBlock block = Registry.register(
+                BuiltInRegistries.BLOCK,
+                blockKey,
+                new LootContainerBlock(entry, drops, lootContainerBlockProperties(blockKey))
+        );
+        ResourceKey<Item> itemKey = itemKey(entry.path());
+        Registry.register(
+                BuiltInRegistries.ITEM,
+                itemKey,
+                new LootContainerItem(block, entry.displayName(), lootContainerItemProperties(itemKey, clientItem))
+        );
+        return block;
+    }
+    private static BlockEntityType<LootContainerBlockEntity> registerLootContainerBlockEntity() {
+        return Registry.register(
+                BuiltInRegistries.BLOCK_ENTITY_TYPE,
+                id("loot_container"),
+                new BlockEntityType<>(LootContainerBlockEntity::new, Set.copyOf(LOOT_CONTAINERS))
+        );
+    }
+
+
 
     private static ThrowableImpulseItem registerThrowableImpulse(ItemCatalog.ThrowableImpulseEntry entry) {
         ResourceKey<Item> key = itemKey(entry.path());
@@ -487,13 +527,14 @@ public final class ModItems {
     }
 
     private static List<Item> combatItems() {
-        ArrayList<Item> items = new ArrayList<>(WEAPONS.size() + PROJECTILE_WEAPONS.size() + EXPLOSIVE_WEAPONS.size() + THROWABLES.size() + UTILITY_ITEMS.size() + CONSUMABLES.size());
+        ArrayList<Item> items = new ArrayList<>(WEAPONS.size() + PROJECTILE_WEAPONS.size() + EXPLOSIVE_WEAPONS.size() + THROWABLES.size() + UTILITY_ITEMS.size() + CONSUMABLES.size() + LOOT_CONTAINER_ITEMS.size());
         items.addAll(WEAPONS);
         items.addAll(PROJECTILE_WEAPONS);
         items.addAll(EXPLOSIVE_WEAPONS);
         items.addAll(THROWABLES);
         items.addAll(UTILITY_ITEMS);
         items.addAll(CONSUMABLES);
+        items.addAll(LOOT_CONTAINER_ITEMS);
         return List.copyOf(items);
     }
 
@@ -538,6 +579,23 @@ public final class ModItems {
         }
         throw new IllegalStateException("Missing build piece " + path);
     }
+    private static LootContainerBlock lootContainer(String path) {
+        for (LootContainerBlock block : LOOT_CONTAINERS) {
+            if (BuiltInRegistries.BLOCK.getKey(block).getPath().equals(path)) {
+                return block;
+            }
+        }
+        throw new IllegalStateException("Missing loot container " + path);
+    }
+
+    private static List<Item> lootContainerItems() {
+        ArrayList<Item> items = new ArrayList<>(LOOT_CONTAINERS.size());
+        for (LootContainerBlock block : LOOT_CONTAINERS) {
+            items.add(block.asItem());
+        }
+        return List.copyOf(items);
+    }
+
 
     private static Item clientItem(String id) {
         Identifier identifier = Identifier.tryParse(id);
@@ -613,6 +671,20 @@ public final class ModItems {
                 .component(DataComponents.USE_COOLDOWN, PortAFortItem.cooldownComponent(definition));
     }
 
+    private static BlockBehaviour.Properties lootContainerBlockProperties(ResourceKey<Block> key) {
+        return BlockBehaviour.Properties.ofFullCopy(Blocks.BARREL)
+                .strength(2.5F)
+                .sound(SoundType.WOOD)
+                .noOcclusion()
+                .noLootTable()
+                .setId(key);
+    }
+
+    private static Item.Properties lootContainerItemProperties(ResourceKey<Item> key, Item clientItem) {
+        return singleStackProperties(key)
+                .component(DataComponents.ITEM_MODEL, BuiltInRegistries.ITEM.getKey(clientItem));
+    }
+
     private static Item.Properties singleStackProperties(ResourceKey<Item> key) {
         return new Item.Properties()
                 .setId(key)
@@ -627,6 +699,10 @@ public final class ModItems {
 
     private static ResourceKey<Item> itemKey(String path) {
         return ResourceKey.create(BuiltInRegistries.ITEM.key(), id(path));
+    }
+
+    private static ResourceKey<Block> blockKey(String path) {
+        return ResourceKey.create(Registries.BLOCK, id(path));
     }
 
     private static Identifier id(String path) {

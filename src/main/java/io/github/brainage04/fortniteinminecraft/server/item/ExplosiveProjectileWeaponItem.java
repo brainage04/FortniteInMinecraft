@@ -170,6 +170,14 @@ public final class ExplosiveProjectileWeaponItem extends Item {
     }
 
     public InteractionResult fireFromHeldItem(ServerLevel level, ServerPlayer player, InteractionHand hand) {
+        return fireFromHeldItem(level, player, hand, false);
+    }
+
+    InteractionResult fireBurstShotFromHeldItem(ServerLevel level, ServerPlayer player, InteractionHand hand) {
+        return fireFromHeldItem(level, player, hand, true);
+    }
+
+    private InteractionResult fireFromHeldItem(ServerLevel level, ServerPlayer player, InteractionHand hand, boolean burstShot) {
         ItemStack stack = player.getItemInHand(hand);
         if (stack.getItem() != this) {
             return InteractionResult.PASS;
@@ -181,6 +189,7 @@ public final class ExplosiveProjectileWeaponItem extends Item {
         long tick = level.getGameTime();
         completeReloadIfReady(stack, tick);
         long nextFireTick = customData(stack).getLongOr(NEXT_FIRE_TICK_KEY, 0L);
+        long reloadCompleteTick = customData(stack).getLongOr(RELOAD_COMPLETE_TICK_KEY, 0L);
         int magazine = magazine(stack);
         boolean infiniteAmmo = WeaponItem.hasInfiniteAmmo(player);
         int magazineSize = definition.weapon().stats().magazineSize();
@@ -188,7 +197,9 @@ public final class ExplosiveProjectileWeaponItem extends Item {
             setGunState(stack, magazineSize, tick);
             magazine = magazineSize;
         }
-        WeaponItem.FireAttempt attempt = WeaponItem.fireAttempt(magazine, tick < nextFireTick || player.getCooldowns().isOnCooldown(stack));
+        boolean blockedByCooldown = reloadCompleteTick > tick
+                || (!burstShot && (tick < nextFireTick || player.getCooldowns().isOnCooldown(stack)));
+        WeaponItem.FireAttempt attempt = WeaponItem.fireAttempt(magazine, blockedByCooldown);
         if (attempt == WeaponItem.FireAttempt.COOLDOWN) {
             resyncCooldownOverlay(player, stack);
             return InteractionResult.SUCCESS_SERVER;
@@ -211,8 +222,22 @@ public final class ExplosiveProjectileWeaponItem extends Item {
 
         int magazineAfterShot = infiniteAmmo ? magazine : magazine - 1;
         int fireDelayTicks = WeaponItem.fireDelayTicks(definition.weapon());
-        setGunState(stack, magazineAfterShot, tick + fireDelayTicks);
-        player.getCooldowns().addCooldown(stack, fireDelayTicks);
+        setGunState(stack, magazineAfterShot, burstShot ? nextFireTick : tick + fireDelayTicks);
+        if (!burstShot) {
+            player.getCooldowns().addCooldown(stack, fireDelayTicks);
+            int remainingBurstShots = remainingBurstShots(magazineAfterShot, infiniteAmmo);
+            if (remainingBurstShots > 0) {
+                int burstIntervalTicks = WeaponItem.burstIntervalTicks(definition.weapon());
+                WeaponAutoFire.scheduleBurstShots(
+                        player,
+                        hand,
+                        this,
+                        tick + burstIntervalTicks,
+                        remainingBurstShots,
+                        burstIntervalTicks
+                );
+            }
+        }
 
         ActiveProjectile active = new ActiveProjectile(projectile, level.dimension(), tick, definition, player.getUUID());
         projectile.setActiveProjectile(active);
@@ -385,6 +410,25 @@ public final class ExplosiveProjectileWeaponItem extends Item {
             startReload(stack, tick);
         }
         return result;
+    }
+
+    private int remainingBurstShots(int magazineAfterShot, boolean infiniteAmmo) {
+        int remainingBurstShots = definition.weapon().stats().cartridgePerFire() - 1;
+        if (remainingBurstShots <= 0 || (!infiniteAmmo && magazineAfterShot <= 0)) {
+            return 0;
+        }
+        return infiniteAmmo ? remainingBurstShots : Math.min(remainingBurstShots, magazineAfterShot);
+    }
+
+    boolean canContinueScheduledBurst(ServerPlayer player, InteractionHand hand) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(hand, "hand");
+        ItemStack stack = player.getItemInHand(hand);
+        if (stack.getItem() != this) {
+            return false;
+        }
+        long tick = player.level().getGameTime();
+        return !isReloading(stack, tick) && (WeaponItem.hasInfiniteAmmo(player) || magazine(stack) > 0);
     }
 
     void setGunState(ItemStack stack, int magazine, long nextFireTick) {

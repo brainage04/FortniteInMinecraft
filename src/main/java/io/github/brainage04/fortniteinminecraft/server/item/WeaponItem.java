@@ -6,6 +6,7 @@ import io.github.brainage04.fortniteinminecraft.core.item.WeaponCategory;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
+import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.player.PlayerAimStates;
@@ -18,6 +19,7 @@ import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMateriali
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.ChatFormatting;
@@ -48,6 +50,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -185,6 +188,14 @@ public final class WeaponItem extends Item {
     }
 
     public InteractionResult fireFromHeldItem(ServerLevel level, ServerPlayer player, InteractionHand hand) {
+        return fireFromHeldItem(level, player, hand, false);
+    }
+
+    InteractionResult fireBurstShotFromHeldItem(ServerLevel level, ServerPlayer player, InteractionHand hand) {
+        return fireFromHeldItem(level, player, hand, true);
+    }
+
+    private InteractionResult fireFromHeldItem(ServerLevel level, ServerPlayer player, InteractionHand hand, boolean burstShot) {
         ItemStack stack = player.getItemInHand(hand);
         if (stack.getItem() != this) {
             return InteractionResult.PASS;
@@ -195,7 +206,9 @@ public final class WeaponItem extends Item {
 
         long tick = level.getGameTime();
         completeReloadIfReady(stack, tick);
-        long nextFireTick = customData(stack).getLongOr(NEXT_FIRE_TICK_KEY, 0L);
+        CompoundTag data = customData(stack);
+        long nextFireTick = data.getLongOr(NEXT_FIRE_TICK_KEY, 0L);
+        long reloadCompleteTick = data.getLongOr(RELOAD_COMPLETE_TICK_KEY, 0L);
         int magazine = magazine(stack);
         boolean infiniteAmmo = hasInfiniteAmmo(player);
         int magazineSize = definition.stats().magazineSize();
@@ -203,7 +216,9 @@ public final class WeaponItem extends Item {
             setGunState(stack, magazineSize, tick);
             magazine = magazineSize;
         }
-        FireAttempt attempt = fireAttempt(magazine, tick < nextFireTick || player.getCooldowns().isOnCooldown(stack));
+        boolean blockedByCooldown = reloadCompleteTick > tick
+                || (!burstShot && (tick < nextFireTick || player.getCooldowns().isOnCooldown(stack)));
+        FireAttempt attempt = fireAttempt(magazine, blockedByCooldown);
         if (attempt == FireAttempt.COOLDOWN) {
             resyncCooldownOverlay(player, stack);
             return InteractionResult.SUCCESS_SERVER;
@@ -218,8 +233,24 @@ public final class WeaponItem extends Item {
 
         int magazineAfterShot = infiniteAmmo ? magazine : magazine - 1;
         int fireDelayTicks = fireDelayTicks();
-        setGunState(stack, magazineAfterShot, tick + fireDelayTicks);
-        player.getCooldowns().addCooldown(stack, fireDelayTicks);
+        setGunState(stack, magazineAfterShot, burstShot ? nextFireTick : tick + fireDelayTicks);
+        if (!burstShot) {
+            player.getCooldowns().addCooldown(stack, fireDelayTicks);
+        }
+        if (!burstShot) {
+            int remainingBurstShots = remainingBurstShots(magazineAfterShot, infiniteAmmo);
+            if (remainingBurstShots > 0) {
+                int burstIntervalTicks = burstIntervalTicks(definition);
+                WeaponAutoFire.scheduleBurstShots(
+                        player,
+                        hand,
+                        this,
+                        tick + burstIntervalTicks,
+                        remainingBurstShots,
+                        burstIntervalTicks
+                );
+            }
+        }
 
         double heat = shotHeat(stack, tick);
         ShotTrace trace = traceShot(level, player, definition, heat);
@@ -384,6 +415,12 @@ public final class WeaponItem extends Item {
         String dimension = level.dimension().identifier().toString();
         BuildSlot slot = buildMaterializer.topOwnerAt(dimension, hitPos);
         if (slot == null) {
+            BlockPos supportPos = DeployableTriggerBlocks.supportPosFor(level.getBlockState(hitPos), hitPos);
+            if (!supportPos.equals(hitPos)) {
+                slot = buildMaterializer.topOwnerAt(dimension, supportPos);
+            }
+        }
+        if (slot == null) {
             return false;
         }
         BuildWeakPoints.Damage weakPointDamage = BuildWeakPoints.damageForHit(level, slot, hitLocation, damage);
@@ -392,11 +429,14 @@ public final class WeaponItem extends Item {
             return false;
         }
         playBuildHitEffects(level, hitLocation);
-        if (result.destroyed()) {
+        if (isDestroyed(result)) {
+            List<BlockPos> breakParticlePositions = buildMaterializer.trackedBlockPositions(slot);
             WorldBuildWriteResult clearResult = buildMaterializer.clear(level, result.after());
             if (clearResult.success()) {
+                playBuildBreakParticles(level, result.before(), breakParticlePositions);
                 buildWorldState.remove(slot);
                 BuildWeakPoints.clear(slot);
+                BuildPieceHealthDisplays.clear(slot);
                 int collapsed = BuildCollapseScheduler.scheduleAfterSupportRemoved(level, slot, level.getGameTime());
                 shooter.sendSystemMessage(Component.literal("Destroyed " + result.before().material().name().toLowerCase(Locale.ROOT)
                         + " " + result.before().slot().pieceType().name().toLowerCase(Locale.ROOT)
@@ -416,6 +456,10 @@ public final class WeaponItem extends Item {
         return true;
     }
 
+
+    private static boolean isDestroyed(BuildWorldState.DamageResult result) {
+        return result.after() != null && result.after().currentHealth() <= 0;
+    }
 
     private static String collapseMessage(int collapsed) {
         if (collapsed <= 0) {
@@ -556,6 +600,25 @@ public final class WeaponItem extends Item {
         return !infiniteAmmo && magazine <= 0;
     }
 
+    private int remainingBurstShots(int magazineAfterShot, boolean infiniteAmmo) {
+        int remainingBurstShots = definition.stats().cartridgePerFire() - 1;
+        if (remainingBurstShots <= 0 || (!infiniteAmmo && magazineAfterShot <= 0)) {
+            return 0;
+        }
+        return infiniteAmmo ? remainingBurstShots : Math.min(remainingBurstShots, magazineAfterShot);
+    }
+
+    boolean canContinueScheduledBurst(ServerPlayer player, InteractionHand hand) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(hand, "hand");
+        ItemStack stack = player.getItemInHand(hand);
+        if (stack.getItem() != this) {
+            return false;
+        }
+        long tick = player.level().getGameTime();
+        return !isReloading(stack, tick) && (hasInfiniteAmmo(player) || magazine(stack) > 0);
+    }
+
     public static boolean hasInfiniteAmmo(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
         return PlayerResourceStates.stateFor(player).infiniteAmmo();
@@ -580,6 +643,11 @@ public final class WeaponItem extends Item {
     static int fireDelayTicks(WeaponDefinition definition) {
         Objects.requireNonNull(definition, "definition");
         return Math.max(1, (int) Math.round(20.0D / definition.stats().fireRatePerSecond()));
+    }
+
+    static int burstIntervalTicks(WeaponDefinition definition) {
+        Objects.requireNonNull(definition, "definition");
+        return Math.max(1, (int) Math.round(20.0D / definition.stats().burstFiringRatePerSecond()));
     }
 
     int reloadTicks() {
@@ -786,6 +854,26 @@ public final class WeaponItem extends Item {
     private static void playBuildHitEffects(ServerLevel level, Vec3 hitLocation) {
         level.playSound(null, hitLocation.x(), hitLocation.y(), hitLocation.z(), SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.BLOCKS, 0.9F, 1.0F);
         level.sendParticles(ParticleTypes.CRIT, true, true, hitLocation.x(), hitLocation.y(), hitLocation.z(), 6, 0.18D, 0.18D, 0.18D, 0.03D);
+    }
+
+    private static void playBuildBreakParticles(ServerLevel level, BuildPieceState piece, List<BlockPos> positions) {
+        if (positions.isEmpty()) {
+            return;
+        }
+        BlockParticleOption particle = new BlockParticleOption(ParticleTypes.BLOCK, buildMaterializer.blockStateFor(piece.material()));
+        int step = Math.max(1, positions.size() / 8);
+        for (int index = 0; index < positions.size(); index += step) {
+            BlockPos pos = positions.get(index);
+            level.sendParticles(particle, true, true,
+                    pos.getX() + 0.5D,
+                    pos.getY() + 0.5D,
+                    pos.getZ() + 0.5D,
+                    3,
+                    0.24D,
+                    0.24D,
+                    0.24D,
+                    0.04D);
+        }
     }
 
     private static void spawnBulletTrace(ServerLevel level, Vec3 start, Vec3 end) {

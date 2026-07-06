@@ -20,12 +20,16 @@ import io.github.brainage04.fortniteinminecraft.server.item.ConsumableItem;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
 import io.github.brainage04.fortniteinminecraft.server.item.ProjectileWeaponItem;
 import io.github.brainage04.fortniteinminecraft.server.item.WeaponItem;
+import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
 import io.github.brainage04.fortniteinminecraft.server.player.GliderState;
 import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.TextColor;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -36,10 +40,14 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.Display;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 
 import java.util.List;
 import java.util.UUID;
@@ -102,6 +110,41 @@ public final class FortniteInMinecraftGameTest {
 
         context.assertTrue(result.consumesAction(), "Expected hitscan fire input to be consumed.");
         context.assertTrue(target.getHealth() < before, "Expected hitscan weapon to damage the target.");
+        context.succeed();
+    }
+
+    @GameTest
+    public void hitscanShieldedMobKeepsHealthAndShowsBlueHitMarker(GameTestHelper context) {
+        ServerLevel level = context.getLevel();
+        ServerPlayer player = context.makeMockServerPlayerInLevel();
+        player.setGameMode(GameType.CREATIVE);
+        Vec3 shooterPos = context.absoluteVec(new Vec3(2.0D, 2.0D, 2.0D));
+        player.snapTo(shooterPos.x(), shooterPos.y(), shooterPos.z(), 0.0F, 0.0F);
+
+        WeaponItem assault = weapon("weapon_assault_rifle_common");
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(assault));
+        Mob target = context.spawnWithNoFreeWill(entityType("zombie"), new Vec3(2.0D, 2.0D, 7.0D));
+        target.setNoGravity(true);
+        target.setHealth(20.0F);
+        AttributeInstance maxAbsorption = target.getAttribute(Attributes.MAX_ABSORPTION);
+        context.assertTrue(maxAbsorption != null, "Expected shielded test target to support absorption.");
+        maxAbsorption.setBaseValue(100.0D);
+        target.setAbsorptionAmount(100.0F);
+        player.lookAt(EntityAnchorArgument.Anchor.EYES, target.getEyePosition());
+        HitMarkerDisplays.clearAll();
+
+        try {
+            InteractionResult result = assault.fireFromHeldItem(level, player, InteractionHand.MAIN_HAND);
+            Display.TextDisplay marker = onlyHitMarkerNear(context, level, target.position());
+
+            context.assertTrue(result.consumesAction(), "Expected shielded hitscan shot input to be consumed.");
+            context.assertTrue(target.getHealth() == 20.0F, "Expected oversized shield to absorb the shot before health changes.");
+            context.assertTrue(target.getAbsorptionAmount() < 100.0F, "Expected the shot to spend shield absorption.");
+            context.assertTrue(marker.getText().getStyle().getColor().equals(TextColor.fromLegacyFormat(ChatFormatting.BLUE)),
+                    "Expected shielded hitmarker to render blue instead of headshot/body colours.");
+        } finally {
+            HitMarkerDisplays.clearAll();
+        }
         context.succeed();
     }
 
@@ -375,6 +418,16 @@ public final class FortniteInMinecraftGameTest {
 
     private static BuildSlot floorSlot(String dimension, int x, int y, int z) {
         return BuildSlot.of(dimension, x, y, z, PieceType.FLOOR, Orientation.NORTH);
+    }
+
+    private static Display.TextDisplay onlyHitMarkerNear(GameTestHelper context, ServerLevel level, Vec3 center) {
+        List<Display.TextDisplay> markers = level.getEntitiesOfClass(
+                Display.TextDisplay.class,
+                new AABB(center, center).inflate(3.0D),
+                marker -> !marker.isRemoved()
+        );
+        context.assertTrue(markers.size() == 1, "Expected exactly one hitmarker display near target, saw " + markers.size() + ".");
+        return markers.getFirst();
     }
 
     private static WeaponItem weapon(String path) {

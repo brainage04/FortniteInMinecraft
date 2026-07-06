@@ -35,4 +35,7 @@ Run:
 ALSOFT_DRIVERS=null LIBGL_ALWAYS_SOFTWARE=1 \
   xvfb-run -a --server-args="-screen 0 1280x720x24" \
   ./gradlew --no-daemon runClientGameTest
+
+FIM_RECORDING_AUDIO=false ALSOFT_DRIVERS=null LIBGL_ALWAYS_SOFTWARE=1 \
+  scripts/run-client-gametest-recorded.sh
 ```

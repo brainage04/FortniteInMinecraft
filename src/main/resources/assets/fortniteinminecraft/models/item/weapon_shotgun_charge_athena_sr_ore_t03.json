@@ -1,5 +1,5 @@
 {
-  "parent": "minecraft:item/generated",
+  "parent": "minecraft:item/handheld",
   "textures": {
     "layer0": "fortniteinminecraft:item/weapon_shotgun_charge_athena_sr_ore_t03"
   }

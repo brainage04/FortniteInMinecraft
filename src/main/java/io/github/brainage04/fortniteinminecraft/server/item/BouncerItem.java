@@ -20,16 +20,17 @@ import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
 public final class BouncerItem extends Item {
-    private static final BlockState PLACED_STATE = Blocks.HEAVY_WEIGHTED_PRESSURE_PLATE.defaultBlockState();
+    private static BlockState placedState(Direction surfaceNormal) {
+        return DeployableFootprints.triggerState(surfaceNormal);
+    }
 
     private final Definition definition;
     private final Item clientItem;
@@ -64,7 +65,7 @@ public final class BouncerItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
         tooltip.accept(Component.literal("Trap / " + definition.rarity().label()));
-        tooltip.accept(Component.literal("Places a floor bouncer using the launch-pad trigger."));
+        tooltip.accept(Component.literal("Places a floor- or wall-sized bouncer using a deployable trigger."));
         if (definition.redeployTicks() > 0L) {
             tooltip.accept(Component.literal("Launches on contact and grants " + definition.redeployTicks() + " ticks of redeploy."));
         } else {
@@ -75,7 +76,8 @@ public final class BouncerItem extends Item {
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
-        if (context.getClickedFace() != Direction.UP) {
+        Direction surfaceNormal = context.getClickedFace();
+        if (surfaceNormal == Direction.DOWN) {
             return InteractionResult.PASS;
         }
         Level level = context.getLevel();
@@ -91,28 +93,31 @@ public final class BouncerItem extends Item {
         if (serverPlayer.getCooldowns().isOnCooldown(stack)) {
             return InteractionResult.SUCCESS_SERVER;
         }
+        BlockState placedState = placedState(surfaceNormal);
 
-        BlockPos pos = context.getClickedPos().above();
-        if (!canPlaceBouncer(serverLevel, pos)) {
-            serverPlayer.sendSystemMessage(Component.literal("Bouncer needs an empty floor."), true);
+        List<BlockPos> footprint = bouncerFootprint(context.getClickedPos(), surfaceNormal);
+        if (!canPlaceBouncer(serverLevel, footprint, placedState)) {
+            serverPlayer.sendSystemMessage(Component.literal("Bouncer needs a clear supported floor- or wall-sized surface."), true);
             return InteractionResult.FAIL;
         }
-        if (!serverLevel.setBlock(pos, PLACED_STATE, Block.UPDATE_ALL)) {
+        if (!DeployableFootprints.placeAll(serverLevel, footprint, placedState)) {
             serverPlayer.sendSystemMessage(Component.literal("Bouncer placement failed."), true);
             return InteractionResult.FAIL;
         }
-        MobilityItemInteractions.registerLaunchPad(serverLevel, pos, definition.redeployTicks());
+        MobilityItemInteractions.registerLaunchPadFootprint(serverLevel, footprint, definition.redeployTicks(), placedState.getBlock());
         serverPlayer.getCooldowns().addCooldown(stack, definition.cooldownTicks());
         serverPlayer.awardStat(Stats.ITEM_USED.get(this));
         stack.consume(1, serverPlayer);
-        MobilityItemInteractions.activateLaunchPad(serverPlayer, definition.redeployTicks(), true);
+        MobilityItemInteractions.activateLaunchPad(serverPlayer, definition.redeployTicks(), true, surfaceNormal);
         return InteractionResult.SUCCESS_SERVER;
     }
 
-    private static boolean canPlaceBouncer(ServerLevel level, BlockPos pos) {
-        return level.isInWorldBounds(pos)
-                && level.getBlockState(pos).canBeReplaced()
-                && PLACED_STATE.canSurvive(level, pos);
+    static List<BlockPos> bouncerFootprint(BlockPos clickedPos, Direction surfaceNormal) {
+        return DeployableFootprints.centeredSurfaceSquare(clickedPos.relative(surfaceNormal), surfaceNormal, DeployableFootprints.BUILD_FLOOR_SIZE_BLOCKS);
+    }
+
+    private static boolean canPlaceBouncer(ServerLevel level, List<BlockPos> footprint, BlockState placedState) {
+        return DeployableFootprints.canPlaceAll(level, footprint, placedState);
     }
 
     public record Definition(

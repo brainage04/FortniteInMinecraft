@@ -112,9 +112,26 @@ public final class PickaxeItem extends Item {
         if (!(hit instanceof BlockHitResult blockHit)) {
             return InteractionResult.PASS;
         }
+        return damageBlockHit(serverLevel, serverPlayer, hand, stack, tick, blockHit);
+    }
+
+    InteractionResult damageBlockHit(
+            ServerLevel serverLevel,
+            ServerPlayer serverPlayer,
+            InteractionHand hand,
+            ItemStack stack,
+            long tick,
+            BlockHitResult blockHit
+    ) {
         String dimension = serverLevel.dimension().identifier().toString();
         BlockPos hitPos = blockHit.getBlockPos();
         BuildSlot slot = materializer.topOwnerAt(dimension, hitPos);
+        if (slot == null) {
+            BlockPos supportPos = DeployableTriggerBlocks.supportPosFor(serverLevel.getBlockState(hitPos), hitPos);
+            if (!supportPos.equals(hitPos)) {
+                slot = materializer.topOwnerAt(dimension, supportPos);
+            }
+        }
         if (slot == null) {
             return harvestTerrainResource(serverLevel, serverPlayer, hand, stack, tick, blockHit);
         }

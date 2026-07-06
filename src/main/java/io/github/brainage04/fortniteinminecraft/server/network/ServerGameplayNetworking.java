@@ -10,6 +10,7 @@ import io.github.brainage04.fortniteinminecraft.server.item.BuildEditInteraction
 import io.github.brainage04.fortniteinminecraft.server.item.BuildItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.item.ExplosiveProjectileWeaponItem;
 import io.github.brainage04.fortniteinminecraft.server.item.GrapplerItem;
+import io.github.brainage04.fortniteinminecraft.server.item.LootContainerInteractions;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
 import io.github.brainage04.fortniteinminecraft.server.item.PickaxeItem;
 import io.github.brainage04.fortniteinminecraft.server.item.ProjectileWeaponItem;
@@ -57,7 +58,10 @@ public final class ServerGameplayNetworking {
         FortnitePayloads.register();
         ServerPlayNetworking.registerGlobalReceiver(ClientActionPayload.TYPE, (payload, context) -> handle(context.player(), payload));
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> PlayerResourceStateSync.send(handler.player));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> BuildEditInteractions.cancelEditing(handler.player, state, rules, materializer));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            BuildEditInteractions.cancelEditing(handler.player, state, rules, materializer);
+            LootContainerInteractions.cancelOpening(handler.player);
+        });
         registered = true;
     }
 
@@ -67,6 +71,7 @@ public final class ServerGameplayNetworking {
             case SECONDARY -> handleSecondary(player, payload.pressed());
             case RELOAD -> {
                 if (payload.pressed()
+                        && !normalHeldItemSuppressed(player)
                         && WeaponItem.handleManualReload(player, InteractionHand.MAIN_HAND) == InteractionResult.PASS
                         && ProjectileWeaponItem.handleManualReload(player, InteractionHand.MAIN_HAND) == InteractionResult.PASS) {
                     ExplosiveProjectileWeaponItem.handleManualReload(player, InteractionHand.MAIN_HAND);
@@ -113,6 +118,10 @@ public final class ServerGameplayNetworking {
         if (pressed) {
             BuildItemInteractions.selectPiece(player, pieceType, sessions, rules);
         }
+    }
+
+    private static boolean normalHeldItemSuppressed(ServerPlayer player) {
+        return BuildItemInteractions.hasActiveBuildMode(player, sessions);
     }
 
     private static void handlePrimary(ServerPlayer player, boolean pressed) {

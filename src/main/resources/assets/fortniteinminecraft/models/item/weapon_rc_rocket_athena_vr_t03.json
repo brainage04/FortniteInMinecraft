@@ -1,5 +1,5 @@
 {
-  "parent": "minecraft:item/generated",
+  "parent": "minecraft:item/handheld",
   "textures": {
     "layer0": "fortniteinminecraft:item/weapon_rc_rocket_athena_vr_t03"
   }

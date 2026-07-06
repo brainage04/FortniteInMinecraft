@@ -130,7 +130,14 @@ public final class BuildEditInteractions {
     }
 
     private static void syncEditMode(ServerPlayer player, boolean active) {
-        ServerPlayNetworking.send(player, new EditModePayload(active));
+        if (active) {
+            EditSession session = SESSIONS.get(player.getUUID());
+            if (session != null) {
+                ServerPlayNetworking.send(player, EditModePayload.active(session.originalPiece(), session.selectedMask()));
+                return;
+            }
+        }
+        ServerPlayNetworking.send(player, EditModePayload.inactive());
     }
 
     public static void clearAll() {
@@ -415,7 +422,7 @@ public final class BuildEditInteractions {
             });
             case SOUTH -> intersection(origin.z() + max, eye.z, look.z).flatMap(t -> {
                 Vec3 hit = eye.add(look.scale(t));
-                return wallCell(session, rules, max - (hit.x - origin.x()), hit.y - origin.y(), tile);
+                return wallCell(session, rules, tile - (hit.x - origin.x()), hit.y - origin.y(), tile);
             });
             case EAST -> intersection(origin.x() + max, eye.x, look.x).flatMap(t -> {
                 Vec3 hit = eye.add(look.scale(t));
@@ -423,7 +430,7 @@ public final class BuildEditInteractions {
             });
             case WEST -> intersection(origin.x(), eye.x, look.x).flatMap(t -> {
                 Vec3 hit = eye.add(look.scale(t));
-                return wallCell(session, rules, max - (hit.z - origin.z()), hit.y - origin.y(), tile);
+                return wallCell(session, rules, tile - (hit.z - origin.z()), hit.y - origin.y(), tile);
             });
         };
     }

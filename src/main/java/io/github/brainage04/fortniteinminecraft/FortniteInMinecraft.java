@@ -6,6 +6,8 @@ import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 import io.github.brainage04.fortniteinminecraft.server.command.CommandRegistrar;
 import io.github.brainage04.fortniteinminecraft.server.item.BuildEditInteractions;
 import io.github.brainage04.fortniteinminecraft.server.item.BuildItemInteractions;
+import io.github.brainage04.fortniteinminecraft.server.item.HarvestingToolInventory;
+import io.github.brainage04.fortniteinminecraft.server.item.DeployableTriggerBlocks;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
 import io.github.brainage04.fortniteinminecraft.server.item.PickaxeItem;
 import io.github.brainage04.fortniteinminecraft.server.item.PortAFortItem;
@@ -34,7 +36,7 @@ import org.slf4j.LoggerFactory;
 
 public final class FortniteInMinecraft implements ModInitializer {
     public static final String MOD_ID = "fortniteinminecraft";
-    public static final String MOD_NAME = "FortniteInMinecraft";
+    public static final String MOD_NAME = "Fortnite In Minecraft";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
     private final BuildSessionManager sessions = new BuildSessionManager();
@@ -51,6 +53,7 @@ public final class FortniteInMinecraft implements ModInitializer {
     @Override
     public void onInitialize() {
         BuildVisualBlocks.initialize();
+        DeployableTriggerBlocks.initialize();
         ModItems.initialize(sessions);
         PortAFortItem.configureBuildPlacement(buildWorld, buildRules, materializer);
         BuildCollapseScheduler.configure(buildWorld, buildRules, materializer);
@@ -58,6 +61,7 @@ public final class FortniteInMinecraft implements ModInitializer {
         ServerGameplayNetworking.initialize(sessions, buildWorld, buildRules, materializer);
         WeaponItem.configureBuildDamage(buildWorld, materializer, buildRules);
         PickaxeItem.configureHarvesting(buildWorld, materializer);
+        HarvestingToolInventory.register();
         BuildItemInteractions.register(sessions, buildWorld, buildRules, materializer);
         WeaponAutoFire.register();
         MobilityItemInteractions.register();

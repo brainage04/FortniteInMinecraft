@@ -3,6 +3,8 @@
   "generatedFrom": [
     "full-weapon-taxonomy.json",
     "consumable-taxonomy.json",
+    "current-playlist-loot-sources.json",
+    "catalog-backed loot-container fallback tuning",
     "current ModItems tuning"
   ],
   "buildPieces": [
@@ -1839,7 +1841,9 @@
         "reloadSeconds": 2.75,
         "pellets": 1,
         "rangeBlocks": 81.28,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 8
       },
       "sourceItemId": "WID_Assault_SemiAuto_Athena_C_Ore_T02",
       "sourceStatRow": "Assault_SemiAuto_Athena_C_Ore_T03",
@@ -1859,7 +1863,9 @@
         "reloadSeconds": 2.5,
         "pellets": 1,
         "rangeBlocks": 81.28,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 8
       },
       "sourceItemId": "WID_Assault_SemiAuto_Athena_R_Ore_T03",
       "sourceStatRow": "Assault_SemiAuto_Athena_R_Ore_T03",
@@ -1879,7 +1885,9 @@
         "reloadSeconds": 2.25,
         "pellets": 1,
         "rangeBlocks": 81.28,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 8
       },
       "sourceItemId": "WID_Assault_SemiAuto_Athena_SR_Ore_T03",
       "sourceStatRow": "Assault_SemiAuto_Athena_SR_Ore_T03",
@@ -1899,7 +1907,9 @@
         "reloadSeconds": 2.625,
         "pellets": 1,
         "rangeBlocks": 81.28,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 8
       },
       "sourceItemId": "WID_Assault_SemiAuto_Athena_UC_Ore_T03",
       "sourceStatRow": "Assault_SemiAuto_Athena_UC_Ore_T03",
@@ -1919,7 +1929,9 @@
         "reloadSeconds": 2.125,
         "pellets": 1,
         "rangeBlocks": 81.28,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 8
       },
       "sourceItemId": "WID_Assault_SemiAuto_Athena_UR_Ore_T03",
       "sourceStatRow": "Assault_SemiAuto_Athena_UR_Ore_T03",
@@ -1939,7 +1951,9 @@
         "reloadSeconds": 2.21,
         "pellets": 1,
         "rangeBlocks": 81.28,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 7
       },
       "sourceItemId": "WID_Assault_SemiAuto_Athena_UR_Slone",
       "sourceStatRow": "Assault_SemiAuto_Athena_Slone_UR_Ore_T03",
@@ -1959,7 +1973,9 @@
         "reloadSeconds": 2.375,
         "pellets": 1,
         "rangeBlocks": 81.28,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 8
       },
       "sourceItemId": "WID_Assault_SemiAuto_Athena_VR_Ore_T03",
       "sourceStatRow": "Assault_SemiAuto_Athena_VR_Ore_T03",
@@ -3858,7 +3874,9 @@
         "reloadSeconds": 2.66,
         "pellets": 1,
         "rangeBlocks": 53.12,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 22
       },
       "sourceItemId": "WID_DualPistol_SemiAuto_Athena_SR_Ore_T03",
       "sourceStatRow": "DualPistol_SemiAuto_Athena_VR_Ore_T03",
@@ -3878,7 +3896,9 @@
         "reloadSeconds": 2.8,
         "pellets": 1,
         "rangeBlocks": 53.12,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 22
       },
       "sourceItemId": "WID_DualPistol_SemiAuto_Athena_VR_Ore_T03",
       "sourceStatRow": "DualPistol_SemiAuto_Athena_R_Ore_T03",
@@ -3898,7 +3918,9 @@
         "reloadSeconds": 2.8,
         "pellets": 1,
         "rangeBlocks": 53.12,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 22
       },
       "sourceItemId": "WID_DualPistol_Suppresseed_Athena_R_T01",
       "sourceStatRow": "DualPistol_SemiAuto_Suppressed_Athena_R_Ore_T03",
@@ -3918,7 +3940,9 @@
         "reloadSeconds": 2.94,
         "pellets": 1,
         "rangeBlocks": 53.12,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 22
       },
       "sourceItemId": "WID_DualPistol_Suppresseed_Athena_UC_T01",
       "sourceStatRow": "DualPistol_SemiAuto_Suppressed_Athena_UC_Ore_T03",
@@ -3938,7 +3962,9 @@
         "reloadSeconds": 2.66,
         "pellets": 1,
         "rangeBlocks": 53.12,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 22
       },
       "sourceItemId": "WID_DualPistol_Suppresseed_Athena_VR_T01",
       "sourceStatRow": "DualPistol_SemiAuto_Suppressed_Athena_VR_Ore_T03",
@@ -3958,7 +3984,9 @@
         "reloadSeconds": 2.52,
         "pellets": 1,
         "rangeBlocks": 53.12,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 22
       },
       "sourceItemId": "WID_Spytech_DualPistol_SemiAuto_Athena_SR_Ore_T03",
       "sourceStatRow": "DualPistol_SemiAuto_Athena_SR_Ore_T03",
@@ -3978,7 +4006,9 @@
         "reloadSeconds": 2.94,
         "pellets": 1,
         "rangeBlocks": 53.12,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 22
       },
       "sourceItemId": "WID_Spytech_DualPistol_SemiAuto_Athena_UC_Ore_T03",
       "sourceStatRow": "DualPistol_SemiAuto_Athena_UC_Ore_T03",
@@ -3998,7 +4028,9 @@
         "reloadSeconds": 2.52,
         "pellets": 1,
         "rangeBlocks": 53.12,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 22
       },
       "sourceItemId": "WID_Spytech_DualPistol_Suppresseed_Athena_SR_T01",
       "sourceStatRow": "DualPistol_SemiAuto_Suppressed_Athena_SR_Ore_T03",
@@ -4018,7 +4050,9 @@
         "reloadSeconds": 2.52,
         "pellets": 1,
         "rangeBlocks": 53.12,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 22
       },
       "sourceItemId": "WID_WaffleTruck_HopRockDualies",
       "sourceStatRow": "DualPistol_SemiAuto_Athena_SR_Ore_T03",
@@ -5119,7 +5153,9 @@
         "reloadSeconds": 5.4,
         "pellets": 1,
         "rangeBlocks": 276.32,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 2,
+        "burstFiringRatePerSecond": 3.8
       },
       "sourceItemId": "WID_WaffleTruck_Launcher_DrunkenQuad",
       "sourceStatRow": "Launcher_Military_Charged_SR_Ore_T03",
@@ -6232,7 +6268,9 @@
         "reloadSeconds": 2.475,
         "pellets": 1,
         "rangeBlocks": 32.48,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 4,
+        "burstFiringRatePerSecond": 15
       },
       "sourceItemId": "WID_Pistol_BurstFireSMG_Athena_C_Ore_T03",
       "sourceStatRow": "Pistol_BurstSMG_Athena_C_Ore_T03",
@@ -6252,7 +6290,9 @@
         "reloadSeconds": 2.25,
         "pellets": 1,
         "rangeBlocks": 32.48,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 4,
+        "burstFiringRatePerSecond": 15
       },
       "sourceItemId": "WID_Pistol_BurstFireSMG_Athena_R_Ore_T03",
       "sourceStatRow": "Pistol_BurstSMG_Athena_R_Ore_T03",
@@ -6272,7 +6312,9 @@
         "reloadSeconds": 2.3625,
         "pellets": 1,
         "rangeBlocks": 32.48,
-        "maxDamagePerShot": 0.0
+        "maxDamagePerShot": 0.0,
+        "cartridgePerFire": 4,
+        "burstFiringRatePerSecond": 15
       },
       "sourceItemId": "WID_Pistol_BurstFireSMG_Athena_UC_Ore_T03",
       "sourceStatRow": "Pistol_BurstSMG_Athena_UC_Ore_T03",
@@ -8145,6 +8187,133 @@
       },
       "clientItem": "minecraft:firework_rocket",
       "stackSize": 64
+    }
+  ],
+  "lootContainers": [
+    {
+      "path": "loot_chest",
+      "displayName": "Loot Chest",
+      "kind": "CHEST",
+      "clientItem": "minecraft:chest",
+      "openTicks": 20,
+      "loot": {
+        "weaponRarityWeights": [
+          {
+            "rarity": "COMMON",
+            "weight": 45.0
+          },
+          {
+            "rarity": "UNCOMMON",
+            "weight": 30.0
+          },
+          {
+            "rarity": "RARE",
+            "weight": 15.0
+          },
+          {
+            "rarity": "EPIC",
+            "weight": 7.0
+          },
+          {
+            "rarity": "LEGENDARY",
+            "weight": 3.0
+          }
+        ],
+        "consumables": [
+          {
+            "path": "consumable_bandage",
+            "weight": 1.0
+          },
+          {
+            "path": "consumable_medkit",
+            "weight": 0.75
+          },
+          {
+            "path": "consumable_small_shield",
+            "weight": 1.0
+          },
+          {
+            "path": "consumable_shield_potion",
+            "weight": 0.75
+          },
+          {
+            "path": "consumable_full_restore_jug",
+            "weight": 0.1
+          },
+          {
+            "path": "consumable_effective_fish",
+            "weight": 0.5
+          },
+          {
+            "path": "consumable_fire_fish",
+            "weight": 0.25
+          },
+          {
+            "path": "consumable_battle_fish",
+            "weight": 0.1
+          }
+        ],
+        "ammoTypeWeights": [
+          {
+            "ammoType": "LIGHT",
+            "weight": 0.4
+          },
+          {
+            "ammoType": "SHELLS",
+            "weight": 0.4
+          },
+          {
+            "ammoType": "MEDIUM",
+            "weight": 0.4
+          },
+          {
+            "ammoType": "HEAVY",
+            "weight": 0.1
+          },
+          {
+            "ammoType": "ROCKETS",
+            "weight": 0.05
+          }
+        ]
+      }
+    },
+    {
+      "path": "ammo_box",
+      "displayName": "Ammo Box",
+      "kind": "AMMO_BOX",
+      "clientItem": "minecraft:barrel",
+      "openTicks": 20,
+      "loot": {
+        "weaponRarityWeights": [
+          {
+            "rarity": "COMMON",
+            "weight": 1.0
+          }
+        ],
+        "consumables": [],
+        "ammoTypeWeights": [
+          {
+            "ammoType": "LIGHT",
+            "weight": 0.4
+          },
+          {
+            "ammoType": "SHELLS",
+            "weight": 0.4
+          },
+          {
+            "ammoType": "MEDIUM",
+            "weight": 0.4
+          },
+          {
+            "ammoType": "HEAVY",
+            "weight": 0.1
+          },
+          {
+            "ammoType": "ROCKETS",
+            "weight": 0.05
+          }
+        ]
+      }
     }
   ],
   "throwableImpulses": [

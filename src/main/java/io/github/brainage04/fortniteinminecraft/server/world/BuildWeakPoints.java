@@ -33,6 +33,8 @@ import java.util.UUID;
 public final class BuildWeakPoints {
     public static final double WEAK_POINT_DAMAGE_MULTIPLIER = 4.5D;
     static final double HIT_RADIUS_BLOCKS = 0.75D;
+    private static final double WEAK_POINT_SURFACE_CLEARANCE_BLOCKS = 0.25D;
+    private static final double POSITION_EPSILON = 1.0E-6D;
 
     private static final int TRANSPARENT_BACKGROUND = 0;
     private static final int TEXT_LINE_WIDTH = 40;
@@ -322,6 +324,46 @@ public final class BuildWeakPoints {
         );
     }
 
+    static Vec3 visibleBuildWeakPointPosition(Vec3 blockCenter, Vec3 viewerPosition) {
+        Objects.requireNonNull(blockCenter, "blockCenter");
+        Vec3 unitTowardViewer = unitTowardViewer(blockCenter, viewerPosition);
+        if (unitTowardViewer == null) {
+            return blockCenter;
+        }
+        double offset = blockSurfaceDistance(unitTowardViewer) + WEAK_POINT_SURFACE_CLEARANCE_BLOCKS;
+        return blockCenter.add(unitTowardViewer.scale(offset));
+    }
+
+    static Vec3 visibleSurfaceWeakPointPosition(Vec3 surfacePosition, Vec3 viewerPosition) {
+        Objects.requireNonNull(surfacePosition, "surfacePosition");
+        Vec3 unitTowardViewer = unitTowardViewer(surfacePosition, viewerPosition);
+        if (unitTowardViewer == null) {
+            return surfacePosition;
+        }
+        return surfacePosition.add(unitTowardViewer.scale(WEAK_POINT_SURFACE_CLEARANCE_BLOCKS));
+    }
+
+    private static Vec3 unitTowardViewer(Vec3 origin, Vec3 viewerPosition) {
+        Objects.requireNonNull(viewerPosition, "viewerPosition");
+        Vec3 towardViewer = viewerPosition.subtract(origin);
+        double distance = towardViewer.length();
+        if (distance <= POSITION_EPSILON) {
+            return null;
+        }
+        return towardViewer.scale(1.0D / distance);
+    }
+
+    private static double blockSurfaceDistance(Vec3 unitDirection) {
+        double dominantAxis = Math.max(
+                Math.abs(unitDirection.x()),
+                Math.max(Math.abs(unitDirection.y()), Math.abs(unitDirection.z()))
+        );
+        if (dominantAxis <= POSITION_EPSILON) {
+            return 0.0D;
+        }
+        return 0.5D / dominantAxis;
+    }
+
     private static boolean isAirFacing(ServerLevel level, BlockPos pos, Direction direction) {
         BlockPos adjacent = pos.relative(direction);
         if (!level.isInWorldBounds(adjacent)) {
@@ -385,7 +427,10 @@ public final class BuildWeakPoints {
             view = new ActiveWeakPointView(dimension, target, display);
             ACTIVE_VIEWS.put(player.getUUID(), view);
         }
-        view.display().setPos(weakPoint.position().x(), weakPoint.position().y(), weakPoint.position().z());
+        Vec3 visiblePosition = target.slot() != null
+                ? visibleBuildWeakPointPosition(weakPoint.position(), player.getEyePosition())
+                : visibleSurfaceWeakPointPosition(weakPoint.position(), player.getEyePosition());
+        view.display().setPos(visiblePosition.x(), visiblePosition.y(), visiblePosition.z());
     }
 
     private static WeakPointTarget target(ServerLevel level, String dimension, ServerPlayer player) {

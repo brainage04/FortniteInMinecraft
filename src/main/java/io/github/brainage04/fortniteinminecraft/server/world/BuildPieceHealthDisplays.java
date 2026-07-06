@@ -75,7 +75,9 @@ public final class BuildPieceHealthDisplays {
         for (BuildPieceState changed : state.progressConstruction(dimension, level.getGameTime())) {
             materializer.refresh(level, changed);
         }
-        clearAll();
+        for (ServerPlayer player : level.players()) {
+            updatePlayerView(level, dimension, player);
+        }
     }
 
     private static void updatePlayerView(ServerLevel level, String dimension, ServerPlayer player) {
@@ -174,6 +176,18 @@ public final class BuildPieceHealthDisplays {
                 new Vector3f(DISPLAY_SCALE, DISPLAY_SCALE, DISPLAY_SCALE),
                 new Quaternionf()
         ));
+    }
+
+    public static void clear(BuildSlot slot) {
+        Objects.requireNonNull(slot, "slot");
+        ACTIVE_VIEWS.entrySet().removeIf(entry -> {
+            ActiveHealthView view = entry.getValue();
+            if (!slot.equals(view.slot())) {
+                return false;
+            }
+            view.display().discard();
+            return true;
+        });
     }
 
     private static void clear(UUID playerId) {

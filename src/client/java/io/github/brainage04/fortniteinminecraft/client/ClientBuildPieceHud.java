@@ -2,25 +2,38 @@ package io.github.brainage04.fortniteinminecraft.client;
 
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
+import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
-
-import java.util.Locale;
+import net.minecraft.world.item.ItemStack;
 
 public final class ClientBuildPieceHud {
     private static final Identifier HUD_ID = Identifier.fromNamespaceAndPath(FortniteInMinecraft.MOD_ID, "build_piece_selection");
-    private static final int RIGHT_MARGIN = 8;
-    private static final int BOTTOM_MARGIN = 72;
+    private static final PieceType[] DISPLAY_ORDER = {PieceType.WALL, PieceType.FLOOR, PieceType.STAIR, PieceType.ROOF};
+    private static final int BOTTOM_MARGIN = 40;
+    private static final int RIGHT_MARGIN = 24;
     private static final int PANEL_PADDING = 5;
-    private static final int LINE_GAP = 2;
+    private static final int SLOT_SIZE = 24;
+    private static final int SLOT_GAP = 4;
+    private static final int KEY_GAP = 2;
+    private static final int SLOT_TEXT_PADDING = 6;
+    private static final int ICON_SIZE = 16;
     private static final int BACKGROUND_COLOR = 0x66000000;
-    private static final int ACTIVE_COLOR = 0xFFFFD54F;
-    private static final int INACTIVE_COLOR = 0xFFE0E0E0;
-    private static final int HEADER_COLOR = 0xFFFFFFFF;
+    private static final int ACTIVE_BORDER_COLOR = 0xFFFFD54F;
+    private static final int ACTIVE_SLOT_COLOR = 0xAA1E3D5C;
+    private static final int INACTIVE_BORDER_COLOR = 0x884A5568;
+    private static final int INACTIVE_SLOT_COLOR = 0x66333A45;
+    private static final int ACTIVE_TEXT_COLOR = 0xFFFFFFFF;
+    private static final int INACTIVE_TEXT_COLOR = 0xFF9AA0AA;
+    private static final int MUTED_OVERLAY_COLOR = 0x66000000;
+    private static ItemStack wallIcon;
+    private static ItemStack floorIcon;
+    private static ItemStack stairIcon;
+    private static ItemStack roofIcon;
     private static boolean registered;
 
     private ClientBuildPieceHud() {
@@ -40,41 +53,105 @@ public final class ClientBuildPieceHud {
 
     private static void render(GuiGraphicsExtractor graphics, net.minecraft.client.DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
-        PieceType selected = ClientInputHooks.selectedBuildPiece();
-        if (client.player == null || client.gui.hud.isHidden() || selected == null) {
+        if (client.player == null || client.gui.hud.isHidden()) {
             return;
         }
 
         Font font = client.font;
-        String header = "Build Piece";
-        int width = font.width(header);
-        for (PieceType pieceType : PieceType.values()) {
-            width = Math.max(width, font.width(entry(pieceType)));
+        PieceType selected = ClientInputHooks.selectedBuildPiece();
+        if (selected == null) {
+            return;
         }
-
-        int lineHeight = font.lineHeight + LINE_GAP;
-        int panelWidth = width + PANEL_PADDING * 2;
-        int panelHeight = (PieceType.values().length + 1) * lineHeight + PANEL_PADDING * 2;
+        int slotWidth = slotWidth(font);
+        int rowWidth = DISPLAY_ORDER.length * slotWidth + (DISPLAY_ORDER.length - 1) * SLOT_GAP;
+        int panelWidth = rowWidth + PANEL_PADDING * 2;
+        int panelHeight = font.lineHeight + KEY_GAP + SLOT_SIZE + PANEL_PADDING * 2;
         int x = graphics.guiWidth() - RIGHT_MARGIN - panelWidth;
         int y = graphics.guiHeight() - BOTTOM_MARGIN - panelHeight;
 
         graphics.fill(x, y, x + panelWidth, y + panelHeight, BACKGROUND_COLOR);
-        graphics.text(font, header, x + PANEL_PADDING, y + PANEL_PADDING, HEADER_COLOR, true);
 
-        int textY = y + PANEL_PADDING + lineHeight;
-        for (PieceType pieceType : PieceType.values()) {
-            int color = pieceType == selected ? ACTIVE_COLOR : INACTIVE_COLOR;
-            graphics.text(font, entry(pieceType), x + PANEL_PADDING, textY, color, true);
-            textY += lineHeight;
+        int slotX = x + PANEL_PADDING;
+        int keyY = y + PANEL_PADDING;
+        int slotY = keyY + font.lineHeight + KEY_GAP;
+        for (PieceType pieceType : DISPLAY_ORDER) {
+            drawSlot(graphics, font, pieceType, selected == pieceType, slotX, keyY, slotY, slotWidth);
+            slotX += slotWidth + SLOT_GAP;
         }
     }
 
-    private static String entry(PieceType pieceType) {
-        return label(pieceType) + " [" + ClientInputHooks.buildKeyLabel(pieceType) + "]";
+    private static int slotWidth(Font font) {
+        int width = SLOT_SIZE;
+        for (PieceType pieceType : DISPLAY_ORDER) {
+            width = Math.max(width, font.width(keyLabel(pieceType)) + SLOT_TEXT_PADDING);
+        }
+        return width;
     }
 
-    private static String label(PieceType pieceType) {
-        String lower = pieceType.name().toLowerCase(Locale.ROOT);
-        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+    private static void drawSlot(
+            GuiGraphicsExtractor graphics,
+            Font font,
+            PieceType pieceType,
+            boolean selected,
+            int x,
+            int keyY,
+            int slotY,
+            int slotWidth
+    ) {
+        String key = keyLabel(pieceType);
+        int textColor = selected ? ACTIVE_TEXT_COLOR : INACTIVE_TEXT_COLOR;
+        graphics.text(font, key, x + (slotWidth - font.width(key)) / 2, keyY, textColor, true);
+
+        int slotX = x + (slotWidth - SLOT_SIZE) / 2;
+        graphics.fill(slotX, slotY, slotX + SLOT_SIZE, slotY + SLOT_SIZE, selected ? ACTIVE_BORDER_COLOR : INACTIVE_BORDER_COLOR);
+        graphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1, selected ? ACTIVE_SLOT_COLOR : INACTIVE_SLOT_COLOR);
+        int iconX = slotX + (SLOT_SIZE - ICON_SIZE) / 2;
+        int iconY = slotY + (SLOT_SIZE - ICON_SIZE) / 2;
+        graphics.item(icon(pieceType), iconX, iconY);
+        if (!selected) {
+            graphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1, MUTED_OVERLAY_COLOR);
+        }
+    }
+
+    private static String keyLabel(PieceType pieceType) {
+        String label = ClientInputHooks.buildKeyLabel(pieceType);
+        return label.isBlank() ? "—" : label;
+    }
+
+    private static ItemStack icon(PieceType pieceType) {
+        return switch (pieceType) {
+            case WALL -> wallIcon();
+            case FLOOR -> floorIcon();
+            case STAIR -> stairIcon();
+            case ROOF -> roofIcon();
+        };
+    }
+
+    private static ItemStack wallIcon() {
+        if (wallIcon == null) {
+            wallIcon = new ItemStack(ModItems.WALL);
+        }
+        return wallIcon;
+    }
+
+    private static ItemStack floorIcon() {
+        if (floorIcon == null) {
+            floorIcon = new ItemStack(ModItems.FLOOR);
+        }
+        return floorIcon;
+    }
+
+    private static ItemStack stairIcon() {
+        if (stairIcon == null) {
+            stairIcon = new ItemStack(ModItems.STAIR);
+        }
+        return stairIcon;
+    }
+
+    private static ItemStack roofIcon() {
+        if (roofIcon == null) {
+            roofIcon = new ItemStack(ModItems.ROOF);
+        }
+        return roofIcon;
     }
 }

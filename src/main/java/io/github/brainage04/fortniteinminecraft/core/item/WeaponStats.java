@@ -8,7 +8,9 @@ public record WeaponStats(
         double reloadSeconds,
         int pellets,
         double rangeBlocks,
-        double maxDamagePerShot
+        double maxDamagePerShot,
+        int cartridgePerFire,
+        double burstFiringRatePerSecond
 ) {
     public WeaponStats {
         if (maxDamagePerShot < 0.0D) {
@@ -35,6 +37,12 @@ public record WeaponStats(
         if (rangeBlocks <= 0.0D) {
             throw new IllegalArgumentException("rangeBlocks must be positive");
         }
+        if (cartridgePerFire <= 0) {
+            throw new IllegalArgumentException("cartridgePerFire must be positive");
+        }
+        if (burstFiringRatePerSecond <= 0.0D) {
+            throw new IllegalArgumentException("burstFiringRatePerSecond must be positive");
+        }
     }
 
     public WeaponStats(
@@ -46,7 +54,20 @@ public record WeaponStats(
             int pellets,
             double rangeBlocks
     ) {
-        this(damage, criticalMultiplier, magazineSize, fireRatePerSecond, reloadSeconds, pellets, rangeBlocks, 0.0D);
+        this(damage, criticalMultiplier, magazineSize, fireRatePerSecond, reloadSeconds, pellets, rangeBlocks, 0.0D, 1, fireRatePerSecond);
+    }
+
+    public WeaponStats(
+            double damage,
+            double criticalMultiplier,
+            int magazineSize,
+            double fireRatePerSecond,
+            double reloadSeconds,
+            int pellets,
+            double rangeBlocks,
+            double maxDamagePerShot
+    ) {
+        this(damage, criticalMultiplier, magazineSize, fireRatePerSecond, reloadSeconds, pellets, rangeBlocks, maxDamagePerShot, 1, fireRatePerSecond);
     }
 
     public double totalDamagePerShot() {

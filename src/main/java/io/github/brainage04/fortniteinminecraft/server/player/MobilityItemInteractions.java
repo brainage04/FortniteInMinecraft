@@ -1,8 +1,12 @@
 package io.github.brainage04.fortniteinminecraft.server.player;
 
+import io.github.brainage04.fortniteinminecraft.server.item.DeployableTriggerBlocks;
+import io.github.brainage04.fortniteinminecraft.server.item.TrapTriggerBlock;
+
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -12,8 +16,9 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -46,7 +51,10 @@ public final class MobilityItemInteractions {
     private static final long SLIDE_MAX_DURATION_TICKS = 45L;
     private static final long SLIDE_PARTICLE_INTERVAL_TICKS = 4L;
     private static final double MIN_PRESERVED_HORIZONTAL_SPEED = 1.0E-5D;
+    private static final double LAUNCH_AIR_DRAG_DIRECTION_DOT_MIN = 0.99D;
     private static final double LAUNCH_PAD_FOOT_EPSILON = 0.05D;
+    private static final double WALL_BOUNCER_HORIZONTAL_VELOCITY_BLOCKS_PER_TICK = 1.35D;
+    private static final double WALL_BOUNCER_UPWARD_VELOCITY_BLOCKS_PER_TICK = 0.55D;
     private static final double RIFT_PORTAL_TRIGGER_RADIUS_BLOCKS = 1.25D;
     private static final double RIFT_PORTAL_TRIGGER_HEIGHT_BLOCKS = 2.5D;
     private static final long RIFT_PORTAL_PARTICLE_INTERVAL_TICKS = 5L;
@@ -86,6 +94,14 @@ public final class MobilityItemInteractions {
     }
 
     public static void enableImpulseLaunch(ServerPlayer player, long durationTicks, boolean cancelFallDamage) {
+        enableLaunchAirFrictionSuppression(player, durationTicks, cancelFallDamage);
+    }
+
+    public static void enableLaunchAirFrictionSuppression(ServerPlayer player, boolean cancelFallDamage) {
+        enableLaunchAirFrictionSuppression(player, DEFAULT_IMPULSE_LAUNCH_TICKS, cancelFallDamage);
+    }
+
+    public static void enableLaunchAirFrictionSuppression(ServerPlayer player, long durationTicks, boolean cancelFallDamage) {
         Objects.requireNonNull(player, "player");
         if (durationTicks <= 0L) {
             return;
@@ -93,14 +109,26 @@ public final class MobilityItemInteractions {
         if (cancelFallDamage) {
             player.resetFallDistance();
         }
-        long expireTick = player.level().getGameTime() + durationTicks;
-        IMPULSE_LAUNCHES.put(player.getUUID(), new ImpulseLaunchState(expireTick, cancelFallDamage, player.getDeltaMovement()));
+        long expiresAtTick = player.level().getGameTime() + durationTicks;
+        IMPULSE_LAUNCHES.put(player.getUUID(), new ImpulseLaunchState(cancelFallDamage, player.getDeltaMovement(), expiresAtTick));
     }
 
     public static void registerLaunchPad(ServerLevel level, BlockPos pos, long redeployTicks) {
+        registerLaunchPad(level, pos, redeployTicks, DeployableTriggerBlocks.TRAP_TRIGGER);
+    }
+
+    public static void registerLaunchPad(ServerLevel level, BlockPos pos, long redeployTicks, Block triggerBlock) {
         Objects.requireNonNull(level, "level");
         Objects.requireNonNull(pos, "pos");
-        LAUNCH_PADS.put(new LaunchPadKey(level.dimension(), pos), new TrackedLaunchPad(redeployTicks));
+        Objects.requireNonNull(triggerBlock, "triggerBlock");
+        LAUNCH_PADS.put(new LaunchPadKey(level.dimension(), pos), new TrackedLaunchPad(redeployTicks, triggerBlock));
+    }
+
+    public static void registerLaunchPadFootprint(ServerLevel level, Iterable<BlockPos> positions, long redeployTicks, Block triggerBlock) {
+        Objects.requireNonNull(positions, "positions");
+        for (BlockPos pos : positions) {
+            registerLaunchPad(level, pos, redeployTicks, triggerBlock);
+        }
     }
 
     public static boolean activateLaunchPad(ServerPlayer player, long redeployTicks) {
@@ -108,7 +136,12 @@ public final class MobilityItemInteractions {
     }
 
     public static boolean activateLaunchPad(ServerPlayer player, long redeployTicks, boolean force) {
+        return activateLaunchPad(player, redeployTicks, force, Direction.UP);
+    }
+
+    public static boolean activateLaunchPad(ServerPlayer player, long redeployTicks, boolean force, Direction surfaceNormal) {
         Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(surfaceNormal, "surfaceNormal");
         if (redeployTicks < 0L) {
             throw new IllegalArgumentException("redeployTicks cannot be negative");
         }
@@ -119,11 +152,12 @@ public final class MobilityItemInteractions {
             return false;
         }
 
-        Vec3 impulse = LaunchPadImpulse.defaultImpulse(player.getLookAngle());
+        Vec3 impulse = launchImpulse(player.getLookAngle(), surfaceNormal);
         player.setDeltaMovement(impulse);
         player.hurtMarked = true;
         player.setOnGround(false);
         player.resetFallDistance();
+        enableLaunchAirFrictionSuppression(player, true);
         enableRedeploy(player, redeployTicks);
         LAST_LAUNCH_PAD_ACTIVATIONS.put(playerId, tick);
 
@@ -188,6 +222,7 @@ public final class MobilityItemInteractions {
         player.hurtMarked = true;
         player.resetFallDistance();
         enableRedeploy(player, redeployTicks);
+        enableLaunchAirFrictionSuppression(player, true);
 
         Vec3 after = player.position();
         emitRiftTravelParticles(level, after, 72);
@@ -282,19 +317,19 @@ public final class MobilityItemInteractions {
             if (!key.dimension().equals(dimension)) {
                 continue;
             }
-            if (!level.getBlockState(key.pos()).is(Blocks.HEAVY_WEIGHTED_PRESSURE_PLATE)) {
+            if (!entry.getValue().isPresentAt(level, key.pos())) {
                 iterator.remove();
             }
         }
 
         for (ServerPlayer player : level.players()) {
-            if (player.isSpectator() || !player.onGround()) {
+            if (player.isSpectator()) {
                 continue;
             }
-            BlockPos pos = launchPadPositionUnder(player);
-            TrackedLaunchPad pad = LAUNCH_PADS.get(new LaunchPadKey(dimension, pos));
-            if (pad != null && level.getBlockState(pos).is(Blocks.HEAVY_WEIGHTED_PRESSURE_PLATE)) {
-                activateLaunchPad(player, pad.redeployTicks());
+            for (BlockPos pos : launchPadPositionsTouching(player)) {
+                if (tryActivateLaunchPadAt(level, dimension, player, pos)) {
+                    break;
+                }
             }
         }
     }
@@ -374,14 +409,14 @@ public final class MobilityItemInteractions {
                 continue;
             }
             ImpulseLaunchState state = entry.getValue();
-            if (state.cancelFallDamage()) {
-                player.resetFallDistance();
-            }
-            if (player.onGround() || tick >= state.expireTick()) {
+            if (!launchAirDragSuppressionActive(tick, state.expiresAtTick()) || player.onGround()) {
                 iterator.remove();
                 continue;
             }
-            preserveLaunchedHorizontalVelocity(player, state);
+            if (state.cancelFallDamage()) {
+                player.resetFallDistance();
+            }
+            preserveLaunchedHorizontalVelocity(player, state, tick);
         }
     }
 
@@ -522,13 +557,40 @@ public final class MobilityItemInteractions {
         return start.distanceTo(hit.getLocation());
     }
 
-    private static BlockPos launchPadPositionUnder(ServerPlayer player) {
-        return BlockPos.containing(player.getX(), player.getBoundingBox().minY + LAUNCH_PAD_FOOT_EPSILON, player.getZ());
+    private static Iterable<BlockPos> launchPadPositionsTouching(ServerPlayer player) {
+        AABB box = player.getBoundingBox().inflate(LAUNCH_PAD_FOOT_EPSILON);
+        return BlockPos.betweenClosed(
+                BlockPos.containing(box.minX, box.minY, box.minZ),
+                BlockPos.containing(box.maxX, box.maxY, box.maxZ)
+        );
     }
 
-    private static void preserveLaunchedHorizontalVelocity(ServerPlayer player, ImpulseLaunchState state) {
+    private static boolean tryActivateLaunchPadAt(ServerLevel level, ResourceKey<Level> dimension, ServerPlayer player, BlockPos pos) {
+        TrackedLaunchPad pad = LAUNCH_PADS.get(new LaunchPadKey(dimension, pos));
+        if (pad == null || !pad.isPresentAt(level, pos)) {
+            return false;
+        }
+        activateLaunchPad(player, pad.redeployTicks(), false, pad.surfaceNormalAt(level, pos));
+        return true;
+    }
+
+    static Vec3 launchImpulse(Vec3 lookAngle, Direction surfaceNormal) {
+        if (surfaceNormal == Direction.UP) {
+            return LaunchPadImpulse.defaultImpulse(lookAngle);
+        }
+        if (surfaceNormal.getAxis().isHorizontal()) {
+            return new Vec3(
+                    surfaceNormal.getStepX() * WALL_BOUNCER_HORIZONTAL_VELOCITY_BLOCKS_PER_TICK,
+                    WALL_BOUNCER_UPWARD_VELOCITY_BLOCKS_PER_TICK,
+                    surfaceNormal.getStepZ() * WALL_BOUNCER_HORIZONTAL_VELOCITY_BLOCKS_PER_TICK
+            );
+        }
+        return LaunchPadImpulse.defaultImpulse(lookAngle);
+    }
+
+    private static void preserveLaunchedHorizontalVelocity(ServerPlayer player, ImpulseLaunchState state, long tick) {
         Vec3 velocity = player.getDeltaMovement();
-        Vec3 corrected = withoutLaunchAirDrag(velocity, state.horizontalVelocity());
+        Vec3 corrected = launchAirDragSuppressedVelocity(velocity, state.horizontalVelocity(), tick, state.expiresAtTick());
         if (corrected == velocity) {
             state.setHorizontalVelocity(velocity);
             return;
@@ -537,14 +599,33 @@ public final class MobilityItemInteractions {
         player.hurtMarked = true;
     }
 
+    static Vec3 launchAirDragSuppressedVelocity(Vec3 velocity, Vec3 preservedHorizontalVelocity, long currentTick, long expiresAtTick) {
+        if (!launchAirDragSuppressionActive(currentTick, expiresAtTick)) {
+            return velocity;
+        }
+        return withoutLaunchAirDrag(velocity, preservedHorizontalVelocity);
+    }
+
+    static boolean launchAirDragSuppressionActive(long currentTick, long expiresAtTick) {
+        return currentTick < expiresAtTick;
+    }
+
     static Vec3 withoutLaunchAirDrag(Vec3 velocity, Vec3 preservedHorizontalVelocity) {
         Objects.requireNonNull(velocity, "velocity");
         Objects.requireNonNull(preservedHorizontalVelocity, "preservedHorizontalVelocity");
         double preservedSpeedSqr = horizontalSpeedSqr(preservedHorizontalVelocity);
-        if (preservedSpeedSqr <= MIN_PRESERVED_HORIZONTAL_SPEED * MIN_PRESERVED_HORIZONTAL_SPEED) {
+        double minSpeedSqr = MIN_PRESERVED_HORIZONTAL_SPEED * MIN_PRESERVED_HORIZONTAL_SPEED;
+        if (preservedSpeedSqr <= minSpeedSqr) {
             return velocity;
         }
-        if (horizontalSpeedSqr(velocity) >= preservedSpeedSqr) {
+        double currentSpeedSqr = horizontalSpeedSqr(velocity);
+        if (currentSpeedSqr >= preservedSpeedSqr || currentSpeedSqr <= minSpeedSqr) {
+            return velocity;
+        }
+        double dot = velocity.x() * preservedHorizontalVelocity.x() + velocity.z() * preservedHorizontalVelocity.z();
+        double minAlignedDotSqr = currentSpeedSqr * preservedSpeedSqr
+                * LAUNCH_AIR_DRAG_DIRECTION_DOT_MIN * LAUNCH_AIR_DRAG_DIRECTION_DOT_MIN;
+        if (dot <= 0.0D || dot * dot < minAlignedDotSqr) {
             return velocity;
         }
         return new Vec3(preservedHorizontalVelocity.x(), velocity.y(), preservedHorizontalVelocity.z());
@@ -566,11 +647,24 @@ public final class MobilityItemInteractions {
         }
     }
 
-    private record TrackedLaunchPad(long redeployTicks) {
+    private record TrackedLaunchPad(long redeployTicks, Block triggerBlock) {
         private TrackedLaunchPad {
             if (redeployTicks < 0L) {
                 throw new IllegalArgumentException("redeployTicks cannot be negative");
             }
+            Objects.requireNonNull(triggerBlock, "triggerBlock");
+        }
+
+        private boolean isPresentAt(ServerLevel level, BlockPos pos) {
+            return level.getBlockState(pos).is(triggerBlock);
+        }
+
+        private Direction surfaceNormalAt(ServerLevel level, BlockPos pos) {
+            BlockState state = level.getBlockState(pos);
+            if (state.hasProperty(TrapTriggerBlock.FACING)) {
+                return state.getValue(TrapTriggerBlock.FACING);
+            }
+            return Direction.UP;
         }
     }
 
@@ -675,22 +769,22 @@ public final class MobilityItemInteractions {
     }
 
     private static final class ImpulseLaunchState {
-        private final long expireTick;
         private final boolean cancelFallDamage;
+        private final long expiresAtTick;
         private Vec3 horizontalVelocity;
 
-        private ImpulseLaunchState(long expireTick, boolean cancelFallDamage, Vec3 launchVelocity) {
-            this.expireTick = expireTick;
+        private ImpulseLaunchState(boolean cancelFallDamage, Vec3 launchVelocity, long expiresAtTick) {
             this.cancelFallDamage = cancelFallDamage;
+            this.expiresAtTick = expiresAtTick;
             setHorizontalVelocity(launchVelocity);
-        }
-
-        private long expireTick() {
-            return expireTick;
         }
 
         private boolean cancelFallDamage() {
             return cancelFallDamage;
+        }
+
+        private long expiresAtTick() {
+            return expiresAtTick;
         }
 
         private Vec3 horizontalVelocity() {

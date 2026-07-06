@@ -86,11 +86,17 @@ def clientGameTestRunDir = layout.buildDirectory.dir("run/clientGameTest")
 
 tasks.register("prepareClientGameTestRun") {
 	def optionsFile = clientGameTestRunDir.map { it.file("options.txt") }
+	def recordingAudioDevice = providers.gradleProperty("fimRecordingAudioDevice")
+			.orElse(providers.environmentVariable("FIM_RECORDING_AUDIO_DEVICE"))
+			.orElse("")
 
+	inputs.property("fimRecordingAudioDevice", recordingAudioDevice)
 	outputs.file(optionsFile)
 	mustRunAfter(tasks.named("deleteGameTestRunDir"))
 
 	doLast {
+		def soundDevice = recordingAudioDevice.get()
+		def masterVolume = soundDevice.isBlank() ? "0.0" : "1.0"
 		def settings = [
 				version                  : "4671",
 				ao                       : "false",
@@ -100,9 +106,9 @@ tasks.register("prepareClientGameTestRun") {
 				enableVsync              : "false",
 				entityDistanceScaling    : "0.5",
 				entityShadows            : "false",
-				fullscreen               : "false",
+				fullscreen               : "true",
 				graphicsPreset           : '"fast"',
-				guiScale                 : "3",
+				guiScale                 : "1",
 				improvedTransparency     : "false",
 				maxAnisotropyBit         : "1",
 				maxFps                   : "30",
@@ -115,7 +121,8 @@ tasks.register("prepareClientGameTestRun") {
 				renderClouds             : '"false"',
 				renderDistance           : "5",
 				simulationDistance       : "5",
-				soundCategory_master     : "0.0",
+				soundDevice              : "\"${soundDevice}\"",
+				soundCategory_master     : masterVolume,
 				soundCategory_music      : "0.0",
 				toggleSprint             : "true",
 				weatherRadius            : "5"
@@ -129,6 +136,17 @@ tasks.register("prepareClientGameTestRun") {
 
 tasks.matching { it.name == "runClientGameTest" }.configureEach {
 	dependsOn(tasks.named("prepareClientGameTestRun"))
+	jvmArgs "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
+	jvmArgs "-Dfortniteinminecraft.clientGameTest=true"
+	["ALSOFT_CONF", "ALSOFT_DRIVERS", "PULSE_SINK"].each { name ->
+		def value = providers.environmentVariable(name).orNull
+		if (value != null && !value.isBlank()) {
+			environment(name, value)
+		}
+	}
+	if (providers.environmentVariable("FIM_RECORDING_MANAGED_XVFB").map { it.toBoolean() }.getOrElse(false)) {
+		useXvfb.set(false)
+	}
 }
 // END CLIENT GAMETEST RUN SETUP
 

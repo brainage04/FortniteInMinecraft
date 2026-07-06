@@ -14,6 +14,11 @@ on:
         required: false
         type: boolean
         default: true
+      record_client_gametests:
+        description: Record client GameTests
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -72,7 +77,7 @@ jobs:
     name: client GameTests
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    if: ${{ vars.RUN_CLIENT_GAMETESTS != 'false' && (github.event_name != 'workflow_dispatch' || inputs.run_client_gametests) }}
+    if: ${{ vars.RUN_CLIENT_GAMETESTS != 'false' && (github.event_name != 'workflow_dispatch' || inputs.run_client_gametests || inputs.record_client_gametests) }}
     steps:
       - name: checkout repository
         uses: actions/checkout@v5
@@ -90,7 +95,7 @@ jobs:
         if: ${{ steps.client-test-support.outputs.present == 'true' }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb mesa-utils libflite1 libgl1-mesa-dri libglx-mesa0 libxi6 libxrandr2 libxrender1 libxtst6 libxinerama1 libxcursor1 libxxf86vm1
+          sudo apt-get install -y xvfb ffmpeg x11-utils mesa-utils libflite1 libgl1-mesa-dri libglx-mesa0 libxi6 libxrandr2 libxrender1 libxtst6 libxinerama1 libxcursor1 libxxf86vm1
 
       - name: validate gradle wrapper
         if: ${{ steps.client-test-support.outputs.present == 'true' }}
@@ -112,11 +117,27 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: run client GameTests
-        if: ${{ steps.client-test-support.outputs.present == 'true' }}
+        if: ${{ steps.client-test-support.outputs.present == 'true' && (github.event_name != 'workflow_dispatch' || inputs.run_client_gametests) }}
         env:
           ALSOFT_DRIVERS: "null"
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: xvfb-run -a --server-args="-screen 0 1280x720x24" ./gradlew --no-daemon runClientGameTest
+
+      - name: record client GameTests
+        if: ${{ steps.client-test-support.outputs.present == 'true' && github.event_name == 'workflow_dispatch' && inputs.record_client_gametests }}
+        env:
+          ALSOFT_DRIVERS: "null"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          FIM_RECORDING_KEEP_RUN_DIR: "true"
+          FIM_RECORDING_NAME: "client-gametest"
+        run: ./scripts/run-client-gametest-recorded.sh
+
+      - name: store client GameTest recordings
+        if: ${{ always() && steps.client-test-support.outputs.present == 'true' && github.event_name == 'workflow_dispatch' && inputs.record_client_gametests }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-gametest-recordings
+          path: build/recordings/
 
       - name: store client GameTest reports
         if: ${{ failure() && steps.client-test-support.outputs.present == 'true' }}

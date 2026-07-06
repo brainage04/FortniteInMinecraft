@@ -39,6 +39,10 @@ public final class ClientInputHooks {
     private static boolean editModeActive;
     private static PieceType selectedBuildPiece;
     private static int selectedHotbarSlot = -1;
+    private static ItemStack wallBuildStack;
+    private static ItemStack floorBuildStack;
+    private static ItemStack stairBuildStack;
+    private static ItemStack roofBuildStack;
 
     private ClientInputHooks() {
     }
@@ -92,6 +96,21 @@ public final class ClientInputHooks {
         return selectedBuildPiece;
     }
 
+    public static ItemStack selectedBuildPieceStack() {
+        if (selectedBuildPiece == null) {
+            return ItemStack.EMPTY;
+        }
+        return buildPieceStack(selectedBuildPiece);
+    }
+
+    public static boolean suppressesVanillaHotbarSelection() {
+        return selectedBuildPiece != null;
+    }
+
+    public static int suppressedVanillaHotbarSlot() {
+        return selectedBuildPiece == null ? -1 : selectedHotbarSlot;
+    }
+
     public static String buildKeyLabel(PieceType pieceType) {
         return keyLabel(buildKey(pieceType), "");
     }
@@ -127,8 +146,7 @@ public final class ClientInputHooks {
             return;
         }
         if (selectedBuildPiece != null && selectedHotbarSlot != hotbarSlot) {
-            selectedBuildPiece = null;
-            send(ClientAction.DESELECT_BUILD, true);
+            deselectBuildPiece();
         }
         selectedHotbarSlot = hotbarSlot;
     }
@@ -149,8 +167,24 @@ public final class ClientInputHooks {
     }
 
     private static void selectBuildPiece(PieceType pieceType, ClientAction action) {
+        if (selectedBuildPiece == pieceType) {
+            deselectBuildPiece();
+            return;
+        }
         selectedBuildPiece = pieceType;
+        Minecraft client = Minecraft.getInstance();
+        if (client.player != null) {
+            selectedHotbarSlot = client.player.getInventory().getSelectedSlot();
+        }
         send(action, true);
+    }
+
+    private static void deselectBuildPiece() {
+        if (selectedBuildPiece == null) {
+            return;
+        }
+        selectedBuildPiece = null;
+        send(ClientAction.DESELECT_BUILD, true);
     }
 
     private static void handleEditKeys() {
@@ -170,7 +204,7 @@ public final class ClientInputHooks {
 
     private static void handleBuildUtilityKeys() {
         while (rotateBuild.consumeClick()) {
-            if (selectedBuildPiece != null) {
+            if (canRotateSelectedBuildPiece()) {
                 send(ClientAction.ROTATE_BUILD, true);
             }
         }
@@ -236,6 +270,47 @@ public final class ClientInputHooks {
         Item item = stack.getItem();
         return ModItems.isGun(item)
                 || ModItems.asBuildPiece(stack) != null;
+    }
+
+    private static boolean canRotateSelectedBuildPiece() {
+        return selectedBuildPiece == PieceType.STAIR || selectedBuildPiece == PieceType.ROOF;
+    }
+
+    private static ItemStack buildPieceStack(PieceType pieceType) {
+        return switch (pieceType) {
+            case WALL -> wallBuildStack();
+            case FLOOR -> floorBuildStack();
+            case STAIR -> stairBuildStack();
+            case ROOF -> roofBuildStack();
+        };
+    }
+
+    private static ItemStack wallBuildStack() {
+        if (wallBuildStack == null) {
+            wallBuildStack = new ItemStack(ModItems.WALL);
+        }
+        return wallBuildStack;
+    }
+
+    private static ItemStack floorBuildStack() {
+        if (floorBuildStack == null) {
+            floorBuildStack = new ItemStack(ModItems.FLOOR);
+        }
+        return floorBuildStack;
+    }
+
+    private static ItemStack stairBuildStack() {
+        if (stairBuildStack == null) {
+            stairBuildStack = new ItemStack(ModItems.STAIR);
+        }
+        return stairBuildStack;
+    }
+
+    private static ItemStack roofBuildStack() {
+        if (roofBuildStack == null) {
+            roofBuildStack = new ItemStack(ModItems.ROOF);
+        }
+        return roofBuildStack;
     }
 
     private static KeyMapping buildKey(PieceType pieceType) {

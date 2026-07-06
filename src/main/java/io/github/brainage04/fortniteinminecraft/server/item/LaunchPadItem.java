@@ -16,15 +16,16 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
 public final class LaunchPadItem extends Item {
-    private static final BlockState PLACED_STATE = Blocks.HEAVY_WEIGHTED_PRESSURE_PLATE.defaultBlockState();
+    private static BlockState placedState() {
+        return DeployableFootprints.floorTriggerState();
+    }
     private final String displayName;
     private final int cooldownTicks;
     private final long redeployTicks;
@@ -74,17 +75,18 @@ public final class LaunchPadItem extends Item {
             return InteractionResult.SUCCESS_SERVER;
         }
 
-        BlockPos pos = context.getClickedPos().above();
-        if (!canPlaceLaunchPad(serverLevel, pos)) {
-            serverPlayer.sendSystemMessage(Component.literal("Launch Pad needs an empty floor."), true);
+        BlockState placedState = placedState();
+        List<BlockPos> footprint = launchPadFootprint(context.getClickedPos());
+        if (!canPlaceLaunchPad(serverLevel, footprint, placedState)) {
+            serverPlayer.sendSystemMessage(Component.literal("Launch Pad needs a clear 3x3 supported floor."), true);
             return InteractionResult.FAIL;
         }
 
-        if (!serverLevel.setBlock(pos, PLACED_STATE, Block.UPDATE_ALL)) {
+        if (!DeployableFootprints.placeAll(serverLevel, footprint, placedState)) {
             serverPlayer.sendSystemMessage(Component.literal("Launch Pad placement failed."), true);
             return InteractionResult.FAIL;
         }
-        MobilityItemInteractions.registerLaunchPad(serverLevel, pos, redeployTicks);
+        MobilityItemInteractions.registerLaunchPadFootprint(serverLevel, footprint, redeployTicks, placedState.getBlock());
         serverPlayer.getCooldowns().addCooldown(stack, cooldownTicks);
         serverPlayer.awardStat(Stats.ITEM_USED.get(this));
         stack.consume(1, serverPlayer);
@@ -92,10 +94,12 @@ public final class LaunchPadItem extends Item {
         return InteractionResult.SUCCESS_SERVER;
     }
 
-    private static boolean canPlaceLaunchPad(ServerLevel level, BlockPos pos) {
-        return level.isInWorldBounds(pos)
-                && level.getBlockState(pos).canBeReplaced()
-                && PLACED_STATE.canSurvive(level, pos);
+    static List<BlockPos> launchPadFootprint(BlockPos clickedPos) {
+        return DeployableFootprints.centeredFloorSquare(clickedPos.above(), DeployableFootprints.LAUNCH_PAD_SIZE_BLOCKS);
+    }
+
+    private static boolean canPlaceLaunchPad(ServerLevel level, List<BlockPos> footprint, BlockState placedState) {
+        return DeployableFootprints.canPlaceAll(level, footprint, placedState);
     }
 
     private static String requireText(String value, String name) {

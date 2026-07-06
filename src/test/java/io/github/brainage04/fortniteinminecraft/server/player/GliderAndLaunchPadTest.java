@@ -1,5 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.player;
 
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -63,6 +64,76 @@ class GliderAndLaunchPadTest {
         Vec3 corrected = MobilityItemInteractions.withoutLaunchAirDrag(velocity, new Vec3(2.0D, 0.0D, 0.0D));
 
         assertEquals(velocity, corrected);
+    }
+
+    @Test
+    void impulseLaunchDoesNotRestoreCollisionPerpendicularOrDeadStopSlowdowns() {
+        Vec3 preserved = new Vec3(2.0D, 0.0D, -1.0D);
+        Vec3 perpendicular = new Vec3(0.5D, 0.1D, 1.0D);
+        Vec3 reversed = new Vec3(-0.5D, 0.2D, 0.25D);
+        Vec3 deadStop = new Vec3(1.0E-7D, -0.4D, -5.0E-8D);
+
+        assertEquals(perpendicular, MobilityItemInteractions.withoutLaunchAirDrag(perpendicular, preserved));
+        assertEquals(reversed, MobilityItemInteractions.withoutLaunchAirDrag(reversed, preserved));
+        assertEquals(deadStop, MobilityItemInteractions.withoutLaunchAirDrag(deadStop, preserved));
+    }
+
+    @Test
+    void launchAirDragSuppressionRestoresOnlyBeforeExpiryTick() {
+        Vec3 launchVelocity = new Vec3(1.6D, 0.65D, -0.4D);
+        Vec3 draggedVelocity = new Vec3(
+                launchVelocity.x() * VANILLA_AIR_DRAG,
+                0.25D,
+                launchVelocity.z() * VANILLA_AIR_DRAG
+        );
+        long expiresAtTick = 105L;
+
+        Vec3 beforeExpiry = MobilityItemInteractions.launchAirDragSuppressedVelocity(
+                draggedVelocity,
+                launchVelocity,
+                expiresAtTick - 1L,
+                expiresAtTick
+        );
+        Vec3 atExpiry = MobilityItemInteractions.launchAirDragSuppressedVelocity(
+                draggedVelocity,
+                launchVelocity,
+                expiresAtTick,
+                expiresAtTick
+        );
+
+        assertEquals(launchVelocity.x(), beforeExpiry.x(), 1.0E-9D);
+        assertEquals(draggedVelocity.y(), beforeExpiry.y(), 1.0E-9D);
+        assertEquals(launchVelocity.z(), beforeExpiry.z(), 1.0E-9D);
+        assertEquals(draggedVelocity, atExpiry);
+    }
+
+    @Test
+    void wallBouncerLaunchUsesSurfaceNormalHorizontalVector() {
+        Vec3 eastWallImpulse = MobilityItemInteractions.launchImpulse(new Vec3(0.0D, 0.0D, -1.0D), Direction.EAST);
+        Vec3 northWallImpulse = MobilityItemInteractions.launchImpulse(new Vec3(1.0D, 0.0D, 0.0D), Direction.NORTH);
+
+        assertEquals(1.35D, eastWallImpulse.x(), 1.0E-9D);
+        assertEquals(0.55D, eastWallImpulse.y(), 1.0E-9D);
+        assertEquals(0.0D, eastWallImpulse.z(), 1.0E-9D);
+        assertEquals(0.0D, northWallImpulse.x(), 1.0E-9D);
+        assertEquals(0.55D, northWallImpulse.y(), 1.0E-9D);
+        assertEquals(-1.35D, northWallImpulse.z(), 1.0E-9D);
+    }
+
+    @Test
+    void launchPadAndWallBouncerSuppressionRestoresHorizontalSpeedAcrossAirTicks() {
+        Vec3 launchPad = MobilityItemInteractions.launchImpulse(new Vec3(0.0D, 0.0D, 1.0D), Direction.UP);
+        Vec3 wallBouncer = MobilityItemInteractions.launchImpulse(new Vec3(1.0D, 0.0D, 0.0D), Direction.WEST);
+
+        assertSuppressedAirTicksRestoreHorizontalVelocity(launchPad, 40);
+        assertSuppressedAirTicksRestoreHorizontalVelocity(wallBouncer, 40);
+    }
+
+    @Test
+    void impulseShockwaveAndGrapplerSuppressionRestoresHorizontalSpeedAcrossAirTicks() {
+        assertSuppressedAirTicksRestoreHorizontalVelocity(new Vec3(1.6D, 0.65D, 0.0D), 40);
+        assertSuppressedAirTicksRestoreHorizontalVelocity(new Vec3(-1.8D, 0.8D, 0.0D), 40);
+        assertSuppressedAirTicksRestoreHorizontalVelocity(new Vec3(1.9D, 0.72D, 0.35D), 40);
     }
 
     @Test
@@ -209,6 +280,17 @@ class GliderAndLaunchPadTest {
 
     private static double vanillaSlowFallingNextYVelocity(double yVelocity) {
         return (yVelocity - VANILLA_SLOW_FALLING_GRAVITY) * VANILLA_AIR_DRAG;
+    }
+
+    private static void assertSuppressedAirTicksRestoreHorizontalVelocity(Vec3 launchVelocity, int ticks) {
+        Vec3 velocity = launchVelocity;
+        for (int tick = 0; tick < ticks; tick++) {
+            velocity = new Vec3(velocity.x() * VANILLA_AIR_DRAG, velocity.y(), velocity.z() * VANILLA_AIR_DRAG);
+            velocity = MobilityItemInteractions.withoutLaunchAirDrag(velocity, launchVelocity);
+        }
+
+        assertEquals(launchVelocity.x(), velocity.x(), 1.0E-9D);
+        assertEquals(launchVelocity.z(), velocity.z(), 1.0E-9D);
     }
 
     private static double horizontalDistance(Vec3 velocity) {
