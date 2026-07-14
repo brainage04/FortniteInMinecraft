@@ -52,6 +52,12 @@ jobs:
           java-version: '25'
           distribution: 'microsoft'
 
+      - name: prepare local dependencies
+        run: |
+          git clone --depth 1 https://github.com/brainage04/FabricModdingConventions.git ../FabricModdingConventions
+          chmod +x ../FabricModdingConventions/gradlew
+          ../FabricModdingConventions/gradlew -p ../FabricModdingConventions --no-daemon publishAllPublicationsToLocalRepository
+
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
 
@@ -95,7 +101,7 @@ jobs:
         if: ${{ steps.client-test-support.outputs.present == 'true' }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb ffmpeg x11-utils mesa-utils libflite1 libgl1-mesa-dri libglx-mesa0 libxi6 libxrandr2 libxrender1 libxtst6 libxinerama1 libxcursor1 libxxf86vm1
+          sudo apt-get install -y xvfb ffmpeg pipewire-bin x11-utils mesa-utils libflite1 libgl1-mesa-dri libglx-mesa0 libxi6 libxrandr2 libxrender1 libxtst6 libxinerama1 libxcursor1 libxxf86vm1
 
       - name: validate gradle wrapper
         if: ${{ steps.client-test-support.outputs.present == 'true' }}
@@ -112,6 +118,13 @@ jobs:
         if: ${{ steps.client-test-support.outputs.present == 'true' }}
         uses: gradle/actions/setup-gradle@v5
 
+      - name: prepare local dependencies
+        if: ${{ steps.client-test-support.outputs.present == 'true' }}
+        run: |
+          git clone --depth 1 https://github.com/brainage04/FabricModdingConventions.git ../FabricModdingConventions
+          chmod +x ../FabricModdingConventions/gradlew
+          ../FabricModdingConventions/gradlew -p ../FabricModdingConventions --no-daemon publishAllPublicationsToLocalRepository
+
       - name: make gradle wrapper executable
         if: ${{ steps.client-test-support.outputs.present == 'true' }}
         run: chmod +x ./gradlew
@@ -123,14 +136,21 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: xvfb-run -a --server-args="-screen 0 1280x720x24" ./gradlew --no-daemon runClientGameTest
 
+      - name: run production GameTests
+        if: ${{ steps.client-test-support.outputs.present == 'true' && (github.event_name != 'workflow_dispatch' || inputs.run_client_gametests) }}
+        env:
+          ALSOFT_DRIVERS: "null"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          CLIENT_GAMETEST_PROFILE: "smoke"
+        run: ./gradlew --no-daemon runAllProductionGameTests
+
       - name: record client GameTests
         if: ${{ steps.client-test-support.outputs.present == 'true' && github.event_name == 'workflow_dispatch' && inputs.record_client_gametests }}
         env:
           ALSOFT_DRIVERS: "null"
           LIBGL_ALWAYS_SOFTWARE: "1"
-          FIM_RECORDING_KEEP_RUN_DIR: "true"
-          FIM_RECORDING_NAME: "client-gametest"
-        run: ./scripts/run-client-gametest-recorded.sh
+          GTR_RECORDING_NAME: "client-gametest"
+        run: ./gradlew --no-daemon recordClientGameTest
 
       - name: store client GameTest recordings
         if: ${{ always() && steps.client-test-support.outputs.present == 'true' && github.event_name == 'workflow_dispatch' && inputs.record_client_gametests }}

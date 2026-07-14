@@ -1,6 +1,9 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 	id 'maven-publish'
+	id 'io.github.brainage04.fabric-mod-conventions' version "${fabricmoddingconventions_version}"
+	id 'io.github.brainage04.client-gametest-recorder' version "${fabricmoddingconventions_version}"
+	id 'io.github.brainage04.production-gametests' version "${fabricmoddingconventions_version}"
+	id 'io.github.brainage04.workspace-dependencies' version "${fabricmoddingconventions_version}"
 }
 
 version = project.mod_version
@@ -11,37 +14,21 @@ base {
 }
 
 repositories {
-	mavenCentral()
-	maven { url "https://libraries.minecraft.net" }
-	maven { url "https://maven.fabricmc.net/" }
 	maven { url "https://maven.nucleoid.xyz" }
+}
+
+workspaceDependencies {
+	siblingMaven("FabricModdingConventions") {
+		coordinate.set("io.github.brainage04:fabricmoddingconventions:${project.fabricmoddingconventions_version}")
+	}
 }
 
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	implementation "io.github.brainage04:fabricmoddingconventions:${project.fabricmoddingconventions_version}"
 	testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
-}
-
-processResources {
-	inputs.property "mod_id", project.properties.mod_id
-	inputs.property "mod_version", project.version
-	inputs.property "mod_name", project.properties.mod_name
-	inputs.property "loader_version", project.properties.loader_version
-	inputs.property "minecraft_version", project.properties.minecraft_version
-	inputs.property "java_version", project.properties.java_version
-
-	filesMatching("fabric.mod.json") {
-		expand([
-				"mod_id": inputs.properties.mod_id,
-				"mod_version": inputs.properties.mod_version,
-				"mod_name": inputs.properties.mod_name,
-				"loader_version": inputs.properties.loader_version,
-				"minecraft_version": inputs.properties.minecraft_version,
-				"java_version": inputs.properties.java_version,
-		])
-	}
 }
 
 loom {
@@ -67,6 +54,10 @@ fabricApi {
 	}
 }
 
+productionGameTests {
+	enabled = true
+}
+
 tasks.named("processGametestResources") {
 	inputs.property "mod_id", project.properties.mod_id
 	inputs.property "mod_version", project.version
@@ -81,94 +72,10 @@ tasks.named("processGametestResources") {
 	}
 }
 
-// BEGIN CLIENT GAMETEST RUN SETUP
-def clientGameTestRunDir = layout.buildDirectory.dir("run/clientGameTest")
-
-tasks.register("prepareClientGameTestRun") {
-	def optionsFile = clientGameTestRunDir.map { it.file("options.txt") }
-	def recordingAudioDevice = providers.gradleProperty("fimRecordingAudioDevice")
-			.orElse(providers.environmentVariable("FIM_RECORDING_AUDIO_DEVICE"))
-			.orElse("")
-
-	inputs.property("fimRecordingAudioDevice", recordingAudioDevice)
-	outputs.file(optionsFile)
-	mustRunAfter(tasks.named("deleteGameTestRunDir"))
-
-	doLast {
-		def soundDevice = recordingAudioDevice.get()
-		def masterVolume = soundDevice.isBlank() ? "0.0" : "1.0"
-		def settings = [
-				version                  : "4671",
-				ao                       : "false",
-				autoJump                 : "false",
-				biomeBlendRadius         : "0",
-				chunkSectionFadeInTime   : "0.0",
-				enableVsync              : "false",
-				entityDistanceScaling    : "0.5",
-				entityShadows            : "false",
-				fullscreen               : "true",
-				graphicsPreset           : '"fast"',
-				guiScale                 : "1",
-				improvedTransparency     : "false",
-				maxAnisotropyBit         : "1",
-				maxFps                   : "30",
-				menuBackgroundBlurriness : "0",
-				mipmapLevels             : "0",
-				narrator                 : "0",
-				narratorHotkey           : "false",
-				particles                : "2",
-				prioritizeChunkUpdates   : "0",
-				renderClouds             : '"false"',
-				renderDistance           : "5",
-				simulationDistance       : "5",
-				soundDevice              : "\"${soundDevice}\"",
-				soundCategory_master     : masterVolume,
-				soundCategory_music      : "0.0",
-				toggleSprint             : "true",
-				weatherRadius            : "5"
-		]
-		def file = optionsFile.get().asFile
-
-		file.parentFile.mkdirs()
-		file.text = settings.collect { key, value -> "${key}:${value}" }.join(System.lineSeparator()) + System.lineSeparator()
-	}
-}
-
-tasks.matching { it.name == "runClientGameTest" }.configureEach {
-	dependsOn(tasks.named("prepareClientGameTestRun"))
-	jvmArgs "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
-	jvmArgs "-Dfortniteinminecraft.clientGameTest=true"
-	["ALSOFT_CONF", "ALSOFT_DRIVERS", "PULSE_SINK"].each { name ->
-		def value = providers.environmentVariable(name).orNull
-		if (value != null && !value.isBlank()) {
-			environment(name, value)
-		}
-	}
-	if (providers.environmentVariable("FIM_RECORDING_MANAGED_XVFB").map { it.toBoolean() }.getOrElse(false)) {
-		useXvfb.set(false)
-	}
-}
-// END CLIENT GAMETEST RUN SETUP
 
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = project.java_version.toInteger()
 	it.options.encoding = "UTF-8"
-}
-
-java {
-	withSourcesJar()
-
-	sourceCompatibility = JavaVersion.toVersion(project.java_version)
-	targetCompatibility = JavaVersion.toVersion(project.java_version)
-}
-
-jar {
-	inputs.property "archivesName", project.base.archivesName
-
-	from("LICENSE") {
-		rename { "${it}_${inputs.properties.archivesName}" }
-	}
 }
 
 publishing {

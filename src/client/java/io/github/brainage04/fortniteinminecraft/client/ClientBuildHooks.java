@@ -34,7 +34,6 @@ public final class ClientBuildHooks {
         ClientBuildPreview.initialize();
         ClientResourceWalletHud.initialize();
         ClientBuildPieceHud.initialize();
-        ClientGameTestFeedbackHud.initialize();
         ClientLootContainerProgressHud.initialize();
         ClientInputHooks.initialize();
         HudElementRegistry.attachElementAfter(

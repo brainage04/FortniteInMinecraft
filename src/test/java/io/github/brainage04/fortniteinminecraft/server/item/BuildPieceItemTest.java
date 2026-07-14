@@ -394,7 +394,8 @@ class BuildPieceItemTest {
     @Test
     void allItemsCatalogCombinesBuildCombatUtilityAndPickupCategories() {
         assertEquals(ModItems.WEAPONS.size() + ModItems.PROJECTILE_WEAPONS.size() + ModItems.EXPLOSIVE_WEAPONS.size()
-                        + ModItems.THROWABLES.size() + ModItems.UTILITY_ITEMS.size() + ModItems.CONSUMABLES.size(),
+                        + ModItems.THROWABLES.size() + ModItems.UTILITY_ITEMS.size() + ModItems.CONSUMABLES.size()
+                        + ModItems.LOOT_CONTAINER_ITEMS.size(),
                 ModItems.COMBAT_ITEMS.size());
         assertEquals(ModItems.BUILD_PIECES.size() + ModItems.COMBAT_ITEMS.size() + ModItems.PICKUPS.size(),
                 ModItems.ALL_ITEMS.size());

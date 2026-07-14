@@ -27,6 +27,8 @@ Current slice:
 - `/fim place` commits authoritative build state with the player's current facing and materializes visible blocks (wood = oak planks, stone = cobblestone, metal = copper blocks). `/fim clear` removes tracked blocks owned by the player in the current dimension. Use creative mode for command/item smoke tests: it bypasses resource/support checks, but still rejects occupied grid cells and any solid untracked world-block intersection.
 - Holding a build item applies experimental Fortnite-like movement tuning (higher step height, higher jump strength, faster horizontal movement). After a successful placement, if the new footprint intersects the player's lower or upper body AABB, the server phases the player upward to the first collision-free position above the placed blocks.
 
+Recorded client GameTests require `ffmpeg`, `ffprobe`, Xvfb/`xdpyinfo`, and PipeWire tools (`pw-cli`, `wpctl`).
+
 Run:
 
 ```shell
@@ -36,6 +38,6 @@ ALSOFT_DRIVERS=null LIBGL_ALWAYS_SOFTWARE=1 \
   xvfb-run -a --server-args="-screen 0 1280x720x24" \
   ./gradlew --no-daemon runClientGameTest
 
-FIM_RECORDING_AUDIO=false ALSOFT_DRIVERS=null LIBGL_ALWAYS_SOFTWARE=1 \
-  scripts/run-client-gametest-recorded.sh
+ALSOFT_DRIVERS=null LIBGL_ALWAYS_SOFTWARE=1 \
+  ./gradlew --no-daemon recordClientGameTest
 ```
