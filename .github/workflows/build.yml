@@ -125,13 +125,6 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: xvfb-run -a --server-args="-screen 0 1280x720x24" ./gradlew --no-daemon runClientGameTest
 
-      - name: run production GameTests
-        if: ${{ steps.client-test-support.outputs.present == 'true' && (github.event_name != 'workflow_dispatch' || inputs.run_client_gametests) }}
-        env:
-          ALSOFT_DRIVERS: "null"
-          LIBGL_ALWAYS_SOFTWARE: "1"
-          CLIENT_GAMETEST_PROFILE: "smoke"
-        run: ./gradlew --no-daemon runAllProductionGameTests
 
       - name: record client GameTests
         if: ${{ steps.client-test-support.outputs.present == 'true' && github.event_name == 'workflow_dispatch' && inputs.record_client_gametests }}
@@ -158,3 +151,12 @@ jobs:
             **/build/test-results/
             **/build/run/clientGameTest/logs/
 
+
+  production-gametests:
+    name: production GameTests
+    if: ${{ vars.RUN_CLIENT_GAMETESTS != 'false' && (github.event_name != 'workflow_dispatch' || inputs.run_client_gametests) }}
+    permissions:
+      contents: read
+    uses: brainage04/FabricModdingConventions/.github/workflows/reusable-production-gametests.yml@v2.1.0
+    with:
+      client_gametest_profile: smoke
