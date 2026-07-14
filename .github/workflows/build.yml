@@ -52,11 +52,6 @@ jobs:
           java-version: '25'
           distribution: 'microsoft'
 
-      - name: prepare local dependencies
-        run: |
-          git clone --depth 1 https://github.com/brainage04/FabricModdingConventions.git ../FabricModdingConventions
-          chmod +x ../FabricModdingConventions/gradlew
-          ../FabricModdingConventions/gradlew -p ../FabricModdingConventions --no-daemon publishAllPublicationsToLocalRepository
 
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
@@ -118,12 +113,6 @@ jobs:
         if: ${{ steps.client-test-support.outputs.present == 'true' }}
         uses: gradle/actions/setup-gradle@v5
 
-      - name: prepare local dependencies
-        if: ${{ steps.client-test-support.outputs.present == 'true' }}
-        run: |
-          git clone --depth 1 https://github.com/brainage04/FabricModdingConventions.git ../FabricModdingConventions
-          chmod +x ../FabricModdingConventions/gradlew
-          ../FabricModdingConventions/gradlew -p ../FabricModdingConventions --no-daemon publishAllPublicationsToLocalRepository
 
       - name: make gradle wrapper executable
         if: ${{ steps.client-test-support.outputs.present == 'true' }}
