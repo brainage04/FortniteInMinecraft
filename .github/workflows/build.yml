@@ -157,6 +157,6 @@ jobs:
     if: ${{ vars.RUN_CLIENT_GAMETESTS != 'false' && (github.event_name != 'workflow_dispatch' || inputs.run_client_gametests) }}
     permissions:
       contents: read
-    uses: brainage04/FabricModdingConventions/.github/workflows/reusable-production-gametests.yml@v2.2.0
+    uses: brainage04/FabricModdingConventions/.github/workflows/reusable-production-gametests.yml@v2.2.1
     with:
       client_gametest_profile: smoke

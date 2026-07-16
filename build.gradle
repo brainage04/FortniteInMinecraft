@@ -56,6 +56,7 @@ fabricApi {
 
 productionGameTests {
 	enabled = true
+	runtimeModDependencies.add("io.github.brainage04:fabricmoddingconventions:${project.fabricmoddingconventions_version}")
 }
 
 tasks.named("processGametestResources") {
