@@ -7,6 +7,7 @@ accessible method net/minecraft/world/entity/Display setShadowRadius (F)V
 accessible method net/minecraft/world/entity/Display setShadowStrength (F)V
 accessible method net/minecraft/world/entity/Display setWidth (F)V
 accessible method net/minecraft/world/entity/Display setHeight (F)V
+accessible method net/minecraft/world/entity/Display$TextDisplay getText ()Lnet/minecraft/network/chat/Component;
 accessible method net/minecraft/world/entity/Display$TextDisplay setText (Lnet/minecraft/network/chat/Component;)V
 accessible method net/minecraft/world/entity/Display$TextDisplay setLineWidth (I)V
 accessible method net/minecraft/world/entity/Display$TextDisplay setTextOpacity (B)V
