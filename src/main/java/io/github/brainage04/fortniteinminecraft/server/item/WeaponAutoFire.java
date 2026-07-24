@@ -1,7 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -27,11 +26,11 @@ public final class WeaponAutoFire {
         if (registered) {
             return;
         }
-        ServerTickEvents.END_LEVEL_TICK.register(WeaponAutoFire::tickLevel);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            ACTIVE_INPUTS.remove(handler.player.getUUID());
-            PENDING_WEAPON_BURSTS.remove(handler.player.getUUID());
-            PENDING_EXPLOSIVE_BURSTS.remove(handler.player.getUUID());
+        FortniteInMinecraft.platform().registerEndLevelTick(WeaponAutoFire::tickLevel);
+        FortniteInMinecraft.platform().registerPlayerDisconnect(player -> {
+            ACTIVE_INPUTS.remove(player.getUUID());
+            PENDING_WEAPON_BURSTS.remove(player.getUUID());
+            PENDING_EXPLOSIVE_BURSTS.remove(player.getUUID());
         });
         registered = true;
     }

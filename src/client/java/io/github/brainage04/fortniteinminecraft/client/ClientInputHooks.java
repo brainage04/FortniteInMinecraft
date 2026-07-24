@@ -2,13 +2,11 @@ package io.github.brainage04.fortniteinminecraft.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraftClient;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.ClientAction;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.ClientActionPayload;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
@@ -17,9 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 
 public final class ClientInputHooks {
-    private static final KeyMapping.Category FORTNITE_CATEGORY = KeyMapping.Category.register(
-            Identifier.fromNamespaceAndPath(FortniteInMinecraft.MOD_ID, "controls")
-    );
+    private static KeyMapping.Category fortniteCategory;
 
     private static KeyMapping reloadWeapon;
     private static KeyMapping editBuildPrimary;
@@ -52,6 +48,9 @@ public final class ClientInputHooks {
             return;
         }
 
+        fortniteCategory = FortniteInMinecraftClient.platform().registerKeyCategory(
+                Identifier.fromNamespaceAndPath(FortniteInMinecraft.MOD_ID, "controls")
+        );
         reloadWeapon = key("key.fortniteinminecraft.reload_weapon", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R);
         editBuildPrimary = key("key.fortniteinminecraft.edit_build", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F);
         editBuildSecondary = key("key.fortniteinminecraft.edit_build.secondary", InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue());
@@ -64,7 +63,7 @@ public final class ClientInputHooks {
         rotateBuild = key("key.fortniteinminecraft.rotate_build", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R);
         repairBuild = key("key.fortniteinminecraft.repair_build", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H);
 
-        ClientTickEvents.END_CLIENT_TICK.register(ClientInputHooks::tick);
+        FortniteInMinecraftClient.platform().registerClientTickEnd(ClientInputHooks::tick);
         registered = true;
     }
 
@@ -136,7 +135,7 @@ public final class ClientInputHooks {
     }
 
     private static KeyMapping key(String translationKey, InputConstants.Type type, int keyCode) {
-        return KeyMappingHelper.registerKeyMapping(new KeyMapping(translationKey, type, keyCode, FORTNITE_CATEGORY));
+        return FortniteInMinecraftClient.platform().registerKeyMapping(new KeyMapping(translationKey, type, keyCode, fortniteCategory));
     }
 
     private static void updateHotbarSelection(Minecraft client) {
@@ -327,8 +326,8 @@ public final class ClientInputHooks {
     }
 
     private static void send(ClientAction action, boolean pressed) {
-        if (ClientPlayNetworking.canSend(ClientActionPayload.TYPE)) {
-            ClientPlayNetworking.send(new ClientActionPayload(action, pressed));
+        if (FortniteInMinecraftClient.platform().canSendToServer(ClientActionPayload.TYPE)) {
+            FortniteInMinecraftClient.platform().sendToServer(new ClientActionPayload(action, pressed));
         }
     }
 }

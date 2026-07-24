@@ -1,8 +1,8 @@
 package io.github.brainage04.fortniteinminecraft.server.world;
 
 import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -57,7 +57,7 @@ public final class TerrainResourceWorldgen {
         if (registered) {
             return;
         }
-        ServerChunkEvents.CHUNK_LOAD.register(TerrainResourceWorldgen::onChunkLoad);
+        FortniteInMinecraft.platform().registerChunkLoad(TerrainResourceWorldgen::onChunkLoad);
         registered = true;
     }
 

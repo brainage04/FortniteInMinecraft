@@ -21,12 +21,13 @@ import net.minecraft.world.phys.BlockHitResult;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public final class LootContainerBlock extends Block implements EntityBlock {
     private final ItemCatalog.LootContainerEntry definition;
-    private final LootDropTable drops;
+    private final Supplier<LootDropTable> drops;
 
-    public LootContainerBlock(ItemCatalog.LootContainerEntry definition, LootDropTable drops, BlockBehaviour.Properties settings) {
+    public LootContainerBlock(ItemCatalog.LootContainerEntry definition, Supplier<LootDropTable> drops, BlockBehaviour.Properties settings) {
         super(settings);
         this.definition = Objects.requireNonNull(definition, "definition");
         this.drops = Objects.requireNonNull(drops, "drops");
@@ -67,7 +68,7 @@ public final class LootContainerBlock extends Block implements EntityBlock {
         if (level.getBlockState(pos).getBlock() != this) {
             return;
         }
-        List<ItemStack> stacks = drops.roll(definition.kind(), level.getRandom());
+        List<ItemStack> stacks = drops.get().roll(definition.kind(), level.getRandom());
         level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
         for (ItemStack stack : stacks) {
             Block.popResource(level, pos.above(), stack);

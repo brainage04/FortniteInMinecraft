@@ -1,9 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.client;
 
-import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.client.network.ClientGameplayNetworking;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import io.github.brainage04.hudrendererlib.HudRendererLib;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -11,10 +9,6 @@ import net.minecraft.resources.Identifier;
 
 public final class ClientBuildHooks {
     private static volatile boolean initialized;
-    private static final Identifier HOTBAR_SELECTION_SUPPRESSION_ID = Identifier.fromNamespaceAndPath(
-            FortniteInMinecraft.MOD_ID,
-            "build_mode_hotbar_selection_suppression"
-    );
     private static final int HOTBAR_WIDTH = 182;
     private static final int HOTBAR_SLOT_STRIDE = 20;
     private static final int SELECTED_SLOT_SIZE = 24;
@@ -32,15 +26,16 @@ public final class ClientBuildHooks {
 
         ClientGameplayNetworking.initialize();
         ClientBuildPreview.initialize();
-        ClientResourceWalletHud.initialize();
+        ClientFortniteHud.initialize();
         ClientBuildPieceHud.initialize();
         ClientLootContainerProgressHud.initialize();
         ClientInputHooks.initialize();
-        HudElementRegistry.attachElementAfter(
-                VanillaHudElements.HOTBAR,
-                HOTBAR_SELECTION_SUPPRESSION_ID,
+        HudRendererLib.registerHudElement(new FortniteHudRendererElement(
+                "Build mode hotbar selection suppression",
+                Identifier.withDefaultNamespace("hotbar"),
+                false,
                 ClientBuildHooks::suppressSelectedHotbarSlot
-        );
+        ));
         initialized = true;
     }
 

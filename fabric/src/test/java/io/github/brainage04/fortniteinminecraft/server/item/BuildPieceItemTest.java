@@ -1,5 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
+import io.github.brainage04.fortniteinminecraft.fabric.platform.FabricLoaderPlatform;
 import io.github.brainage04.fortniteinminecraft.core.item.ConsumableDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.FortniteRarity;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponCategory;
@@ -39,6 +41,7 @@ class BuildPieceItemTest {
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
+        FortniteInMinecraft.installPlatform(FabricLoaderPlatform.INSTANCE);
     }
 
     @Test
@@ -565,9 +568,9 @@ class BuildPieceItemTest {
 
     @Test
     void everyRegisteredItemHasGeneratedClientAssets() {
-        Path itemDefinitionDir = Path.of("src/main/resources/assets/fortniteinminecraft/items");
-        Path itemModelDir = Path.of("src/main/resources/assets/fortniteinminecraft/models/item");
-        Path textureDir = Path.of("src/main/resources/assets/fortniteinminecraft/textures/item");
+        Path itemDefinitionDir = Path.of("../src/main/resources/assets/fortniteinminecraft/items");
+        Path itemModelDir = Path.of("../src/main/resources/assets/fortniteinminecraft/models/item");
+        Path textureDir = Path.of("../src/main/resources/assets/fortniteinminecraft/textures/item");
 
         for (Item item : ModItems.ALL_ITEMS) {
             String path = BuiltInRegistries.ITEM.getKey(item).getPath();

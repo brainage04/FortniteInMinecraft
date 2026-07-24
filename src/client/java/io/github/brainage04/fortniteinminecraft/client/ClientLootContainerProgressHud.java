@@ -1,16 +1,14 @@
 package io.github.brainage04.fortniteinminecraft.client;
 
-import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.LootContainerProgressPayload;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import io.github.brainage04.hudrendererlib.HudRendererLib;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
 
 public final class ClientLootContainerProgressHud {
-    private static final Identifier HUD_ID = Identifier.fromNamespaceAndPath(FortniteInMinecraft.MOD_ID, "loot_container_progress");
+    private static final Identifier HOTBAR_LAYER = Identifier.withDefaultNamespace("hotbar");
     private static final int BAR_WIDTH = 112;
     private static final int BAR_HEIGHT = 8;
     private static final int PANEL_PADDING = 5;
@@ -31,7 +29,12 @@ public final class ClientLootContainerProgressHud {
             return;
         }
 
-        HudElementRegistry.attachElementBefore(VanillaHudElements.HOTBAR, HUD_ID, ClientLootContainerProgressHud::render);
+        HudRendererLib.registerHudElement(new FortniteHudRendererElement(
+                "Loot container progress",
+                HOTBAR_LAYER,
+                true,
+                ClientLootContainerProgressHud::render
+        ));
         registered = true;
     }
 

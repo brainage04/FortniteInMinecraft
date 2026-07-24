@@ -1,11 +1,17 @@
 package io.github.brainage04.fortniteinminecraft;
 
-import io.github.brainage04.fortniteinminecraft.client.ClientBuildHooks;
-import io.github.brainage04.fortniteinminecraft.client.ClientBuildPreview;
+import com.mojang.blaze3d.platform.InputConstants;
+
 import io.github.brainage04.fabricmoddingconventions.ClientGameTestRecorder;
 import io.github.brainage04.fabricmoddingconventions.ClientGameTestRecordingHud;
 import io.github.brainage04.fabricmoddingconventions.ClientGameTestServers;
-import io.github.brainage04.fortniteinminecraft.client.ClientResourceWalletHud;
+import io.github.brainage04.fortniteinminecraft.client.ClientBuildHooks;
+import io.github.brainage04.fortniteinminecraft.client.ClientBuildPieceHud;
+import io.github.brainage04.fortniteinminecraft.client.ClientBuildPreview;
+import io.github.brainage04.fortniteinminecraft.client.ClientFortniteHud;
+import io.github.brainage04.fortniteinminecraft.client.ClientInputHooks;
+import io.github.brainage04.fortniteinminecraft.client.ClientLootContainerProgressHud;
+import io.github.brainage04.fortniteinminecraft.client.ClientResourceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildGridPos;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
@@ -19,6 +25,8 @@ import io.github.brainage04.fortniteinminecraft.core.placement.SnapGrid;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.BuildPreviewPayload;
+import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.LootContainerProgressPayload;
+import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.ResourceStatePayload;
 import io.github.brainage04.fortniteinminecraft.server.item.BuildItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.item.DeployableTriggerBlocks;
 import io.github.brainage04.fortniteinminecraft.server.item.DeployableGameTestHooks;
@@ -35,11 +43,14 @@ import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldObstructions;
+import io.github.brainage04.hudrendererlib.hud.core.HudRenderer;
+import io.github.brainage04.hudrendererlib.util.LayerInfo;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -59,6 +70,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,6 +103,7 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
             try {
                 demonstrateBuildPreviewAndHolographicPieces(context, server);
                 demonstrateBuildGrowthGallery(context, server);
+                demonstrateHudLayerParity(context);
                 demonstrateBuildDamageAndCollapse(context, server);
                 demonstrateDeployableTrapTriggers(context, server);
                 demonstrateMotionItems(context, server);
@@ -109,13 +122,36 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
             if (!ClientBuildHooks.isInitialized()) {
                 throw new AssertionError("Expected client preview, HUD, and input hooks to initialize.");
             }
-            if (!ClientResourceWalletHud.isInitialized()) {
-                throw new AssertionError("Expected the resource wallet HUD to initialize.");
+            if (!ClientFortniteHud.isInitialized()) {
+                throw new AssertionError("Expected the Fortnite HUD to initialize.");
+            }
+            if (!ClientBuildPieceHud.isInitialized()) {
+                throw new AssertionError("Expected the build-piece HUD to initialize.");
+            }
+            if (!ClientLootContainerProgressHud.isInitialized()) {
+                throw new AssertionError("Expected the loot-container progress HUD to initialize.");
             }
             if (!ClientGameTestRecordingHud.isInitialized()) {
                 throw new AssertionError("Expected the gametest recording HUD to initialize.");
             }
+            assertHudRendererLibLayers();
         });
+    }
+
+    private static void assertHudRendererLibLayers() {
+        List<LayerInfo> layers = HudRenderer.REGISTERED_ELEMENTS.stream()
+                .map(element -> element.getLayerInfo())
+                .toList();
+        List<LayerInfo> expected = List.of(
+                new LayerInfo(Identifier.withDefaultNamespace("hotbar"), true),
+                new LayerInfo(Identifier.withDefaultNamespace("scoreboard"), true),
+                new LayerInfo(Identifier.withDefaultNamespace("hotbar"), true),
+                new LayerInfo(Identifier.withDefaultNamespace("hotbar"), false)
+        );
+        if (!layers.equals(expected)) {
+            throw new AssertionError("Expected resource wallet, build selector, loot progress, and hotbar "
+                    + "selection suppression to register through HudRendererLib in vanilla-relative order; saw " + layers + ".");
+        }
     }
 
     private static void assertPreviewCellsUseExactBlockSize() {
@@ -132,6 +168,48 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
         String message = "[FIM_CLIENT_GAMETEST] " + id + " | " + title + (subtitle.isBlank() ? "" : " | " + subtitle);
         System.out.println(message);
         context.runOnClient(client -> ClientGameTestRecordingHud.showStep(id, title, subtitle));
+    }
+
+    private static void demonstrateHudLayerParity(ClientGameTestContext context) {
+        announceGametestStep(
+                context,
+                "hud.layer_parity",
+                "HudRendererLib layer parity",
+                "hotbar, resources, build selection, and loot progress remain readable"
+        );
+        context.runOnClient(client -> {
+            ClientResourceState.update(new ResourceStatePayload(
+                    987, 654, 321, 42,
+                    120, 240, 32, 18, 6,
+                    false, false
+            ));
+            ClientLootContainerProgressHud.acceptProgress(
+                    new LootContainerProgressPayload(true, "Opening Supply Drop", 45, 80)
+            );
+            KeyMapping.click(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_C));
+        });
+        context.waitTicks(5);
+        context.runOnClient(client -> {
+            if (ClientInputHooks.selectedBuildPiece() != PieceType.ROOF) {
+                throw new AssertionError("Expected the roof key to expose the build-piece HUD.");
+            }
+            if (!ClientFortniteHud.replacesVanillaHotbar()) {
+                throw new AssertionError("Expected the creative GameTest player to use the Fortnite hotbar.");
+            }
+        });
+        context.waitTicks(35);
+        context.runOnClient(client -> {
+            ClientLootContainerProgressHud.acceptProgress(LootContainerProgressPayload.inactive());
+            ClientResourceState.update(new ResourceStatePayload(
+                    0, 0, 0, 0,
+                    0, 0, 0, 0, 0,
+                    false, false
+            ));
+            if (ClientInputHooks.selectedBuildPiece() == PieceType.ROOF) {
+                KeyMapping.click(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_C));
+            }
+        });
+        context.waitTicks(5);
     }
 
     private static void demonstrateBuildPreviewAndHolographicPieces(ClientGameTestContext context, TestDedicatedServerContext server) {
@@ -1351,6 +1429,10 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
                 return "Expected preview box at " + box.origin() + " to cover one projected cell, saw "
                         + box.sizeX() + "x" + box.sizeY() + "x" + box.sizeZ() + ".";
             }
+        }
+        if (slot.pieceType() == PieceType.WALL && ClientBuildPreview.activeDisplayCount() != 25) {
+            return "Expected wall preview to render exactly 25 one-block texture cells, saw "
+                    + ClientBuildPreview.activeDisplayCount() + " client block displays.";
         }
         if (slot.pieceType() == PieceType.STAIR) {
             String stairFailure = stairPreviewFootprintFailure(snapshot, slot);

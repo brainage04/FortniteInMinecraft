@@ -1,0 +1,7 @@
+{
+  "environment": "minecraft:default",
+  "structure": "fortniteinminecraft:empty",
+  "max_ticks": 20,
+  "type": "minecraft:function",
+  "function": "fortniteinminecraft:consumables_restore_health_and_shield_in_world"
+}

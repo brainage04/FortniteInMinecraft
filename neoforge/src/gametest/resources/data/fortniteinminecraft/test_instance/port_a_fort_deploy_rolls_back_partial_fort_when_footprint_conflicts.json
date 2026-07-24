@@ -1,0 +1,7 @@
+{
+  "environment": "minecraft:default",
+  "structure": "fortniteinminecraft:empty",
+  "max_ticks": 20,
+  "type": "minecraft:function",
+  "function": "fortniteinminecraft:port_a_fort_deploy_rolls_back_partial_fort_when_footprint_conflicts"
+}

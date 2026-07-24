@@ -1,8 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.server.player;
 
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.server.item.GrapplerItem;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -34,8 +33,8 @@ public final class GrapplerProjectiles {
         if (registered) {
             return;
         }
-        ServerTickEvents.END_LEVEL_TICK.register(GrapplerProjectiles::tickLevel);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> ACTIVE_GRAPPLES.remove(handler.player.getUUID()));
+        FortniteInMinecraft.platform().registerEndLevelTick(GrapplerProjectiles::tickLevel);
+        FortniteInMinecraft.platform().registerPlayerDisconnect(player -> ACTIVE_GRAPPLES.remove(player.getUUID()));
         registered = true;
     }
 

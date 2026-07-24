@@ -1,11 +1,10 @@
 package io.github.brainage04.fortniteinminecraft.server.world;
 
 import com.mojang.math.Transformation;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -49,8 +48,8 @@ public final class BuildPieceHealthDisplays {
         if (registered) {
             return;
         }
-        ServerTickEvents.END_LEVEL_TICK.register(BuildPieceHealthDisplays::tickLevel);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> clear(handler.player.getUUID()));
+        FortniteInMinecraft.platform().registerEndLevelTick(BuildPieceHealthDisplays::tickLevel);
+        FortniteInMinecraft.platform().registerPlayerDisconnect(player -> clear(player.getUUID()));
         registered = true;
     }
 

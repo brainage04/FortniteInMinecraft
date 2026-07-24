@@ -1,0 +1,7 @@
+{
+  "environment": "minecraft:default",
+  "structure": "fortniteinminecraft:empty",
+  "max_ticks": 80,
+  "type": "minecraft:function",
+  "function": "fortniteinminecraft:glider_stays_deployed_and_travels_after_redeploy"
+}

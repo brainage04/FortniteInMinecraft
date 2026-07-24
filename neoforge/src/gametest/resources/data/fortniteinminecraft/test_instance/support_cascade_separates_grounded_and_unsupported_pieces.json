@@ -1,0 +1,7 @@
+{
+  "environment": "minecraft:default",
+  "structure": "fortniteinminecraft:empty",
+  "max_ticks": 20,
+  "type": "minecraft:function",
+  "function": "fortniteinminecraft:support_cascade_separates_grounded_and_unsupported_pieces"
+}

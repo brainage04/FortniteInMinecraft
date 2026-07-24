@@ -28,7 +28,6 @@ import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMateriali
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.TextColor;
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -58,7 +57,6 @@ public final class FortniteInMinecraftGameTest {
     private static final FootprintProjector FOOTPRINTS = new FootprintProjector(RULES);
     private static final SnapGrid SNAP_GRID = new SnapGrid(RULES);
 
-    @GameTest
     public void serverCommandRootIsRegistered(GameTestHelper context) {
         if (context.getLevel().getServer().getCommands().getDispatcher().getRoot().getChild("fim") == null) {
             throw new AssertionError("Expected the /fim command root to be registered on the dedicated server.");
@@ -67,7 +65,6 @@ public final class FortniteInMinecraftGameTest {
         context.succeed();
     }
 
-    @GameTest(maxTicks = 80)
     public void gliderStaysDeployedAndTravelsAfterRedeploy(GameTestHelper context) {
         ServerPlayer player = context.makeMockServerPlayerInLevel();
         Vec3 start = context.absoluteVec(new Vec3(2.0D, 20.0D, 2.0D));
@@ -91,7 +88,6 @@ public final class FortniteInMinecraftGameTest {
         });
     }
 
-    @GameTest
     public void hitscanWeaponDamagesLivingTarget(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         ServerPlayer player = context.makeMockServerPlayerInLevel();
@@ -113,7 +109,6 @@ public final class FortniteInMinecraftGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void hitscanShieldedMobKeepsHealthAndShowsBlueHitMarker(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         ServerPlayer player = context.makeMockServerPlayerInLevel();
@@ -148,7 +143,6 @@ public final class FortniteInMinecraftGameTest {
         context.succeed();
     }
 
-    @GameTest(maxTicks = 80)
     public void projectileWeaponDamagesLivingTarget(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         ServerPlayer player = context.makeMockServerPlayerInLevel();
@@ -171,7 +165,6 @@ public final class FortniteInMinecraftGameTest {
         });
     }
 
-    @GameTest
     public void consumablesRestoreHealthAndShieldInWorld(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         ServerPlayer player = context.makeMockServerPlayerInLevel();
@@ -189,7 +182,6 @@ public final class FortniteInMinecraftGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void launchPadAndBouncerEnableRedeploy(GameTestHelper context) {
         ServerPlayer launchPlayer = context.makeMockServerPlayerInLevel();
         launchPlayer.setGameMode(GameType.SURVIVAL);
@@ -211,7 +203,6 @@ public final class FortniteInMinecraftGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void buildPiecesMaterializeEveryPieceAndMaterial(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         String dimension = level.dimension().identifier().toString();
@@ -244,7 +235,6 @@ public final class FortniteInMinecraftGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void supportCascadeSeparatesGroundedAndUnsupportedPieces(GameTestHelper context) {
         BuildWorldState state = new BuildWorldState();
         BuildSupportCascade cascade = new BuildSupportCascade(RULES);
@@ -276,7 +266,6 @@ public final class FortniteInMinecraftGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void damageDestroyAndSupportCollapseUpdateWorldState(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         String dimension = level.dimension().identifier().toString();
@@ -356,7 +345,6 @@ public final class FortniteInMinecraftGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void editMasksKeepPartialPiecesAndRejectEmptyPieces(GameTestHelper context) {
         BuildSlot wall = BuildSlot.of("overworld", 0, 0, 0, PieceType.WALL, Orientation.NORTH);
         BuildPieceState baseWall = fullHealthPiece(wall, MaterialType.WOOD, 1L);

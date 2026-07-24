@@ -1,10 +1,9 @@
 package io.github.brainage04.fortniteinminecraft.server.player;
 
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.server.item.DeployableTriggerBlocks;
 import io.github.brainage04.fortniteinminecraft.server.item.TrapTriggerBlock;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -73,12 +72,12 @@ public final class MobilityItemInteractions {
         if (registered) {
             return;
         }
-        ServerTickEvents.END_LEVEL_TICK.register(MobilityItemInteractions::tickLevel);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            GLIDERS.remove(handler.player.getUUID());
-            IMPULSE_LAUNCHES.remove(handler.player.getUUID());
-            SLIDES.remove(handler.player.getUUID());
-            LAST_LAUNCH_PAD_ACTIVATIONS.remove(handler.player.getUUID());
+        FortniteInMinecraft.platform().registerEndLevelTick(MobilityItemInteractions::tickLevel);
+        FortniteInMinecraft.platform().registerPlayerDisconnect(player -> {
+            GLIDERS.remove(player.getUUID());
+            IMPULSE_LAUNCHES.remove(player.getUUID());
+            SLIDES.remove(player.getUUID());
+            LAST_LAUNCH_PAD_ACTIVATIONS.remove(player.getUUID());
         });
         registered = true;
     }

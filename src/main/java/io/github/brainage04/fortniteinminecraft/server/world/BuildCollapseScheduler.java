@@ -6,8 +6,8 @@ import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.placement.BuildSupportCascade;
 import io.github.brainage04.fortniteinminecraft.core.placement.WorldObstruction;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 
@@ -29,7 +29,7 @@ public final class BuildCollapseScheduler {
         materializer = Objects.requireNonNull(worldMaterializer, "worldMaterializer");
         cascade = new BuildSupportCascade(Objects.requireNonNull(rules, "rules"));
         if (!registered) {
-            ServerTickEvents.END_LEVEL_TICK.register(BuildCollapseScheduler::tickLevel);
+            FortniteInMinecraft.platform().registerEndLevelTick(BuildCollapseScheduler::tickLevel);
             registered = true;
         }
     }

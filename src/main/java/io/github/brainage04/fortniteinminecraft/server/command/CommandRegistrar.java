@@ -2,11 +2,11 @@ package io.github.brainage04.fortniteinminecraft.server.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.session.BuildSessionManager;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 
@@ -37,7 +37,7 @@ public final class CommandRegistrar {
             BuildRules rules,
             WorldBuildMaterializer materializer
     ) {
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> register(
+        FortniteInMinecraft.platform().registerServerCommand(dispatcher -> register(
                 dispatcher,
                 sessions,
                 state,

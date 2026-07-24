@@ -1,7 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.server.world;
 
 import com.mojang.math.Transformation;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -35,7 +35,7 @@ public final class TerrainResourceDebugDisplays {
         if (registered) {
             return;
         }
-        ServerTickEvents.END_LEVEL_TICK.register(TerrainResourceDebugDisplays::tickLevel);
+        FortniteInMinecraft.platform().registerEndLevelTick(TerrainResourceDebugDisplays::tickLevel);
         registered = true;
     }
 

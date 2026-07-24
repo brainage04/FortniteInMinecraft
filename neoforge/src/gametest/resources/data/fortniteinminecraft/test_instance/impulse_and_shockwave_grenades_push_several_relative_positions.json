@@ -1,0 +1,7 @@
+{
+  "environment": "minecraft:default",
+  "structure": "fortniteinminecraft:empty",
+  "max_ticks": 20,
+  "type": "minecraft:function",
+  "function": "fortniteinminecraft:impulse_and_shockwave_grenades_push_several_relative_positions"
+}

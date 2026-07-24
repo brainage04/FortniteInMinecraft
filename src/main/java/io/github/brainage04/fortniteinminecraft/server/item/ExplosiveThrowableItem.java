@@ -2,8 +2,8 @@ package io.github.brainage04.fortniteinminecraft.server.item;
 
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.item.FortniteRarity;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -121,7 +121,7 @@ public final class ExplosiveThrowableItem extends Item {
         if (tickRegistered) {
             return;
         }
-        ServerTickEvents.END_LEVEL_TICK.register(ExplosiveThrowableItem::tickLevel);
+        FortniteInMinecraft.platform().registerEndLevelTick(ExplosiveThrowableItem::tickLevel);
         tickRegistered = true;
     }
 

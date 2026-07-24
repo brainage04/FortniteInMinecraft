@@ -1,8 +1,8 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.particles.ParticleTypes;
@@ -119,7 +119,7 @@ public final class ThrowableImpulseItem extends Item {
         if (tickRegistered) {
             return;
         }
-        ServerTickEvents.END_LEVEL_TICK.register(ThrowableImpulseItem::tickLevel);
+        FortniteInMinecraft.platform().registerEndLevelTick(ThrowableImpulseItem::tickLevel);
         tickRegistered = true;
     }
 

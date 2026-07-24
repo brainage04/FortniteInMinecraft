@@ -23,8 +23,8 @@ import io.github.brainage04.fortniteinminecraft.server.player.PlayerResourceStat
 import io.github.brainage04.fortniteinminecraft.server.player.PlayerResourceStates;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldObstructions;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -524,7 +524,7 @@ public final class BuildItemInteractions {
         if (registeredState == null || registeredMaterializer == null) {
             return;
         }
-        if (!ServerPlayNetworking.canSend(player, BuildPreviewPayload.TYPE)) {
+        if (!FortniteInMinecraft.platform().canSendToPlayer(player, BuildPreviewPayload.TYPE)) {
             return;
         }
 
@@ -534,7 +534,7 @@ public final class BuildItemInteractions {
                 WorldObstructions.trackedBuildAware(player.level(), registeredMaterializer)
         );
         PlacementPreview preview = placementService.preview(candidate, playerContext(player));
-        ServerPlayNetworking.send(player, BuildPreviewPayload.active(
+        FortniteInMinecraft.platform().sendToPlayer(player, BuildPreviewPayload.active(
                 candidate.slot(),
                 candidate.material(),
                 preview.valid()
@@ -542,8 +542,8 @@ public final class BuildItemInteractions {
     }
 
     private static void sendInactivePreview(ServerPlayer player) {
-        if (ServerPlayNetworking.canSend(player, BuildPreviewPayload.TYPE)) {
-            ServerPlayNetworking.send(player, BuildPreviewPayload.inactive());
+        if (FortniteInMinecraft.platform().canSendToPlayer(player, BuildPreviewPayload.TYPE)) {
+            FortniteInMinecraft.platform().sendToPlayer(player, BuildPreviewPayload.inactive());
         }
     }
 

@@ -6,7 +6,7 @@ import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.model.Orientation;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import io.github.brainage04.fortniteinminecraft.platform.LoaderPlatform;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -18,16 +18,15 @@ public final class FortnitePayloads {
     private FortnitePayloads() {
     }
 
-    public static void register() {
+    public static void registerClientbound(LoaderPlatform platform) {
         if (registered) {
             return;
         }
 
-        PayloadTypeRegistry.serverboundPlay().register(ClientActionPayload.TYPE, ClientActionPayload.CODEC);
-        PayloadTypeRegistry.clientboundPlay().register(EditModePayload.TYPE, EditModePayload.CODEC);
-        PayloadTypeRegistry.clientboundPlay().register(ResourceStatePayload.TYPE, ResourceStatePayload.CODEC);
-        PayloadTypeRegistry.clientboundPlay().register(BuildPreviewPayload.TYPE, BuildPreviewPayload.CODEC);
-        PayloadTypeRegistry.clientboundPlay().register(LootContainerProgressPayload.TYPE, LootContainerProgressPayload.CODEC);
+        platform.registerClientboundPayload(EditModePayload.TYPE, EditModePayload.CODEC);
+        platform.registerClientboundPayload(ResourceStatePayload.TYPE, ResourceStatePayload.CODEC);
+        platform.registerClientboundPayload(BuildPreviewPayload.TYPE, BuildPreviewPayload.CODEC);
+        platform.registerClientboundPayload(LootContainerProgressPayload.TYPE, LootContainerProgressPayload.CODEC);
         registered = true;
     }
 

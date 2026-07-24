@@ -1,5 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.client.network;
 
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraftClient;
 import io.github.brainage04.fortniteinminecraft.client.ClientBuildPreview;
 import io.github.brainage04.fortniteinminecraft.client.ClientLootContainerProgressHud;
 import io.github.brainage04.fortniteinminecraft.client.ClientInputHooks;
@@ -9,7 +11,6 @@ import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.BuildPr
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.EditModePayload;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.LootContainerProgressPayload;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.ResourceStatePayload;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 public final class ClientGameplayNetworking {
     private static boolean registered;
@@ -22,18 +23,23 @@ public final class ClientGameplayNetworking {
             return;
         }
 
-        FortnitePayloads.register();
-        ClientPlayNetworking.registerGlobalReceiver(EditModePayload.TYPE,
-                (payload, context) -> context.client().execute(() -> {
-                    ClientInputHooks.setEditModeActive(payload.active());
-                    ClientBuildPreview.acceptEditMode(payload);
-                }));
-        ClientPlayNetworking.registerGlobalReceiver(ResourceStatePayload.TYPE,
-                (payload, context) -> context.client().execute(() -> ClientResourceState.update(payload)));
-        ClientPlayNetworking.registerGlobalReceiver(BuildPreviewPayload.TYPE,
-                (payload, context) -> context.client().execute(() -> ClientBuildPreview.acceptServerPreview(payload)));
-        ClientPlayNetworking.registerGlobalReceiver(LootContainerProgressPayload.TYPE,
-                (payload, context) -> context.client().execute(() -> ClientLootContainerProgressHud.acceptProgress(payload)));
+        FortnitePayloads.registerClientbound(FortniteInMinecraft.platform());
+        FortniteInMinecraftClient.platform().registerClientboundHandler(EditModePayload.TYPE, payload -> {
+            ClientInputHooks.setEditModeActive(payload.active());
+            ClientBuildPreview.acceptEditMode(payload);
+        });
+        FortniteInMinecraftClient.platform().registerClientboundHandler(
+                ResourceStatePayload.TYPE,
+                ClientResourceState::update
+        );
+        FortniteInMinecraftClient.platform().registerClientboundHandler(
+                BuildPreviewPayload.TYPE,
+                ClientBuildPreview::acceptServerPreview
+        );
+        FortniteInMinecraftClient.platform().registerClientboundHandler(
+                LootContainerProgressPayload.TYPE,
+                ClientLootContainerProgressHud::acceptProgress
+        );
         registered = true;
     }
 }

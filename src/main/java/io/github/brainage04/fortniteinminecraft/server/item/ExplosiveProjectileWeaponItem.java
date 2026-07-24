@@ -6,8 +6,8 @@ import io.github.brainage04.fortniteinminecraft.core.item.WeaponDefinition;
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponStats;
 import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.player.PlayerAimStates;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
@@ -468,7 +468,7 @@ public final class ExplosiveProjectileWeaponItem extends Item {
         if (tickRegistered) {
             return;
         }
-        ServerTickEvents.END_LEVEL_TICK.register(ExplosiveProjectileWeaponItem::tickLevel);
+        FortniteInMinecraft.platform().registerEndLevelTick(ExplosiveProjectileWeaponItem::tickLevel);
         tickRegistered = true;
     }
 

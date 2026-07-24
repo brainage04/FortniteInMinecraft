@@ -1,5 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.server.world;
 
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
+import io.github.brainage04.fortniteinminecraft.fabric.platform.FabricLoaderPlatform;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildSlot;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
@@ -33,6 +35,7 @@ class WorldBuildMaterializerTest {
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
+        FortniteInMinecraft.installPlatform(FabricLoaderPlatform.INSTANCE);
     }
 
     @Test

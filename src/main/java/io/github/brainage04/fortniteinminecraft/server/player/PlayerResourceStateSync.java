@@ -2,8 +2,8 @@ package io.github.brainage04.fortniteinminecraft.server.player;
 
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.server.item.AmmoType;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.ResourceStatePayload;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Objects;
@@ -14,11 +14,11 @@ public final class PlayerResourceStateSync {
 
     public static void send(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
-        if (!ServerPlayNetworking.canSend(player, ResourceStatePayload.TYPE)) {
+        if (!FortniteInMinecraft.platform().canSendToPlayer(player, ResourceStatePayload.TYPE)) {
             return;
         }
         PlayerResourceState state = PlayerResourceStates.stateFor(player);
-        ServerPlayNetworking.send(player, new ResourceStatePayload(
+        FortniteInMinecraft.platform().sendToPlayer(player, new ResourceStatePayload(
                 state.material(MaterialType.WOOD),
                 state.material(MaterialType.STONE),
                 state.material(MaterialType.METAL),

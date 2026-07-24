@@ -1,0 +1,7 @@
+{
+  "environment": "minecraft:default",
+  "structure": "fortniteinminecraft:empty",
+  "max_ticks": 20,
+  "type": "minecraft:function",
+  "function": "fortniteinminecraft:port_a_fort_use_throws_projectile_consumes_stack_and_starts_cooldown"
+}

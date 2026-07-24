@@ -22,7 +22,6 @@ import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResu
 import io.github.brainage04.fortniteinminecraft.server.world.TerrainResourceHarvest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -52,7 +51,6 @@ public final class FortniteItemMechanicsGameTest {
     private static final FootprintProjector FOOTPRINTS = new FootprintProjector(RULES);
     private static final SnapGrid SNAP_GRID = new SnapGrid(RULES);
 
-    @GameTest
     public void impulseAndShockwaveGrenadesPushSeveralRelativePositions(GameTestHelper context) {
         ThrowableImpulseItem shockwave = throwable("shockwave_grenade");
         ThrowableImpulseItem impulse = throwable("impulse_grenade");
@@ -64,7 +62,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void explosiveGrenadesAndClingersCarryDamageAndDetonationRules(GameTestHelper context) {
         ExplosiveProjectileWeaponItem grenadeLauncher = explosiveWeapon("weapon_grenade_launcher_legendary");
         ExplosiveProjectileWeaponItem proximityLauncher = explosiveWeapon("weapon_proximity_grenade_launcher_legendary");
@@ -86,7 +83,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void weaponBurstCatalogStatsDriveCartridgeCounts(GameTestHelper context) {
         assertBurstStats(context, weapon("weapon_assault_semi_auto_athena_c_ore_t02"), 2, 8.0D);
         assertBurstStats(context, weapon("weapon_pistol_burst_fire_smg_athena_c_ore_t03"), 4, 15.0D);
@@ -101,7 +97,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void weaponDamageAtZeroHealthClearsBuildPiece(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         String dimension = level.dimension().identifier().toString();
@@ -150,7 +145,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void pickaxeWeakPointHitAppliesMultiplierThroughDamageBlockHit(GameTestHelper context) {
         PlacedBuild wall = placeWallWithHealth(context, new BlockPos(2, 3, 6), MaterialType.STONE,
                 scaledWeakPointDamage(PickaxeItem.DEFAULT_STRUCTURE_DAMAGE));
@@ -178,7 +172,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void weaponWeakPointHitAppliesMultiplierThroughDamageBuild(GameTestHelper context) {
         WeaponItem assault = weapon("weapon_assault_rifle_common");
         int baseDamage = WeaponItem.buildDamage(assault.definition());
@@ -206,7 +199,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void pickaxeTerrainWeakPointHarvestDestroysLogAndGrantsWood(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         BlockPos logPos = context.absolutePos(new BlockPos(3, 3, 3));
@@ -244,7 +236,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void harvestingToolInventoryRestoresMissingAndRemovesDuplicates(GameTestHelper context) {
         ServerPlayer player = context.makeMockServerPlayerInLevel();
         player.getInventory().clearContent();
@@ -263,7 +254,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void harvestingToolInventoryCountsCarriedToolDuringMoves(GameTestHelper context) {
         ServerPlayer player = context.makeMockServerPlayerInLevel();
         player.getInventory().clearContent();
@@ -278,7 +268,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void launchPadFootprintPlacesNineTriggerBlocks(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         BlockPos center = context.absolutePos(new BlockPos(3, 2, 3));
@@ -291,7 +280,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void bouncerFootprintPlacesCurrentFloorSizedSurface(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         BlockPos center = context.absolutePos(new BlockPos(3, 2, 3));
@@ -306,7 +294,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void bouncerWallFootprintPlacesCurrentFloorSizedTriggerPlane(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         Direction surfaceNormal = Direction.NORTH;
@@ -324,7 +311,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest(maxTicks = 40)
     public void wallBouncerTriggerLaunchesTouchingPlayerOutward(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         Direction surfaceNormal = Direction.NORTH;
@@ -356,7 +342,6 @@ public final class FortniteItemMechanicsGameTest {
         });
     }
 
-    @GameTest
     public void bouncerItemPlacesFloorAndWallTriggerFootprints(GameTestHelper context) {
         ServerLevel level = context.getLevel();
 
@@ -385,7 +370,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest(maxTicks = 40)
     public void floorBouncerLaunchesJumpingPlayerUpward(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         BlockPos supportCenter = context.absolutePos(new BlockPos(3, 2, 3));
@@ -405,7 +389,6 @@ public final class FortniteItemMechanicsGameTest {
         });
     }
 
-    @GameTest(maxTicks = 40)
     public void runningJumpingIntoWallBouncerLaunchesPlayerOutward(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         Direction surfaceNormal = Direction.NORTH;
@@ -429,7 +412,6 @@ public final class FortniteItemMechanicsGameTest {
         });
     }
 
-    @GameTest
     public void harvestingToolDamagesWallThroughBouncerTrigger(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         PlacedBouncerBuild wall = placeBouncerOnBuild(
@@ -466,7 +448,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void weaponDamageBreaksWallBouncerSupportAndClearsTrigger(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         WeaponItem weapon = weapon("weapon_dual_pistol_semi_auto_athena_vr_ore_t03");
@@ -496,7 +477,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void explosiveDamageBreaksFloorBouncerSupportAndClearsTrigger(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         int damage = Math.max(1, ModItems.CLINGER.definition().environmentDamage());
@@ -525,7 +505,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void deployableFootprintRejectsBlockedCellsWithoutPartialPlacement(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         BlockPos center = context.absolutePos(new BlockPos(3, 2, 3));
@@ -542,7 +521,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void lootContainerOpenClearsBlocksAndDropsMatchingLoot(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         ServerPlayer player = context.makeMockServerPlayerInLevel();
@@ -577,7 +555,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void portAFortUseThrowsProjectileConsumesStackAndStartsCooldown(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         BuildWorldState state = new BuildWorldState();
@@ -605,7 +582,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void portAFortDeployMaterializesTrackedMetalFort(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         BuildWorldState state = new BuildWorldState();
@@ -634,7 +610,6 @@ public final class FortniteItemMechanicsGameTest {
         context.succeed();
     }
 
-    @GameTest
     public void portAFortDeployRollsBackPartialFortWhenFootprintConflicts(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         BuildWorldState state = new BuildWorldState();

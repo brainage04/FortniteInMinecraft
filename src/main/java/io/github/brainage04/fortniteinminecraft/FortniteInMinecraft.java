@@ -1,5 +1,6 @@
 package io.github.brainage04.fortniteinminecraft;
 
+import io.github.brainage04.fortniteinminecraft.platform.LoaderPlatform;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.session.BuildSessionManager;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
@@ -8,6 +9,8 @@ import io.github.brainage04.fortniteinminecraft.server.item.BuildEditInteraction
 import io.github.brainage04.fortniteinminecraft.server.item.BuildItemInteractions;
 import io.github.brainage04.fortniteinminecraft.server.item.HarvestingToolInventory;
 import io.github.brainage04.fortniteinminecraft.server.item.DeployableTriggerBlocks;
+import io.github.brainage04.fortniteinminecraft.server.item.ModBlockEntities;
+import io.github.brainage04.fortniteinminecraft.server.item.ModBlocks;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
 import io.github.brainage04.fortniteinminecraft.server.item.PickaxeItem;
 import io.github.brainage04.fortniteinminecraft.server.item.PortAFortItem;
@@ -19,8 +22,8 @@ import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemIntera
 import io.github.brainage04.fortniteinminecraft.server.player.PlayerAimStates;
 import io.github.brainage04.fortniteinminecraft.server.player.PlayerResourceStates;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildInteractionTicker;
-import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildCollapseScheduler;
+import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildPieceHealthDisplays;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildWeakPoints;
 import io.github.brainage04.fortniteinminecraft.server.world.HitMarkerDisplays;
@@ -28,16 +31,16 @@ import io.github.brainage04.fortniteinminecraft.server.world.TerrainResourceDebu
 import io.github.brainage04.fortniteinminecraft.server.world.TerrainResourceWorldgen;
 import io.github.brainage04.fortniteinminecraft.server.world.TerrainResourceHarvest;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class FortniteInMinecraft implements ModInitializer {
+public final class FortniteInMinecraft {
     public static final String MOD_ID = "fortniteinminecraft";
     public static final String MOD_NAME = "Fortnite In Minecraft";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
+    private static LoaderPlatform platform;
+    private static boolean initialized;
 
     private final BuildSessionManager sessions = new BuildSessionManager();
     private final BuildWorldState buildWorld = new BuildWorldState();
@@ -50,10 +53,44 @@ public final class FortniteInMinecraft implements ModInitializer {
             materializer
     );
 
-    @Override
-    public void onInitialize() {
-        BuildVisualBlocks.initialize();
-        DeployableTriggerBlocks.initialize();
+    private FortniteInMinecraft() {
+    }
+
+    public static synchronized void installPlatform(LoaderPlatform loaderPlatform) {
+        LoaderPlatform requestedPlatform = Objects.requireNonNull(loaderPlatform, "loaderPlatform");
+        if (platform != null && platform != requestedPlatform) {
+            throw new IllegalStateException(MOD_NAME + " loader platform is already installed");
+        }
+        platform = requestedPlatform;
+    }
+
+    public static synchronized void initialize(LoaderPlatform loaderPlatform) {
+        if (initialized) {
+            throw new IllegalStateException(MOD_NAME + " is already initialized");
+        }
+        installPlatform(loaderPlatform);
+        new FortniteInMinecraft().initializeCommon();
+        initialized = true;
+    }
+
+    public static LoaderPlatform platform() {
+        LoaderPlatform initializedPlatform = platform;
+        if (initializedPlatform == null) {
+            throw new IllegalStateException(MOD_NAME + " loader platform is not installed");
+        }
+        return initializedPlatform;
+    }
+
+    public static boolean isInitialized() {
+        return initialized;
+    }
+
+    private void initializeCommon() {
+        BuildVisualBlocks.bootstrap();
+        DeployableTriggerBlocks.bootstrap();
+        ModBlocks.bootstrap();
+        ModItems.bootstrap();
+        ModBlockEntities.bootstrap();
         ModItems.initialize(sessions);
         PortAFortItem.configureBuildPlacement(buildWorld, buildRules, materializer);
         BuildCollapseScheduler.configure(buildWorld, buildRules, materializer);
@@ -72,13 +109,13 @@ public final class FortniteInMinecraft implements ModInitializer {
         BuildPieceHealthDisplays.register(buildWorld, materializer);
         BuildWeakPoints.register(buildWorld, materializer);
         interactionTicker.register();
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            PlayerAimStates.clear(handler.player);
-            PlayerResourceStates.clear(handler.player);
-            PickaxeItem.clearHarvestCooldown(handler.player);
-            BuildItemInteractions.suppressAutomaticPreview(handler.player, false);
+        platform.registerPlayerDisconnect(player -> {
+            PlayerAimStates.clear(player);
+            PlayerResourceStates.clear(player);
+            PickaxeItem.clearHarvestCooldown(player);
+            BuildItemInteractions.suppressAutomaticPreview(player, false);
         });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+        platform.registerServerStopping(server -> {
             HitMarkerDisplays.clearAll();
             BuildPieceHealthDisplays.clearAll();
             BuildWeakPoints.clearAll();
@@ -91,6 +128,6 @@ public final class FortniteInMinecraft implements ModInitializer {
             BuildItemInteractions.clearAutomaticPreviewSuppressions();
             TerrainResourceHarvest.clearAll();
         });
-        LOGGER.info("{} server core initialized.", MOD_NAME);
+        LOGGER.info("{} common server core initialized on {}.", MOD_NAME, platform.loaderName());
     }
 }

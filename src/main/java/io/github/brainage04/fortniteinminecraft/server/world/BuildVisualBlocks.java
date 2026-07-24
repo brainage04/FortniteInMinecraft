@@ -2,8 +2,6 @@ package io.github.brainage04.fortniteinminecraft.server.world;
 
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -19,17 +17,16 @@ import java.util.EnumMap;
 import java.util.Objects;
 
 public final class BuildVisualBlocks {
-    public static final Block HOLOGRAM_WOOD = hologramBlock("build_hologram_wood", DyeColor.LIGHT_BLUE, Blocks.OAK_PLANKS);
-    public static final Block HOLOGRAM_STONE = hologramBlock("build_hologram_stone", DyeColor.LIGHT_BLUE, Blocks.STONE_BRICKS);
-    public static final Block HOLOGRAM_METAL = hologramBlock("build_hologram_metal", DyeColor.LIGHT_BLUE, Blocks.COPPER_BLOCK.waxed().unaffected());
+    public static final Block HOLOGRAM_WOOD = registerHologramBlock("build_hologram_wood", DyeColor.LIGHT_BLUE, Blocks.OAK_PLANKS);
+    public static final Block HOLOGRAM_STONE = registerHologramBlock("build_hologram_stone", DyeColor.LIGHT_BLUE, Blocks.STONE_BRICKS);
+    public static final Block HOLOGRAM_METAL = registerHologramBlock("build_hologram_metal", DyeColor.LIGHT_BLUE, Blocks.COPPER_BLOCK.waxed().unaffected());
 
-    public static final Block INVALID_HOLOGRAM_WOOD = hologramBlock("build_hologram_invalid_wood", DyeColor.RED, Blocks.OAK_PLANKS);
-    public static final Block INVALID_HOLOGRAM_STONE = hologramBlock("build_hologram_invalid_stone", DyeColor.RED, Blocks.STONE_BRICKS);
-    public static final Block INVALID_HOLOGRAM_METAL = hologramBlock("build_hologram_invalid_metal", DyeColor.RED, Blocks.COPPER_BLOCK.waxed().unaffected());
+    public static final Block INVALID_HOLOGRAM_WOOD = registerHologramBlock("build_hologram_invalid_wood", DyeColor.RED, Blocks.OAK_PLANKS);
+    public static final Block INVALID_HOLOGRAM_STONE = registerHologramBlock("build_hologram_invalid_stone", DyeColor.RED, Blocks.STONE_BRICKS);
+    public static final Block INVALID_HOLOGRAM_METAL = registerHologramBlock("build_hologram_invalid_metal", DyeColor.RED, Blocks.COPPER_BLOCK.waxed().unaffected());
 
     private static final EnumMap<MaterialType, Block> HOLOGRAMS = new EnumMap<>(MaterialType.class);
     private static final EnumMap<MaterialType, Block> INVALID_HOLOGRAMS = new EnumMap<>(MaterialType.class);
-    private static boolean registered;
 
     static {
         HOLOGRAMS.put(MaterialType.WOOD, HOLOGRAM_WOOD);
@@ -42,19 +39,14 @@ public final class BuildVisualBlocks {
 
     private BuildVisualBlocks() {
     }
-
-    public static void initialize() {
-        if (registered) {
-            return;
+    public static void bootstrap() {
+        if (HOLOGRAMS.size() != MaterialType.values().length
+                || INVALID_HOLOGRAMS.size() != MaterialType.values().length) {
+            throw new IllegalStateException("Not all build visual blocks were registered");
         }
-        register("build_hologram_wood", HOLOGRAM_WOOD);
-        register("build_hologram_stone", HOLOGRAM_STONE);
-        register("build_hologram_metal", HOLOGRAM_METAL);
-        register("build_hologram_invalid_wood", INVALID_HOLOGRAM_WOOD);
-        register("build_hologram_invalid_stone", INVALID_HOLOGRAM_STONE);
-        register("build_hologram_invalid_metal", INVALID_HOLOGRAM_METAL);
-        registered = true;
     }
+
+
 
     public static Block hologramBlock(MaterialType material) {
         return HOLOGRAMS.get(Objects.requireNonNull(material, "material"));
@@ -69,19 +61,17 @@ public final class BuildVisualBlocks {
         return blocks.get(Objects.requireNonNull(material, "material")).defaultBlockState();
     }
 
-    private static Block hologramBlock(String path, DyeColor color, Block baseBlock) {
+    private static Block registerHologramBlock(String path, DyeColor color, Block baseBlock) {
         ResourceKey<Block> key = blockKey(path);
-        return new StainedGlassBlock(color, BlockBehaviour.Properties.ofFullCopy(baseBlock)
+        Block block = new StainedGlassBlock(color, BlockBehaviour.Properties.ofFullCopy(baseBlock)
                 .mapColor(color)
                 .sound(SoundType.GLASS)
                 .noOcclusion()
                 .noLootTable()
                 .setId(key));
+        return FortniteInMinecraft.platform().registerBlock(key, block);
     }
 
-    private static Block register(String path, Block block) {
-        return Registry.register(BuiltInRegistries.BLOCK, blockKey(path), block);
-    }
 
     private static ResourceKey<Block> blockKey(String path) {
         return ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(FortniteInMinecraft.MOD_ID, path));

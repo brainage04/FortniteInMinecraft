@@ -1,10 +1,8 @@
 package io.github.brainage04.fortniteinminecraft.client;
 
-import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import io.github.brainage04.fortniteinminecraft.server.item.ModItems;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import io.github.brainage04.hudrendererlib.HudRendererLib;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -12,9 +10,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 public final class ClientBuildPieceHud {
-    private static final Identifier HUD_ID = Identifier.fromNamespaceAndPath(FortniteInMinecraft.MOD_ID, "build_piece_selection");
     private static final PieceType[] DISPLAY_ORDER = {PieceType.WALL, PieceType.FLOOR, PieceType.STAIR, PieceType.ROOF};
     private static final int BOTTOM_MARGIN = 40;
+    private static final int CUSTOM_HOTBAR_GAP = 5;
     private static final int RIGHT_MARGIN = 24;
     private static final int PANEL_PADDING = 5;
     private static final int SLOT_SIZE = 24;
@@ -43,7 +41,12 @@ public final class ClientBuildPieceHud {
         if (registered) {
             return;
         }
-        HudElementRegistry.attachElementBefore(VanillaHudElements.SCOREBOARD, HUD_ID, ClientBuildPieceHud::render);
+        HudRendererLib.registerHudElement(new FortniteHudRendererElement(
+                "Build piece selection",
+                Identifier.withDefaultNamespace("scoreboard"),
+                true,
+                ClientBuildPieceHud::render
+        ));
         registered = true;
     }
 
@@ -67,7 +70,10 @@ public final class ClientBuildPieceHud {
         int panelWidth = rowWidth + PANEL_PADDING * 2;
         int panelHeight = font.lineHeight + KEY_GAP + SLOT_SIZE + PANEL_PADDING * 2;
         int x = graphics.guiWidth() - RIGHT_MARGIN - panelWidth;
-        int y = graphics.guiHeight() - BOTTOM_MARGIN - panelHeight;
+        int panelBottom = ClientFortniteHud.replacesVanillaHotbar()
+                ? ClientFortniteHud.topY(graphics.guiHeight()) - CUSTOM_HOTBAR_GAP
+                : graphics.guiHeight() - BOTTOM_MARGIN;
+        int y = panelBottom - panelHeight;
 
         graphics.fill(x, y, x + panelWidth, y + panelHeight, BACKGROUND_COLOR);
 

@@ -8,11 +8,8 @@ import io.github.brainage04.fortniteinminecraft.core.model.MaterialType;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import io.github.brainage04.fortniteinminecraft.core.session.BuildSessionManager;
 import io.github.brainage04.fortniteinminecraft.core.session.PlayerBuildSession;
-import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
-import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
-import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTabOutput;
+import io.github.brainage04.fortniteinminecraft.platform.LoaderPlatform;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -24,21 +21,20 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.SoundType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public final class ModItems {
     static final long SHOCKWAVE_LAUNCHER_IMPACT_DELAY_TICKS = 10L;
 
     private static final ItemCatalog.Catalog CATALOG = ItemCatalog.load();
+    private static final Map<String, BuildPieceItem> BUILD_PIECES_BY_PATH = new HashMap<>();
+    private static final Map<String, LootDropTable> LOOT_DROP_TABLES_BY_PATH = new HashMap<>();
+    private static final Map<String, Item> UTILITY_ITEMS_BY_PATH = new HashMap<>();
 
     public static final List<BuildPieceItem> BUILD_PIECES = registerBuildPieces(CATALOG.buildPieces());
     public static final BuildPieceItem WALL = buildPiece("build_wall");
@@ -51,11 +47,11 @@ public final class ModItems {
     public static final List<ExplosiveProjectileWeaponItem> EXPLOSIVE_WEAPONS = registerExplosiveWeapons(CATALOG.weapons());
     public static final List<ConsumableItem> CONSUMABLES = registerConsumables(CATALOG.consumables());
     public static final List<PickupItem> PICKUPS = registerPickups(CATALOG.pickups());
-    public static final List<LootContainerBlock> LOOT_CONTAINERS = registerLootContainers(CATALOG.lootContainers());
-    public static final LootContainerBlock LOOT_CHEST = lootContainer("loot_chest");
-    public static final LootContainerBlock AMMO_BOX = lootContainer("ammo_box");
-    public static final List<Item> LOOT_CONTAINER_ITEMS = lootContainerItems();
-    public static final BlockEntityType<LootContainerBlockEntity> LOOT_CONTAINER_BLOCK_ENTITY_TYPE = registerLootContainerBlockEntity();
+    private static final Map<String, LootDropTable> LOOT_DROP_TABLES = registerLootDropTables(CATALOG.lootContainers());
+    public static final List<LootContainerBlock> LOOT_CONTAINERS = ModBlocks.LOOT_CONTAINERS;
+    public static final LootContainerBlock LOOT_CHEST = ModBlocks.LOOT_CHEST;
+    public static final LootContainerBlock AMMO_BOX = ModBlocks.AMMO_BOX;
+    public static final List<Item> LOOT_CONTAINER_ITEMS = registerLootContainerItems();
     public static final List<ThrowableImpulseItem> THROWABLES = registerThrowableImpulses(CATALOG.throwableImpulses());
     public static final List<Item> UTILITY_ITEMS = registerUtilityItems(CATALOG.utilities());
 
@@ -79,12 +75,23 @@ public final class ModItems {
 
     public static void initialize(BuildSessionManager sessionManager) {
         sessions = Objects.requireNonNull(sessionManager, "sessionManager");
-        if (!creativeTabsRegistered) {
-            registerCreativeTabs();
-            creativeTabsRegistered = true;
-        }
+        bootstrapCreativeTabs();
         LootContainerInteractions.register();
     }
+
+    public static void bootstrap() {
+        if (ALL_ITEMS.isEmpty()) {
+            throw new IllegalStateException("No mod items were registered");
+        }
+    }
+    public static void bootstrapCreativeTabs() {
+        if (creativeTabsRegistered) {
+            return;
+        }
+        registerCreativeTabs();
+        creativeTabsRegistered = true;
+    }
+
 
     public static BuildPieceItem asBuildPiece(ItemStack stack) {
         if (stack.getItem() instanceof BuildPieceItem item) {
@@ -151,47 +158,40 @@ public final class ModItems {
     }
 
     private static void registerCreativeTabs() {
-        CreativeModeTab fortniteTab = FabricCreativeModeTab.builder()
-                .title(Component.literal(FortniteInMinecraft.MOD_NAME))
-                .icon(() -> new ItemStack(WEAPONS.get(0)))
-                .displayItems((parameters, output) -> ALL_ITEMS.forEach(output::accept))
-                .build();
-        Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id("items"), fortniteTab);
-
-        registerVanillaCreativeTabEntries();
-    }
-
-    private static void registerVanillaCreativeTabEntries() {
-        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("building_blocks")).register(
-                output -> acceptAll(output, BUILD_PIECES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS)
+        FortniteInMinecraft.platform().registerCreativeTab(
+                id("items"),
+                Component.literal(FortniteInMinecraft.MOD_NAME),
+                () -> new ItemStack(WEAPONS.getFirst()),
+                ALL_ITEMS
         );
-        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("combat")).register(output -> {
-            acceptAll(output, WEAPONS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-            acceptAll(output, PROJECTILE_WEAPONS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-            acceptAll(output, EXPLOSIVE_WEAPONS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-            acceptAll(output, THROWABLES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-            acceptAll(output, UTILITY_ITEMS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-            acceptAll(output, LOOT_CONTAINER_ITEMS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-        });
-        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("food_and_drinks")).register(
-                output -> acceptAll(output, CONSUMABLES, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS)
-        );
-        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("ingredients")).register(output -> {
-            acceptAll(output, PICKUPS, CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-        });
-        CreativeModeTabEvents.modifyOutputEvent(creativeTabKey("search")).register(
-                output -> acceptAll(output, ALL_ITEMS, CreativeModeTab.TabVisibility.SEARCH_TAB_ONLY)
-        );
-    }
 
-    private static void acceptAll(
-            FabricCreativeModeTabOutput output,
-            List<? extends Item> items,
-            CreativeModeTab.TabVisibility visibility
-    ) {
-        for (Item item : items) {
-            output.accept(new ItemStack(item), visibility);
-        }
+        FortniteInMinecraft.platform().addCreativeTabItems(
+                creativeTabKey("building_blocks"),
+                BUILD_PIECES,
+                LoaderPlatform.CreativeTabVisibility.PARENT_AND_SEARCH
+        );
+        ResourceKey<CreativeModeTab> combatTab = creativeTabKey("combat");
+        FortniteInMinecraft.platform().addCreativeTabItems(combatTab, WEAPONS, LoaderPlatform.CreativeTabVisibility.PARENT_AND_SEARCH);
+        FortniteInMinecraft.platform().addCreativeTabItems(combatTab, PROJECTILE_WEAPONS, LoaderPlatform.CreativeTabVisibility.PARENT_AND_SEARCH);
+        FortniteInMinecraft.platform().addCreativeTabItems(combatTab, EXPLOSIVE_WEAPONS, LoaderPlatform.CreativeTabVisibility.PARENT_AND_SEARCH);
+        FortniteInMinecraft.platform().addCreativeTabItems(combatTab, THROWABLES, LoaderPlatform.CreativeTabVisibility.PARENT_AND_SEARCH);
+        FortniteInMinecraft.platform().addCreativeTabItems(combatTab, UTILITY_ITEMS, LoaderPlatform.CreativeTabVisibility.PARENT_AND_SEARCH);
+        FortniteInMinecraft.platform().addCreativeTabItems(combatTab, LOOT_CONTAINER_ITEMS, LoaderPlatform.CreativeTabVisibility.PARENT_AND_SEARCH);
+        FortniteInMinecraft.platform().addCreativeTabItems(
+                creativeTabKey("food_and_drinks"),
+                CONSUMABLES,
+                LoaderPlatform.CreativeTabVisibility.PARENT_AND_SEARCH
+        );
+        FortniteInMinecraft.platform().addCreativeTabItems(
+                creativeTabKey("ingredients"),
+                PICKUPS,
+                LoaderPlatform.CreativeTabVisibility.PARENT_AND_SEARCH
+        );
+        FortniteInMinecraft.platform().addCreativeTabItems(
+                creativeTabKey("search"),
+                ALL_ITEMS,
+                LoaderPlatform.CreativeTabVisibility.SEARCH_ONLY
+        );
     }
 
     private static ResourceKey<CreativeModeTab> creativeTabKey(String path) {
@@ -273,13 +273,6 @@ public final class ModItems {
         }
         return List.copyOf(items);
     }
-    private static List<LootContainerBlock> registerLootContainers(List<ItemCatalog.LootContainerEntry> entries) {
-        ArrayList<LootContainerBlock> blocks = new ArrayList<>(entries.size());
-        for (ItemCatalog.LootContainerEntry entry : entries) {
-            blocks.add(registerLootContainer(entry));
-        }
-        return List.copyOf(blocks);
-    }
 
 
     private static List<ThrowableImpulseItem> registerThrowableImpulses(List<ItemCatalog.ThrowableImpulseEntry> entries) {
@@ -300,43 +293,32 @@ public final class ModItems {
 
     private static BuildPieceItem registerBuildPiece(ItemCatalog.BuildPieceEntry entry) {
         ResourceKey<Item> key = itemKey(entry.path());
-        return Registry.register(
-                BuiltInRegistries.ITEM,
-                key,
-                new BuildPieceItem(
-                        entry.pieceType(),
-                        singleStackProperties(key),
-                        clientItem(entry.clientItems().wood()),
-                        clientItem(entry.clientItems().stone()),
-                        clientItem(entry.clientItems().metal())
-                )
-        );
+        BuildPieceItem item = FortniteInMinecraft.platform().registerItem(key, new BuildPieceItem(
+                entry.pieceType(),
+                singleStackProperties(key),
+                clientItem(entry.clientItems().wood()),
+                clientItem(entry.clientItems().stone()),
+                clientItem(entry.clientItems().metal())
+        ));
+        return remember(BUILD_PIECES_BY_PATH, entry.path(), item);
     }
 
     private static WeaponItem registerWeapon(WeaponDefinition definition, Item clientItem) {
         ResourceKey<Item> key = itemKey(definition.path());
-        return Registry.register(
-                BuiltInRegistries.ITEM,
-                key,
-                new WeaponItem(definition, weaponProperties(key, definition), clientItem)
-        );
+        return FortniteInMinecraft.platform().registerItem(key, new WeaponItem(definition, weaponProperties(key, definition), clientItem));
     }
 
     private static ProjectileWeaponItem registerProjectileWeapon(ItemCatalog.WeaponEntry entry) {
         ItemCatalog.ProjectileEntry projectile = Objects.requireNonNull(entry.projectile(), entry.path() + ".projectile");
         WeaponDefinition definition = entry.definition();
         ResourceKey<Item> key = itemKey(definition.path());
-        return Registry.register(
-                BuiltInRegistries.ITEM,
-                key,
-                new ProjectileWeaponItem(
-                        definition,
-                        projectileWeaponProperties(key, definition),
-                        clientItem(entry.clientItem()),
-                        projectile.projectileSpeed(),
-                        projectile.inaccuracy()
-                )
-        );
+        return FortniteInMinecraft.platform().registerItem(key, new ProjectileWeaponItem(
+                definition,
+                projectileWeaponProperties(key, definition),
+                clientItem(entry.clientItem()),
+                projectile.projectileSpeed(),
+                projectile.inaccuracy()
+        ));
     }
 
     private static ExplosiveProjectileWeaponItem registerExplosiveWeapon(ItemCatalog.WeaponEntry entry) {
@@ -360,53 +342,33 @@ public final class ModItems {
                 explosive.evidenceNote()
         );
         ResourceKey<Item> key = itemKey(definition.weapon().path());
-        return Registry.register(
-                BuiltInRegistries.ITEM,
-                key,
-                new ExplosiveProjectileWeaponItem(definition, explosiveWeaponProperties(key, definition), clientItem(entry.clientItem()))
-        );
+        return FortniteInMinecraft.platform().registerItem(key, new ExplosiveProjectileWeaponItem(definition, explosiveWeaponProperties(key, definition), clientItem(entry.clientItem())));
     }
 
     private static ConsumableItem registerConsumable(ConsumableDefinition definition, Item clientItem) {
         ResourceKey<Item> key = itemKey(definition.path());
-        return Registry.register(
-                BuiltInRegistries.ITEM,
-                key,
-                new ConsumableItem(definition, consumableProperties(key), clientItem)
-        );
+        return FortniteInMinecraft.platform().registerItem(key, new ConsumableItem(definition, consumableProperties(key), clientItem));
     }
 
     private static PickupItem registerPickup(ItemCatalog.PickupEntry entry) {
         ResourceKey<Item> key = itemKey(entry.path());
-        return Registry.register(
-                BuiltInRegistries.ITEM,
-                key,
-                new PickupItem(entry.displayName(), pickupPayload(entry.payload()), stackedProperties(key, entry.stackSize()), clientItem(entry.clientItem()))
-        );
+        return FortniteInMinecraft.platform().registerItem(key, new PickupItem(entry.displayName(), pickupPayload(entry.payload()), stackedProperties(key, entry.stackSize()), clientItem(entry.clientItem())));
     }
-    private static LootContainerBlock registerLootContainer(ItemCatalog.LootContainerEntry entry) {
-        ResourceKey<Block> blockKey = blockKey(entry.path());
-        Item clientItem = clientItem(entry.clientItem());
-        LootDropTable drops = new LootDropTable(entry, WEAPONS, PROJECTILE_WEAPONS, EXPLOSIVE_WEAPONS, CONSUMABLES, PICKUPS);
-        LootContainerBlock block = Registry.register(
-                BuiltInRegistries.BLOCK,
-                blockKey,
-                new LootContainerBlock(entry, drops, lootContainerBlockProperties(blockKey))
-        );
-        ResourceKey<Item> itemKey = itemKey(entry.path());
-        Registry.register(
-                BuiltInRegistries.ITEM,
-                itemKey,
-                new LootContainerItem(block, entry.displayName(), lootContainerItemProperties(itemKey, clientItem))
-        );
-        return block;
-    }
-    private static BlockEntityType<LootContainerBlockEntity> registerLootContainerBlockEntity() {
-        return Registry.register(
-                BuiltInRegistries.BLOCK_ENTITY_TYPE,
-                id("loot_container"),
-                new BlockEntityType<>(LootContainerBlockEntity::new, Set.copyOf(LOOT_CONTAINERS))
-        );
+    private static Map<String, LootDropTable> registerLootDropTables(List<ItemCatalog.LootContainerEntry> entries) {
+        for (ItemCatalog.LootContainerEntry entry : entries) {
+            LootDropTable drops = new LootDropTable(
+                    entry,
+                    WEAPONS,
+                    PROJECTILE_WEAPONS,
+                    EXPLOSIVE_WEAPONS,
+                    CONSUMABLES,
+                    PICKUPS
+            );
+            if (LOOT_DROP_TABLES_BY_PATH.putIfAbsent(entry.path(), drops) != null) {
+                throw new IllegalStateException("Duplicate loot container path " + entry.path());
+            }
+        }
+        return Map.copyOf(LOOT_DROP_TABLES_BY_PATH);
     }
 
 
@@ -425,16 +387,12 @@ public final class ModItems {
                 entry.explosionPitch(),
                 ChatFormatting.valueOf(entry.textColor())
         );
-        return Registry.register(
-                BuiltInRegistries.ITEM,
-                key,
-                new ThrowableImpulseItem(definition, throwableProperties(key, definition), clientItem(entry.clientItem()))
-        );
+        return FortniteInMinecraft.platform().registerItem(key, new ThrowableImpulseItem(definition, throwableProperties(key, definition), clientItem(entry.clientItem())));
     }
 
     private static Item registerUtilityItem(ItemCatalog.UtilityEntry entry) {
         Item clientItem = clientItem(entry.clientItem());
-        return switch (entry.kind()) {
+        Item item = switch (entry.kind()) {
             case PICKAXE -> registerPickaxe(entry.path(), clientItem);
             case GRAPPLER -> registerGrappler(new GrapplerItem.Definition(
                     entry.path(),
@@ -489,41 +447,42 @@ public final class ModItems {
                     entry.height()
             ), clientItem);
         };
+        return remember(UTILITY_ITEMS_BY_PATH, entry.path(), item);
     }
 
     private static PickaxeItem registerPickaxe(String path, Item clientItem) {
         ResourceKey<Item> key = itemKey(path);
-        return Registry.register(BuiltInRegistries.ITEM, key, new PickaxeItem(singleStackProperties(key), clientItem));
+        return FortniteInMinecraft.platform().registerItem(key, new PickaxeItem(singleStackProperties(key), clientItem));
     }
 
     private static GrapplerItem registerGrappler(GrapplerItem.Definition definition, Item clientItem) {
         ResourceKey<Item> key = itemKey(definition.path());
-        return Registry.register(BuiltInRegistries.ITEM, key, new GrapplerItem(definition, singleStackProperties(key), clientItem));
+        return FortniteInMinecraft.platform().registerItem(key, new GrapplerItem(definition, singleStackProperties(key), clientItem));
     }
 
     private static LaunchPadItem registerLaunchPad(String path, String displayName, int cooldownTicks, long redeployTicks, Item clientItem) {
         ResourceKey<Item> key = itemKey(path);
-        return Registry.register(BuiltInRegistries.ITEM, key, new LaunchPadItem(displayName, cooldownTicks, redeployTicks, singleStackProperties(key), clientItem));
+        return FortniteInMinecraft.platform().registerItem(key, new LaunchPadItem(displayName, cooldownTicks, redeployTicks, singleStackProperties(key), clientItem));
     }
 
     private static ExplosiveThrowableItem registerExplosiveThrowable(ExplosiveThrowableItem.Definition definition, Item clientItem) {
         ResourceKey<Item> key = itemKey(definition.path());
-        return Registry.register(BuiltInRegistries.ITEM, key, new ExplosiveThrowableItem(definition, explosiveThrowableProperties(key, definition), clientItem));
+        return FortniteInMinecraft.platform().registerItem(key, new ExplosiveThrowableItem(definition, explosiveThrowableProperties(key, definition), clientItem));
     }
 
     private static BouncerItem registerBouncer(BouncerItem.Definition definition, Item clientItem) {
         ResourceKey<Item> key = itemKey(definition.path());
-        return Registry.register(BuiltInRegistries.ITEM, key, new BouncerItem(definition, bouncerProperties(key, definition), clientItem));
+        return FortniteInMinecraft.platform().registerItem(key, new BouncerItem(definition, bouncerProperties(key, definition), clientItem));
     }
 
     private static RiftToGoItem registerRiftToGo(RiftToGoItem.Definition definition, Item clientItem) {
         ResourceKey<Item> key = itemKey(definition.path());
-        return Registry.register(BuiltInRegistries.ITEM, key, new RiftToGoItem(definition, riftToGoProperties(key, definition), clientItem));
+        return FortniteInMinecraft.platform().registerItem(key, new RiftToGoItem(definition, riftToGoProperties(key, definition), clientItem));
     }
 
     private static PortAFortItem registerPortAFort(PortAFortItem.Definition definition, Item clientItem) {
         ResourceKey<Item> key = itemKey(definition.path());
-        return Registry.register(BuiltInRegistries.ITEM, key, new PortAFortItem(definition, portAFortProperties(key, definition), clientItem));
+        return FortniteInMinecraft.platform().registerItem(key, new PortAFortItem(definition, portAFortProperties(key, definition), clientItem));
     }
 
     private static List<Item> combatItems() {
@@ -563,35 +522,46 @@ public final class ModItems {
     }
 
     private static <T extends Item> T utilityItem(String path, Class<T> type) {
-        for (Item item : UTILITY_ITEMS) {
-            if (BuiltInRegistries.ITEM.getKey(item).getPath().equals(path)) {
-                return type.cast(item);
-            }
+        Item item = UTILITY_ITEMS_BY_PATH.get(path);
+        if (item == null) {
+            throw new IllegalStateException("Missing utility item " + path);
         }
-        throw new IllegalStateException("Missing utility item " + path);
+        return type.cast(item);
     }
 
     private static BuildPieceItem buildPiece(String path) {
-        for (BuildPieceItem item : BUILD_PIECES) {
-            if (BuiltInRegistries.ITEM.getKey(item).getPath().equals(path)) {
-                return item;
-            }
+        BuildPieceItem item = BUILD_PIECES_BY_PATH.get(path);
+        if (item == null) {
+            throw new IllegalStateException("Missing build piece " + path);
         }
-        throw new IllegalStateException("Missing build piece " + path);
-    }
-    private static LootContainerBlock lootContainer(String path) {
-        for (LootContainerBlock block : LOOT_CONTAINERS) {
-            if (BuiltInRegistries.BLOCK.getKey(block).getPath().equals(path)) {
-                return block;
-            }
-        }
-        throw new IllegalStateException("Missing loot container " + path);
+        return item;
     }
 
-    private static List<Item> lootContainerItems() {
+    static LootDropTable lootDropTable(String path) {
+        LootDropTable drops = LOOT_DROP_TABLES.get(path);
+        if (drops == null) {
+            throw new IllegalStateException("Missing loot table for container " + path);
+        }
+        return drops;
+    }
+
+    private static <T> T remember(Map<String, T> values, String path, T value) {
+        if (values.putIfAbsent(path, value) != null) {
+            throw new IllegalStateException("Duplicate item path " + path);
+        }
+        return value;
+    }
+
+    private static List<Item> registerLootContainerItems() {
         ArrayList<Item> items = new ArrayList<>(LOOT_CONTAINERS.size());
         for (LootContainerBlock block : LOOT_CONTAINERS) {
-            items.add(block.asItem());
+            ItemCatalog.LootContainerEntry entry = block.definition();
+            ResourceKey<Item> key = itemKey(entry.path());
+            Item clientItem = clientItem(entry.clientItem());
+            items.add(FortniteInMinecraft.platform().registerItem(
+                    key,
+                    new LootContainerItem(block, entry.displayName(), lootContainerItemProperties(key, clientItem))
+            ));
         }
         return List.copyOf(items);
     }
@@ -671,14 +641,6 @@ public final class ModItems {
                 .component(DataComponents.USE_COOLDOWN, PortAFortItem.cooldownComponent(definition));
     }
 
-    private static BlockBehaviour.Properties lootContainerBlockProperties(ResourceKey<Block> key) {
-        return BlockBehaviour.Properties.ofFullCopy(Blocks.BARREL)
-                .strength(2.5F)
-                .sound(SoundType.WOOD)
-                .noOcclusion()
-                .noLootTable()
-                .setId(key);
-    }
 
     private static Item.Properties lootContainerItemProperties(ResourceKey<Item> key, Item clientItem) {
         return singleStackProperties(key)
@@ -701,9 +663,6 @@ public final class ModItems {
         return ResourceKey.create(BuiltInRegistries.ITEM.key(), id(path));
     }
 
-    private static ResourceKey<Block> blockKey(String path) {
-        return ResourceKey.create(Registries.BLOCK, id(path));
-    }
 
     private static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath(FortniteInMinecraft.MOD_ID, path);

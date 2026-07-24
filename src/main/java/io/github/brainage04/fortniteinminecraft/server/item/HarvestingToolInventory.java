@@ -1,7 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
-import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -18,9 +17,9 @@ public final class HarvestingToolInventory {
         if (registered) {
             return;
         }
-        ServerPlayerEvents.JOIN.register(HarvestingToolInventory::enforce);
-        ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> enforce(newPlayer));
-        ServerTickEvents.END_SERVER_TICK.register(server -> server.getPlayerList().getPlayers().forEach(HarvestingToolInventory::enforce));
+        FortniteInMinecraft.platform().registerPlayerJoin(HarvestingToolInventory::enforce);
+        FortniteInMinecraft.platform().registerPlayerRespawn(HarvestingToolInventory::enforce);
+        FortniteInMinecraft.platform().registerEndServerTick(server -> server.getPlayerList().getPlayers().forEach(HarvestingToolInventory::enforce));
         registered = true;
     }
 

@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "io.github.brainage04.fortniteinminecraft.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"AbstractClientPlayerMixin",
+		"ClientMultiPlayerGameModeMixin",
+		"ItemInHandRendererMixin",
+		"HudMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

@@ -1,0 +1,7 @@
+{
+  "environment": "minecraft:default",
+  "structure": "fortniteinminecraft:empty",
+  "max_ticks": 80,
+  "type": "minecraft:function",
+  "function": "fortniteinminecraft:projectile_weapon_damages_living_target"
+}

@@ -1,0 +1,99 @@
+plugins {
+	id 'dev.architectury.loom-no-remap'
+	id 'dev.architectury.loom'
+	id 'io.github.brainage04.workspace-dependencies' version "${fabricmoddingconventions_version}"
+	id 'io.github.brainage04.mod-publishing' version "${fabricmoddingconventions_version}"
+}
+
+base {
+	archivesName = "${rootProject.archives_base_name}-neoforge"
+}
+
+sourceSets {
+	gametest {
+		java.srcDirs = [rootProject.file('src/gametest/java'), project.file('src/gametest/java')]
+		resources.srcDirs = [project.file('src/gametest/resources')]
+		compileClasspath += sourceSets.main.output + configurations.compileClasspath
+		runtimeClasspath += output + compileClasspath + configurations.runtimeClasspath
+	}
+}
+
+loom {
+	neoForge {
+		accessTransformer file('src/main/resources/META-INF/accesstransformer.cfg')
+	}
+	mods {
+		main {
+			sourceSet sourceSets.main
+			sourceSet project(':common').sourceSets.main
+			sourceSet sourceSets.gametest
+		}
+	}
+	runs {
+		client {
+			runDir 'run/client'
+		}
+		gameTestServer {
+			server()
+			forgeTemplate 'gameTestServer'
+			name 'NeoForge Game Tests'
+			source sourceSets.gametest
+			runDir 'run/gametest'
+		}
+	}
+}
+
+configurations {
+	common {
+		canBeResolved = true
+		canBeConsumed = false
+	}
+	compileClasspath.extendsFrom common
+}
+
+workspaceDependencies {
+	siblingMaven('HudRendererLib') {
+		coordinate.set("io.github.brainage04:hudrendererlib-neoforge:${rootProject.hudrendererlib_version}")
+		siblingDirectory.set(rootProject.layout.projectDirectory.dir('../HudRendererLib'))
+	}
+}
+
+modPublishing.github.enabled.set(false)
+modPublishing.modrinth.enabled.set(false)
+modPublishing.curseforge.enabled.set(false)
+
+dependencies {
+	minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+	neoForge "net.neoforged:neoforge:${rootProject.neoforge_version}"
+	common(project(':common')) { transitive false }
+	implementation "io.github.brainage04:hudrendererlib-neoforge:${rootProject.hudrendererlib_version}"
+}
+
+processResources {
+	inputs.properties(
+		version: project.version,
+		minecraft_version: rootProject.minecraft_version,
+		java_version: rootProject.java_version,
+		neoforge_version: rootProject.neoforge_version,
+		hudrendererlib_version: rootProject.hudrendererlib_version
+	)
+	filesMatching('META-INF/neoforge.mods.toml') {
+		expand inputs.properties
+	}
+}
+
+tasks.named('jar') {
+	from project(':common').sourceSets.main.output
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	from(rootProject.file('LICENSE')) {
+		rename { "${it}_${rootProject.archives_base_name}-neoforge" }
+	}
+}
+
+tasks.named('sourcesJar') {
+	from project(':common').sourceSets.main.allSource
+}
+
+tasks.matching { it.name.startsWith('run') }.configureEach {
+	dependsOn project(':common').tasks.named('jar')
+}

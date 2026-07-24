@@ -3,8 +3,8 @@ package io.github.brainage04.fortniteinminecraft.server.world;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.session.BuildSessionManager;
 import io.github.brainage04.fortniteinminecraft.core.state.BuildWorldState;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.server.item.BuildItemInteractions;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -29,7 +29,7 @@ public final class BuildInteractionTicker {
     }
 
     public void register() {
-        ServerTickEvents.END_SERVER_TICK.register(this::tick);
+        FortniteInMinecraft.platform().registerEndServerTick(this::tick);
     }
 
     void tick(MinecraftServer server) {

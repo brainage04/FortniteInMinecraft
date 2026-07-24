@@ -1,11 +1,9 @@
 package io.github.brainage04.fortniteinminecraft.server.player;
 
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.Vec3;
 
 public final class FortniteMobilityGameTest {
-    @GameTest
     public void sprintCrouchSlidePreservesDirectionAndAcceleratesDownhill(GameTestHelper context) {
         Vec3 look = new Vec3(1.0D, 0.0D, 0.0D);
         Vec3 startingVelocity = new Vec3(0.2D, 0.0D, 0.0D);

@@ -17,7 +17,6 @@ import io.github.brainage04.fortniteinminecraft.server.world.BuildWeakPoints;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildCollapseScheduler;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -129,15 +128,28 @@ public final class BuildEditInteractions {
         return InteractionResult.SUCCESS_SERVER;
     }
 
+    public static void handleDisconnect(
+            ServerPlayer player,
+            BuildWorldState state,
+            BuildRules rules,
+            WorldBuildMaterializer materializer
+    ) {
+        Objects.requireNonNull(player, "player");
+        EditSession session = SESSIONS.remove(player.getUUID());
+        if (session != null && !applyPiece(player, state, rules, materializer, session, session.originalPiece())) {
+            FortniteInMinecraft.LOGGER.warn("Could not restore {} after {} disconnected", session.slot(), player.getScoreboardName());
+        }
+    }
+
     private static void syncEditMode(ServerPlayer player, boolean active) {
         if (active) {
             EditSession session = SESSIONS.get(player.getUUID());
             if (session != null) {
-                ServerPlayNetworking.send(player, EditModePayload.active(session.originalPiece(), session.selectedMask()));
+                FortniteInMinecraft.platform().sendToPlayer(player, EditModePayload.active(session.originalPiece(), session.selectedMask()));
                 return;
             }
         }
-        ServerPlayNetworking.send(player, EditModePayload.inactive());
+        FortniteInMinecraft.platform().sendToPlayer(player, EditModePayload.inactive());
     }
 
     public static void clearAll() {

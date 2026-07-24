@@ -2,9 +2,7 @@ package io.github.brainage04.fortniteinminecraft.server.item;
 
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.LootContainerProgressPayload;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -32,8 +30,8 @@ public final class LootContainerInteractions {
         if (registered) {
             return;
         }
-        ServerTickEvents.END_SERVER_TICK.register(LootContainerInteractions::tickServer);
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> clearAll());
+        FortniteInMinecraft.platform().registerEndServerTick(LootContainerInteractions::tickServer);
+        FortniteInMinecraft.platform().registerServerStopping(server -> clearAll());
         registered = true;
     }
 
@@ -120,8 +118,8 @@ public final class LootContainerInteractions {
     }
 
     private static void sendProgress(ServerPlayer player, LootContainerBlock block, int elapsedTicks) {
-        if (ServerPlayNetworking.canSend(player, LootContainerProgressPayload.TYPE)) {
-            ServerPlayNetworking.send(player, new LootContainerProgressPayload(
+        if (FortniteInMinecraft.platform().canSendToPlayer(player, LootContainerProgressPayload.TYPE)) {
+            FortniteInMinecraft.platform().sendToPlayer(player, new LootContainerProgressPayload(
                     true,
                     block.definition().displayName(),
                     elapsedTicks,
@@ -131,8 +129,8 @@ public final class LootContainerInteractions {
     }
 
     private static void sendClear(ServerPlayer player) {
-        if (ServerPlayNetworking.canSend(player, LootContainerProgressPayload.TYPE)) {
-            ServerPlayNetworking.send(player, LootContainerProgressPayload.inactive());
+        if (FortniteInMinecraft.platform().canSendToPlayer(player, LootContainerProgressPayload.TYPE)) {
+            FortniteInMinecraft.platform().sendToPlayer(player, LootContainerProgressPayload.inactive());
         }
     }
 

@@ -47,13 +47,14 @@ public abstract class ServerGamePacketListenerMixin {
             method = "handleUseItemOn",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/server/network/ServerGamePacketListenerImpl;ackBlockChangesUpTo(I)V",
+                    target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/server/level/ServerLevel;)V",
                     shift = At.Shift.AFTER
             ),
             cancellable = true
     )
     private void fortniteinminecraft$suppressEditUseItemOn(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (BuildEditInteractions.hasActiveEditSession(player) || BuildItemInteractions.hasActiveBuildMode(player)) {
+            ackBlockChangesUpTo(packet.getSequence());
             ci.cancel();
         }
     }

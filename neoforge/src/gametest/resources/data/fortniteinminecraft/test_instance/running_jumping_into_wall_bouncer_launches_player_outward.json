@@ -1,0 +1,7 @@
+{
+  "environment": "minecraft:default",
+  "structure": "fortniteinminecraft:empty",
+  "max_ticks": 40,
+  "type": "minecraft:function",
+  "function": "fortniteinminecraft:running_jumping_into_wall_bouncer_launches_player_outward"
+}

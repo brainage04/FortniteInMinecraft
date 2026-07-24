@@ -1,5 +1,6 @@
 package io.github.brainage04.fortniteinminecraft.server.network;
 
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.core.session.BuildSessionManager;
@@ -20,8 +21,6 @@ import io.github.brainage04.fortniteinminecraft.server.player.MobilityItemIntera
 import io.github.brainage04.fortniteinminecraft.server.player.PlayerAimStates;
 import io.github.brainage04.fortniteinminecraft.server.player.PlayerResourceStateSync;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -55,12 +54,16 @@ public final class ServerGameplayNetworking {
         rules = Objects.requireNonNull(buildRules, "buildRules");
         materializer = Objects.requireNonNull(worldMaterializer, "worldMaterializer");
 
-        FortnitePayloads.register();
-        ServerPlayNetworking.registerGlobalReceiver(ClientActionPayload.TYPE, (payload, context) -> handle(context.player(), payload));
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> PlayerResourceStateSync.send(handler.player));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            BuildEditInteractions.cancelEditing(handler.player, state, rules, materializer);
-            LootContainerInteractions.cancelOpening(handler.player);
+        FortnitePayloads.registerClientbound(FortniteInMinecraft.platform());
+        FortniteInMinecraft.platform().registerServerboundPayload(
+                ClientActionPayload.TYPE,
+                ClientActionPayload.CODEC,
+                ServerGameplayNetworking::handle
+        );
+        FortniteInMinecraft.platform().registerPlayerJoin(PlayerResourceStateSync::send);
+        FortniteInMinecraft.platform().registerPlayerDisconnect(player -> {
+            BuildEditInteractions.handleDisconnect(player, state, rules, materializer);
+            LootContainerInteractions.cancelOpening(player);
         });
         registered = true;
     }

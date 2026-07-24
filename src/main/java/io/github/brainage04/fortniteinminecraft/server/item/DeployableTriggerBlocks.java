@@ -3,8 +3,6 @@ package io.github.brainage04.fortniteinminecraft.server.item;
 import io.github.brainage04.fortniteinminecraft.FortniteInMinecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -17,20 +15,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.Objects;
 
 public final class DeployableTriggerBlocks {
-    public static final TrapTriggerBlock TRAP_TRIGGER = new TrapTriggerBlock(triggerProperties(blockKey("deployable_trap_trigger")));
-
-    private static boolean registered;
+    public static final TrapTriggerBlock TRAP_TRIGGER = registerTriggerBlock("deployable_trap_trigger");
 
     private DeployableTriggerBlocks() {
     }
-
-    public static void initialize() {
-        if (registered) {
-            return;
+    public static void bootstrap() {
+        if (TRAP_TRIGGER == null) {
+            throw new IllegalStateException("Deployable trigger block was not registered");
         }
-        Registry.register(BuiltInRegistries.BLOCK, blockKey("deployable_trap_trigger"), TRAP_TRIGGER);
-        registered = true;
     }
+
+
 
     static BlockState triggerState(Direction facing) {
         return TRAP_TRIGGER.defaultBlockState().setValue(TrapTriggerBlock.FACING, Objects.requireNonNull(facing, "facing"));
@@ -43,6 +38,11 @@ public final class DeployableTriggerBlocks {
             return triggerPos;
         }
         return triggerPos.relative(state.getValue(TrapTriggerBlock.FACING).getOpposite());
+    }
+
+    private static TrapTriggerBlock registerTriggerBlock(String path) {
+        ResourceKey<Block> key = blockKey(path);
+        return FortniteInMinecraft.platform().registerBlock(key, new TrapTriggerBlock(triggerProperties(key)));
     }
 
     private static BlockBehaviour.Properties triggerProperties(ResourceKey<Block> key) {

@@ -34,6 +34,7 @@ bin/
 mods/
 run/*
 !run/options.txt
+/*/run/
 logs/
 config/
 

@@ -1,6 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.client;
 
 import com.mojang.math.Transformation;
+import io.github.brainage04.fortniteinminecraft.FortniteInMinecraftClient;
 import io.github.brainage04.fortniteinminecraft.core.edit.BuildEditGrids;
 import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildGridPos;
@@ -13,7 +14,6 @@ import io.github.brainage04.fortniteinminecraft.core.rules.BuildRules;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.BuildPreviewPayload;
 import io.github.brainage04.fortniteinminecraft.network.FortnitePayloads.EditModePayload;
 import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -63,7 +63,7 @@ public final class ClientBuildPreview {
             return;
         }
 
-        ClientTickEvents.END_CLIENT_TICK.register(ClientBuildPreview::tick);
+        FortniteInMinecraftClient.platform().registerClientTickEnd(ClientBuildPreview::tick);
         registered = true;
     }
 
@@ -77,6 +77,11 @@ public final class ClientBuildPreview {
 
     public static float previewCellSizeBlocks() {
         return PREVIEW_CELL_SIZE_BLOCKS;
+    }
+
+    /** Number of client-only block displays currently rendering the hologram. */
+    public static int activeDisplayCount() {
+        return ACTIVE_DISPLAYS.size();
     }
 
     public static void acceptServerPreview(BuildPreviewPayload payload) {
@@ -148,7 +153,10 @@ public final class ClientBuildPreview {
     private static void render(ClientLevel level, Snapshot snapshot) {
         clearDisplays();
         BlockState state = BuildVisualBlocks.previewState(snapshot.material(), snapshot.valid());
-        renderDisplayBoxes(level, state, previewDisplayBoxes(snapshot.boxes()));
+        List<DisplayBox> displayBoxes = snapshot.pieceType() == PieceType.WALL
+                ? wallPreviewDisplayBoxes(snapshot.boxes())
+                : previewDisplayBoxes(snapshot.boxes());
+        renderDisplayBoxes(level, state, displayBoxes);
         if (snapshot.editing()) {
             renderDisplayBoxes(level, BuildVisualBlocks.previewState(snapshot.material(), false), editGridLineBoxes(snapshot.slot()));
         }
@@ -213,6 +221,28 @@ public final class ClientBuildPreview {
             for (FaceRect rect : mergedFaceRects(facesByPlane.get(plane))) {
                 displayBoxes.add(faceDisplayBox(plane, rect));
             }
+        }
+        return List.copyOf(displayBoxes);
+    }
+
+    /**
+     * A wall must retain one unscaled block display per footprint cell so its block texture is
+     * tiled, rather than scaled across the whole five-by-five surface.
+     */
+    private static List<DisplayBox> wallPreviewDisplayBoxes(List<PreviewBox> boxes) {
+        ArrayList<DisplayBox> displayBoxes = new ArrayList<>(boxes.size());
+        for (PreviewBox box : boxes) {
+            displayBoxes.add(new DisplayBox(
+                    box.origin().getX(),
+                    box.origin().getY(),
+                    box.origin().getZ(),
+                    0.0F,
+                    0.0F,
+                    0.0F,
+                    box.sizeX(),
+                    box.sizeY(),
+                    box.sizeZ()
+            ));
         }
         return List.copyOf(displayBoxes);
     }
@@ -448,7 +478,6 @@ public final class ClientBuildPreview {
         Objects.requireNonNull(slot, "slot");
         return FOOTPRINTS.project(slot).localBlocks();
     }
-
 
     @SuppressWarnings("unchecked")
     private static EntityType<Display.BlockDisplay> blockDisplayType() {
