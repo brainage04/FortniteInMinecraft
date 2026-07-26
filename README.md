@@ -1,6 +1,6 @@
 # FortniteInMinecraft
 
-Server-authoritative Minecraft mechanics prototype generated from `brainage04/FabricModdingTemplate`, now targeting both Fabric and NeoForge from one shared implementation.
+Server-authoritative Minecraft mechanics prototype generated from `brainage04/ModernMinecraftModTemplate`, now targeting both Fabric and NeoForge from one shared implementation.
 
 Project layout:
 - `src/main` and `src/client` contain loader-neutral server and client gameplay.
