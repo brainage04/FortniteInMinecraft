@@ -30,7 +30,9 @@
 		"fabricloader": ">=${loader_version}",
 		"minecraft": "~${minecraft_version}",
 		"java": ">=${java_version}",
-		"fabric-api": "*",
+		"fabric-api": "*"
+	},
+	"suggests": {
 		"hudrendererlib": ">=${hudrendererlib_version}"
 	},
 	"accessWidener": "fortniteinminecraft.accesswidener"

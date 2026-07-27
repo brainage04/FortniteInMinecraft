@@ -71,7 +71,7 @@ productionGameTests {
 }
 
 dependencies {
-	common(project(':common')) { transitive false }
+	common(project(':common')) { transitive = false }
 	implementation "io.github.brainage04:fabricmoddingconventions:${project.fabricmoddingconventions_version}"
 	implementation "io.github.brainage04:hudrendererlib:${project.hudrendererlib_version}"
 	productionRuntimeMods "io.github.brainage04:hudrendererlib:${project.hudrendererlib_version}"

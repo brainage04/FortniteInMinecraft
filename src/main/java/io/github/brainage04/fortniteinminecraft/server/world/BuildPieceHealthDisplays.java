@@ -160,7 +160,7 @@ public final class BuildPieceHealthDisplays {
         display.setLineWidth(TEXT_LINE_WIDTH);
         display.setBackgroundColor(TRANSPARENT_BACKGROUND);
         display.setTextOpacity((byte) 255);
-        display.setFlags((byte) Display.TextDisplay.FLAG_SHADOW);
+        display.setFlags(Display.TextDisplay.FLAG_SHADOW);
 
         display.setBillboardConstraints(Display.BillboardConstraints.CENTER);
         display.setBrightnessOverride(Brightness.FULL_BRIGHT);

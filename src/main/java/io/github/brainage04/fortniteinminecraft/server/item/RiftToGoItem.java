@@ -14,8 +14,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
+
+
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -23,7 +23,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Consumer;
+
 
 public final class RiftToGoItem extends Item {
     static final long DEFAULT_RIFT_PORTAL_ACTIVE_DURATION_TICKS = 200L; // Default.Rift.Item.ActiveDuration = 10s.
@@ -32,7 +32,13 @@ public final class RiftToGoItem extends Item {
     private final Item clientItem;
 
     public RiftToGoItem(Definition definition, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings,
+                Component.literal("Mobility / " + definition.rarity().label()),
+                Component.literal("Teleports upward by " + format(definition.verticalTeleportBlocks()) + " blocks."),
+                Component.literal("Launches into redeploy for " + definition.redeployTicks() + " ticks."),
+                Component.literal("Leaves a 10s rift portal each player can enter once."),
+                Component.literal("Source: " + definition.sourceItemId())
+        ));
         this.definition = Objects.requireNonNull(definition, "definition");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
     }
@@ -58,14 +64,7 @@ public final class RiftToGoItem extends Item {
         return Component.literal(definition.displayName()).withStyle(rarityColor(definition.rarity()));
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Mobility / " + definition.rarity().label()));
-        tooltip.accept(Component.literal("Teleports upward by " + format(definition.verticalTeleportBlocks()) + " blocks."));
-        tooltip.accept(Component.literal("Launches into redeploy for " + definition.redeployTicks() + " ticks."));
-        tooltip.accept(Component.literal("Leaves a 10s rift portal each player can enter once."));
-        tooltip.accept(Component.literal("Source: " + definition.sourceItemId()));
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

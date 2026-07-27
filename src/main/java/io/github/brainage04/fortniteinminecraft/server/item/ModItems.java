@@ -153,6 +153,7 @@ public final class ModItems {
         Objects.requireNonNull(material, "material");
         if (stack.getItem() instanceof BuildPieceItem item) {
             stack.set(DataComponents.ITEM_MODEL, BuiltInRegistries.ITEM.getKey(item.clientItemFor(material)));
+            stack.set(DataComponents.LORE, BuildPieceItem.lore(material));
         }
         CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putString(MATERIAL_COMPONENT_KEY, material.name()));
     }

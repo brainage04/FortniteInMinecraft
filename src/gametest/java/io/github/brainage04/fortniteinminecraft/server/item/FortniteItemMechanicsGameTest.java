@@ -1,5 +1,7 @@
 package io.github.brainage04.fortniteinminecraft.server.item;
 
+import io.netty.channel.embedded.EmbeddedChannel;
+
 import io.github.brainage04.fortniteinminecraft.core.item.WeaponDefinition;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildGridPos;
 import io.github.brainage04.fortniteinminecraft.core.model.BuildPieceState;
@@ -22,10 +24,13 @@ import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResu
 import io.github.brainage04.fortniteinminecraft.server.world.TerrainResourceHarvest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -123,7 +128,7 @@ public final class FortniteItemMechanicsGameTest {
 
         boolean firstShotDamaged = WeaponItem.damageBuild(
                 level,
-                context.makeMockServerPlayerInLevel(),
+                mockServerPlayer(context, GameType.SURVIVAL),
                 hitPos,
                 nonWeakPointHit,
                 dualPistolShotDamage,
@@ -131,7 +136,7 @@ public final class FortniteItemMechanicsGameTest {
         );
         boolean secondShotDamaged = WeaponItem.damageBuild(
                 level,
-                context.makeMockServerPlayerInLevel(),
+                mockServerPlayer(context, GameType.SURVIVAL),
                 hitPos,
                 nonWeakPointHit,
                 dualPistolShotDamage,
@@ -151,8 +156,7 @@ public final class FortniteItemMechanicsGameTest {
         PickaxeItem.configureHarvesting(wall.state(), wall.materializer());
         BuildWeakPoints.clear(wall.piece().slot());
         BuildWeakPoints.register(wall.state(), wall.materializer());
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.SURVIVAL);
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         ItemStack pickaxe = new ItemStack(ModItems.PICKAXE);
         player.setItemInHand(InteractionHand.MAIN_HAND, pickaxe);
         WeakPointHitTarget target = activeWeakPointTarget(context.getLevel(), wall.materializer(), wall.piece().slot(), 0);
@@ -180,8 +184,7 @@ public final class FortniteItemMechanicsGameTest {
         WeaponItem.configureBuildDamage(wall.state(), wall.materializer(), RULES);
         BuildWeakPoints.clear(wall.piece().slot());
         BuildWeakPoints.register(wall.state(), wall.materializer());
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.CREATIVE);
+        ServerPlayer player = mockServerPlayer(context, GameType.CREATIVE);
         WeakPointHitTarget target = activeWeakPointTarget(context.getLevel(), wall.materializer(), wall.piece().slot(), 0);
 
         boolean damaged = WeaponItem.damageBuild(
@@ -212,8 +215,7 @@ public final class FortniteItemMechanicsGameTest {
         PickaxeItem.configureHarvesting(state, materializer);
         PickaxeItem.clearAllHarvestCooldowns();
 
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.SURVIVAL);
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         PlayerResourceStates.clear(player);
         ItemStack pickaxe = new ItemStack(ModItems.PICKAXE);
         player.setItemInHand(InteractionHand.MAIN_HAND, pickaxe);
@@ -237,7 +239,7 @@ public final class FortniteItemMechanicsGameTest {
     }
 
     public void harvestingToolInventoryRestoresMissingAndRemovesDuplicates(GameTestHelper context) {
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         player.getInventory().clearContent();
 
         HarvestingToolInventory.enforce(player);
@@ -255,7 +257,7 @@ public final class FortniteItemMechanicsGameTest {
     }
 
     public void harvestingToolInventoryCountsCarriedToolDuringMoves(GameTestHelper context) {
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         player.getInventory().clearContent();
         player.containerMenu.setCarried(new ItemStack(ModItems.PICKAXE));
 
@@ -330,8 +332,7 @@ public final class FortniteItemMechanicsGameTest {
                 DeployableTriggerBlocks.TRAP_TRIGGER
         );
 
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.SURVIVAL);
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         Vec3 triggerCenter = Vec3.atCenterOf(center);
         player.snapTo(triggerCenter.x(), triggerCenter.y(), triggerCenter.z(), 0.0F, 0.0F);
 
@@ -348,7 +349,7 @@ public final class FortniteItemMechanicsGameTest {
         BlockPos floorSupportCenter = context.absolutePos(new BlockPos(3, 2, 3));
         List<BlockPos> floorFootprint = BouncerItem.bouncerFootprint(floorSupportCenter, Direction.UP);
         prepareSupportedSurface(level, floorFootprint, Direction.UP);
-        ServerPlayer floorPlayer = context.makeMockServerPlayerInLevel();
+        ServerPlayer floorPlayer = mockServerPlayer(context, GameType.SURVIVAL);
         floorPlayer.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.BOUNCER));
 
         InteractionResult floorResult = useBouncerOn(floorPlayer, floorSupportCenter, Direction.UP);
@@ -360,7 +361,7 @@ public final class FortniteItemMechanicsGameTest {
         Direction wallNormal = Direction.NORTH;
         List<BlockPos> wallFootprint = BouncerItem.bouncerFootprint(wallSupportCenter, wallNormal);
         prepareSupportedSurface(level, wallFootprint, wallNormal);
-        ServerPlayer wallPlayer = context.makeMockServerPlayerInLevel();
+        ServerPlayer wallPlayer = mockServerPlayer(context, GameType.SURVIVAL);
         wallPlayer.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.BOUNCER));
 
         InteractionResult wallResult = useBouncerOn(wallPlayer, wallSupportCenter, wallNormal);
@@ -376,8 +377,7 @@ public final class FortniteItemMechanicsGameTest {
         List<BlockPos> footprint = placeAndRegisterBouncer(level, supportCenter, Direction.UP);
         BlockPos triggerCenter = centerBlock(footprint);
 
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.SURVIVAL);
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         player.snapTo(triggerCenter.getX() + 0.5D, triggerCenter.getY() + 0.05D, triggerCenter.getZ() + 0.5D, 0.0F, 0.0F);
         player.setOnGround(false);
         player.setDeltaMovement(0.0D, -0.35D, 0.0D);
@@ -396,8 +396,7 @@ public final class FortniteItemMechanicsGameTest {
         List<BlockPos> footprint = placeAndRegisterBouncer(level, supportCenter, surfaceNormal);
         BlockPos triggerCenter = centerBlock(footprint);
 
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.SURVIVAL);
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         player.setSprinting(true);
         player.snapTo(triggerCenter.getX() + 0.5D, triggerCenter.getY() + 0.1D, triggerCenter.getZ() + 0.5D, 0.0F, 0.0F);
         player.setOnGround(false);
@@ -425,8 +424,7 @@ public final class FortniteItemMechanicsGameTest {
         PickaxeItem.configureHarvesting(wall.state(), wall.materializer());
         PickaxeItem.clearAllHarvestCooldowns();
         BlockPos triggerPos = centerBlock(wall.triggerFootprint());
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.SURVIVAL);
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         ItemStack pickaxe = new ItemStack(ModItems.PICKAXE);
         player.setItemInHand(InteractionHand.MAIN_HAND, pickaxe);
 
@@ -465,7 +463,7 @@ public final class FortniteItemMechanicsGameTest {
 
         boolean damaged = WeaponItem.damageBuild(
                 level,
-                context.makeMockServerPlayerInLevel(),
+                mockServerPlayer(context, GameType.SURVIVAL),
                 triggerPos,
                 Vec3.atCenterOf(triggerPos),
                 damage,
@@ -493,7 +491,7 @@ public final class FortniteItemMechanicsGameTest {
 
         boolean damaged = WeaponItem.damageBuild(
                 level,
-                context.makeMockServerPlayerInLevel(),
+                mockServerPlayer(context, GameType.SURVIVAL),
                 triggerPos,
                 Vec3.atCenterOf(triggerPos),
                 damage,
@@ -523,9 +521,7 @@ public final class FortniteItemMechanicsGameTest {
 
     public void lootContainerOpenClearsBlocksAndDropsMatchingLoot(GameTestHelper context) {
         ServerLevel level = context.getLevel();
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.SURVIVAL);
-
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         BlockPos ammoBoxPos = context.absolutePos(new BlockPos(2, 2, 3));
         level.setBlock(ammoBoxPos, ModItems.AMMO_BOX.defaultBlockState(), Block.UPDATE_ALL);
         ModItems.AMMO_BOX.open(level, ammoBoxPos, player);
@@ -561,8 +557,7 @@ public final class FortniteItemMechanicsGameTest {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(RULES);
         PortAFortItem.configureBuildPlacement(state, RULES, materializer);
 
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.SURVIVAL);
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         Vec3 playerPos = context.absoluteVec(new Vec3(3.0D, 3.0D, 3.0D));
         player.snapTo(playerPos.x(), playerPos.y(), playerPos.z(), 0.0F, 0.0F);
         ItemStack stack = new ItemStack(ModItems.PORT_A_FORT, 2);
@@ -895,6 +890,15 @@ public final class FortniteItemMechanicsGameTest {
                 tick,
                 BuildPieceState.BASE_VARIANT
         );
+    }
+
+    private static ServerPlayer mockServerPlayer(GameTestHelper context, GameType gameType) {
+        ServerPlayer player = (ServerPlayer) context.makeMockServerPlayer(gameType);
+        Connection connection = new Connection(PacketFlow.SERVERBOUND);
+        new EmbeddedChannel(connection);
+        CommonListenerCookie cookie = CommonListenerCookie.createInitial(player.getGameProfile(), false);
+        context.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
+        return player;
     }
 
     private static PlacedBuild placeWallWithHealth(GameTestHelper context, BlockPos localTarget, int health) {

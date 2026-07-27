@@ -30,8 +30,8 @@ import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
+
+
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
@@ -41,12 +41,13 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
+
 
 public final class ExplosiveProjectileWeaponItem extends Item {
     private static final String MAGAZINE_KEY = "magazine";
@@ -59,7 +60,7 @@ public final class ExplosiveProjectileWeaponItem extends Item {
     private final Item clientItem;
 
     public ExplosiveProjectileWeaponItem(Definition definition, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings, lore(definition)));
         this.definition = Objects.requireNonNull(definition, "definition");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
         registerTicker();
@@ -109,31 +110,35 @@ public final class ExplosiveProjectileWeaponItem extends Item {
         return (float) (unitsPerSecond / 100.0D / 20.0D);
     }
 
+    private static List<Component> lore(Definition definition) {
+        Objects.requireNonNull(definition, "definition");
+        WeaponDefinition weapon = definition.weapon();
+        WeaponStats stats = weapon.stats();
+        List<Component> lines = new ArrayList<>(5);
+        lines.add(Component.literal(weapon.category().label() + " / " + weapon.rarity().label()));
+        if (definition.hasImpulseOnly()) {
+            lines.add(Component.literal("Shockwave radius: " + format(definition.explosionRadiusBlocks())
+                    + " blocks; impulse: " + format(definition.impulseHorizontalStrength())
+                    + " horizontal / " + format(definition.impulseVerticalStrength()) + " vertical"));
+        } else {
+            lines.add(Component.literal("Explosive damage: " + format(stats.damage())
+                    + "; radius: " + format(definition.explosionRadiusBlocks()) + " blocks"));
+        }
+        lines.add(Component.literal("Projectile speed: " + format(definition.projectileSpeed())
+                + " blocks/tick; cooldown: " + format(cooldownTicks(definition) / 20.0D) + "s"));
+        if (!definition.evidenceNote().isBlank()) {
+            lines.add(Component.literal(definition.evidenceNote()));
+        }
+        lines.add(Component.literal("Source: " + weapon.sourceStatRow()));
+        return lines;
+    }
+
     @Override
     public Component getName(ItemStack stack) {
         return Component.literal(definition.weapon().displayName()).withStyle(rarityColor(definition.weapon().rarity()));
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        WeaponDefinition weapon = definition.weapon();
-        WeaponStats stats = weapon.stats();
-        tooltip.accept(Component.literal(weapon.category().label() + " / " + weapon.rarity().label()));
-        if (definition.hasImpulseOnly()) {
-            tooltip.accept(Component.literal("Shockwave radius: " + format(definition.explosionRadiusBlocks())
-                    + " blocks; impulse: " + format(definition.impulseHorizontalStrength())
-                    + " horizontal / " + format(definition.impulseVerticalStrength()) + " vertical"));
-        } else {
-            tooltip.accept(Component.literal("Explosive damage: " + format(stats.damage())
-                    + "; radius: " + format(definition.explosionRadiusBlocks()) + " blocks"));
-        }
-        tooltip.accept(Component.literal("Projectile speed: " + format(definition.projectileSpeed())
-                + " blocks/tick; cooldown: " + format(cooldownTicks(definition) / 20.0D) + "s"));
-        if (!definition.evidenceNote().isBlank()) {
-            tooltip.accept(Component.literal(definition.evidenceNote()));
-        }
-        tooltip.accept(Component.literal("Source: " + weapon.sourceStatRow()));
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

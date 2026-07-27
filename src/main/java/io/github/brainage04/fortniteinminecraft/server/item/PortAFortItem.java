@@ -33,8 +33,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
+
+
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
@@ -47,7 +47,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
+
 
 public final class PortAFortItem extends Item {
     private static final float THROW_POWER = 1.5F;
@@ -61,7 +61,13 @@ public final class PortAFortItem extends Item {
     private final Item clientItem;
 
     public PortAFortItem(Definition definition, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings,
+                Component.literal("Utility / " + definition.rarity().label()),
+                Component.literal("Throwable that snaps impact to the build grid."),
+                Component.literal("Spawns tracked metal build pieces: " + format(buildTileBlocks())
+                        + "x" + format(buildTileBlocks()) + " tiles, " + format(buildWallHeightBlocks()) + "-block walls."),
+                Component.literal("Source: " + definition.sourceItemId())
+        ));
         this.definition = Objects.requireNonNull(definition, "definition");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
     }
@@ -93,14 +99,7 @@ public final class PortAFortItem extends Item {
         return Component.literal(definition.displayName()).withStyle(rarityColor(definition.rarity()));
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Utility / " + definition.rarity().label()));
-        tooltip.accept(Component.literal("Throwable that snaps impact to the build grid."));
-        tooltip.accept(Component.literal("Spawns tracked metal build pieces: " + format(buildTileBlocks())
-                + "x" + format(buildTileBlocks()) + " tiles, " + format(buildWallHeightBlocks()) + "-block walls."));
-        tooltip.accept(Component.literal("Source: " + definition.sourceItemId()));
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

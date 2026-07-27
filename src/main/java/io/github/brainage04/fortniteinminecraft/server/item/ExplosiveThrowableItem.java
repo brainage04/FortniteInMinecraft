@@ -25,8 +25,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
+
+
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -41,7 +41,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
+
 
 public final class ExplosiveThrowableItem extends Item {
     private static final ArrayList<ActiveThrowable> ACTIVE_THROWABLES = new ArrayList<>();
@@ -52,7 +52,14 @@ public final class ExplosiveThrowableItem extends Item {
     private final Item clientItem;
 
     public ExplosiveThrowableItem(Definition definition, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings,
+                Component.literal("Throwable / " + definition.rarity().label()),
+                Component.literal("Sticky explosive damage: " + format(definition.damage())
+                        + "; radius: " + format(definition.explosionRadiusBlocks()) + " blocks"),
+                Component.literal("Sticks to the first impact, then detonates after "
+                        + format(definition.stickDelayTicks() / 20.0D) + "s"),
+                Component.literal("Source: " + definition.sourceItemId())
+        ));
         this.definition = Objects.requireNonNull(definition, "definition");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
         registerTicker();
@@ -75,15 +82,7 @@ public final class ExplosiveThrowableItem extends Item {
         return Component.literal(definition.displayName()).withStyle(rarityColor(definition.rarity()));
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Throwable / " + definition.rarity().label()));
-        tooltip.accept(Component.literal("Sticky explosive damage: " + format(definition.damage())
-                + "; radius: " + format(definition.explosionRadiusBlocks()) + " blocks"));
-        tooltip.accept(Component.literal("Sticks to the first impact, then detonates after "
-                + format(definition.stickDelayTicks() / 20.0D) + "s"));
-        tooltip.accept(Component.literal("Source: " + definition.sourceItemId()));
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

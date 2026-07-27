@@ -27,19 +27,19 @@ import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
-import net.minecraft.world.item.TooltipFlag;
+
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.item.component.TooltipDisplay;
+
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.BlockHitResult;
 
 import java.util.Locale;
 import java.util.Objects;
-import java.util.function.Consumer;
+
 import java.util.Optional;
 
 public final class ProjectileWeaponItem extends Item {
@@ -59,7 +59,15 @@ public final class ProjectileWeaponItem extends Item {
             float projectileSpeed,
             float inaccuracy
     ) {
-        super(settings);
+        super(ItemTooltips.withLore(settings,
+                Component.literal(definition.category().label() + " / " + definition.rarity().label()),
+                Component.literal("Projectile damage: " + format(definition.stats().damage())
+                        + "; speed: " + format(projectileSpeed)),
+                Component.literal("Reload/cooldown: " + format(definition.stats().reloadSeconds()) + "s; crit: "
+                        + format(definition.stats().criticalMultiplier()) + "x"),
+                Component.literal("Hold right-click before firing to steady the scope."),
+                Component.literal("Source: " + definition.sourceStatRow())
+        ));
         this.definition = Objects.requireNonNull(definition, "definition");
         Objects.requireNonNull(clientItem, "clientItem");
         if (projectileSpeed <= 0.0F) {
@@ -97,17 +105,7 @@ public final class ProjectileWeaponItem extends Item {
         return displayNameComponent();
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        WeaponStats stats = definition.stats();
-        tooltip.accept(Component.literal(definition.category().label() + " / " + definition.rarity().label()));
-        tooltip.accept(Component.literal("Projectile damage: " + format(stats.damage())
-                + "; speed: " + format(projectileSpeed)));
-        tooltip.accept(Component.literal("Reload/cooldown: " + format(stats.reloadSeconds()) + "s; crit: "
-                + format(stats.criticalMultiplier()) + "x"));
-        tooltip.accept(Component.literal("Hold right-click before firing to steady the scope."));
-        tooltip.accept(Component.literal("Source: " + definition.sourceStatRow()));
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

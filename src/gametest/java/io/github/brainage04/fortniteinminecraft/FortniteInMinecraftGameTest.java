@@ -1,5 +1,7 @@
 package io.github.brainage04.fortniteinminecraft;
 
+import io.netty.channel.embedded.EmbeddedChannel;
+
 import io.github.brainage04.fortniteinminecraft.core.edit.BuildEditGrids;
 import io.github.brainage04.fortniteinminecraft.core.edit.EditGridCell;
 import io.github.brainage04.fortniteinminecraft.core.model.BlockOffset;
@@ -27,12 +29,15 @@ import io.github.brainage04.fortniteinminecraft.server.world.BuildVisualBlocks;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildMaterializer;
 import io.github.brainage04.fortniteinminecraft.server.world.WorldBuildWriteResult;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
@@ -66,10 +71,9 @@ public final class FortniteInMinecraftGameTest {
     }
 
     public void gliderStaysDeployedAndTravelsAfterRedeploy(GameTestHelper context) {
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         Vec3 start = context.absoluteVec(new Vec3(2.0D, 20.0D, 2.0D));
         player.snapTo(start.x(), start.y(), start.z(), 0.0F, 0.0F);
-        player.setGameMode(GameType.SURVIVAL);
         player.setDeltaMovement(0.0D, -0.6D, 0.0D);
 
         MobilityItemInteractions.enableRedeploy(player, 100L);
@@ -90,8 +94,7 @@ public final class FortniteInMinecraftGameTest {
 
     public void hitscanWeaponDamagesLivingTarget(GameTestHelper context) {
         ServerLevel level = context.getLevel();
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.CREATIVE);
+        ServerPlayer player = mockServerPlayer(context, GameType.CREATIVE);
         Vec3 shooterPos = context.absoluteVec(new Vec3(2.0D, 2.0D, 2.0D));
         player.snapTo(shooterPos.x(), shooterPos.y(), shooterPos.z(), 0.0F, 0.0F);
 
@@ -111,8 +114,7 @@ public final class FortniteInMinecraftGameTest {
 
     public void hitscanShieldedMobKeepsHealthAndShowsBlueHitMarker(GameTestHelper context) {
         ServerLevel level = context.getLevel();
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.CREATIVE);
+        ServerPlayer player = mockServerPlayer(context, GameType.CREATIVE);
         Vec3 shooterPos = context.absoluteVec(new Vec3(2.0D, 2.0D, 2.0D));
         player.snapTo(shooterPos.x(), shooterPos.y(), shooterPos.z(), 0.0F, 0.0F);
 
@@ -145,8 +147,7 @@ public final class FortniteInMinecraftGameTest {
 
     public void projectileWeaponDamagesLivingTarget(GameTestHelper context) {
         ServerLevel level = context.getLevel();
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.CREATIVE);
+        ServerPlayer player = mockServerPlayer(context, GameType.CREATIVE);
         Vec3 shooterPos = context.absoluteVec(new Vec3(2.0D, 2.0D, 2.0D));
         player.snapTo(shooterPos.x(), shooterPos.y(), shooterPos.z(), 0.0F, 0.0F);
 
@@ -167,8 +168,7 @@ public final class FortniteInMinecraftGameTest {
 
     public void consumablesRestoreHealthAndShieldInWorld(GameTestHelper context) {
         ServerLevel level = context.getLevel();
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.setGameMode(GameType.SURVIVAL);
+        ServerPlayer player = mockServerPlayer(context, GameType.SURVIVAL);
         player.setHealth(10.0F);
 
         ConsumableItem bandage = consumable("consumable_bandage");
@@ -183,8 +183,7 @@ public final class FortniteInMinecraftGameTest {
     }
 
     public void launchPadAndBouncerEnableRedeploy(GameTestHelper context) {
-        ServerPlayer launchPlayer = context.makeMockServerPlayerInLevel();
-        launchPlayer.setGameMode(GameType.SURVIVAL);
+        ServerPlayer launchPlayer = mockServerPlayer(context, GameType.SURVIVAL);
         Vec3 launchPos = context.absoluteVec(new Vec3(2.0D, 2.0D, 2.0D));
         launchPlayer.snapTo(launchPos.x(), launchPos.y(), launchPos.z(), 0.0F, 0.0F);
 
@@ -193,8 +192,7 @@ public final class FortniteInMinecraftGameTest {
         context.assertTrue(launchPlayer.getDeltaMovement().y() > 2.0D, "Expected launch pad to throw the player upward.");
         context.assertTrue(MobilityItemInteractions.toggleGlider(launchPlayer), "Expected launch pad redeploy window to allow glider.");
 
-        ServerPlayer bouncerPlayer = context.makeMockServerPlayerInLevel();
-        bouncerPlayer.setGameMode(GameType.SURVIVAL);
+        ServerPlayer bouncerPlayer = mockServerPlayer(context, GameType.SURVIVAL);
         Vec3 bouncerPos = context.absoluteVec(new Vec3(4.0D, 2.0D, 2.0D));
         bouncerPlayer.snapTo(bouncerPos.x(), bouncerPos.y(), bouncerPos.z(), 0.0F, 0.0F);
         context.assertTrue(MobilityItemInteractions.activateLaunchPad(bouncerPlayer, ModItems.BOUNCER.definition().redeployTicks(), true),
@@ -388,6 +386,15 @@ public final class FortniteInMinecraftGameTest {
     private static WorldObstruction obstructionFor(String dimension, List<BlockOffset> supports) {
         return (candidateDimension, x, y, z) ->
                 dimension.equals(candidateDimension) && supports.contains(new BlockOffset(x, y, z));
+    }
+
+    private static ServerPlayer mockServerPlayer(GameTestHelper context, GameType gameType) {
+        ServerPlayer player = (ServerPlayer) context.makeMockServerPlayer(gameType);
+        Connection connection = new Connection(PacketFlow.SERVERBOUND);
+        new EmbeddedChannel(connection);
+        CommonListenerCookie cookie = CommonListenerCookie.createInitial(player.getGameProfile(), false);
+        context.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
+        return player;
     }
 
     private static BuildPieceState fullHealthPiece(BuildSlot slot, MaterialType material, long tick) {

@@ -15,8 +15,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
+
+
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
@@ -25,7 +25,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Consumer;
+
 
 public final class BouncerItem extends Item {
     private static BlockState placedState(Direction surfaceNormal) {
@@ -36,7 +36,14 @@ public final class BouncerItem extends Item {
     private final Item clientItem;
 
     public BouncerItem(Definition definition, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings,
+                Component.literal("Trap / " + definition.rarity().label()),
+                Component.literal("Places a floor- or wall-sized bouncer using a deployable trigger."),
+                Component.literal(definition.redeployTicks() > 0L
+                        ? "Launches on contact and grants " + definition.redeployTicks() + " ticks of redeploy."
+                        : "Launches on contact without glider redeploy."),
+                Component.literal("Source: " + definition.sourceItemId())
+        ));
         this.definition = Objects.requireNonNull(definition, "definition");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
     }
@@ -62,17 +69,7 @@ public final class BouncerItem extends Item {
         return Component.literal(definition.displayName()).withStyle(rarityColor(definition.rarity()));
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Trap / " + definition.rarity().label()));
-        tooltip.accept(Component.literal("Places a floor- or wall-sized bouncer using a deployable trigger."));
-        if (definition.redeployTicks() > 0L) {
-            tooltip.accept(Component.literal("Launches on contact and grants " + definition.redeployTicks() + " ticks of redeploy."));
-        } else {
-            tooltip.accept(Component.literal("Launches on contact without glider redeploy."));
-        }
-        tooltip.accept(Component.literal("Source: " + definition.sourceItemId()));
-    }
+    
 
     @Override
     public InteractionResult useOn(UseOnContext context) {

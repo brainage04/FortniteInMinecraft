@@ -14,13 +14,13 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
+
 import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.item.component.TooltipDisplay;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
 
 public final class ConsumableItem extends Item {
     private static final double FORTNITE_TO_MINECRAFT_HEALTH = 0.2D;
@@ -29,7 +29,7 @@ public final class ConsumableItem extends Item {
     private final Item clientItem;
 
     public ConsumableItem(ConsumableDefinition definition, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings, lore(definition)));
         this.definition = Objects.requireNonNull(definition, "definition");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
     }
@@ -47,29 +47,33 @@ public final class ConsumableItem extends Item {
         return Math.max(1, (int) Math.ceil(definition.castSeconds() * 20.0D));
     }
 
+    private static List<Component> lore(ConsumableDefinition definition) {
+        Objects.requireNonNull(definition, "definition");
+        List<Component> lines = new ArrayList<>(6);
+        lines.add(Component.literal("Rarity: " + definition.rarity().label()));
+        lines.add(Component.literal("Use time: " + format(definition.castSeconds()) + "s"
+                + (definition.movementLocked() ? "; movement locked" : "; mobile use")));
+        if (definition.restoresEffectiveHealth()) {
+            lines.add(Component.literal("Effective health: +" + definition.effectiveRestore()));
+        }
+        if (definition.healthRestore() > 0) {
+            lines.add(Component.literal("Health: +" + definition.healthRestore()
+                    + (definition.healthCap() > 0 ? " up to " + definition.healthCap() : "")));
+        }
+        if (definition.shieldRestore() > 0) {
+            lines.add(Component.literal("Shield: +" + definition.shieldRestore()
+                    + (definition.shieldCap() > 0 ? " up to " + definition.shieldCap() : "")));
+        }
+        lines.add(Component.literal("Source: " + definition.sourceItemId()));
+        return lines;
+    }
+
     @Override
     public Component getName(ItemStack stack) {
         return Component.literal(definition.displayName()).withStyle(rarityColor(definition.rarity()));
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Rarity: " + definition.rarity().label()));
-        tooltip.accept(Component.literal("Use time: " + format(definition.castSeconds()) + "s"
-                + (definition.movementLocked() ? "; movement locked" : "; mobile use")));
-        if (definition.restoresEffectiveHealth()) {
-            tooltip.accept(Component.literal("Effective health: +" + definition.effectiveRestore()));
-        }
-        if (definition.healthRestore() > 0) {
-            tooltip.accept(Component.literal("Health: +" + definition.healthRestore()
-                    + (definition.healthCap() > 0 ? " up to " + definition.healthCap() : "")));
-        }
-        if (definition.shieldRestore() > 0) {
-            tooltip.accept(Component.literal("Shield: +" + definition.shieldRestore()
-                    + (definition.shieldCap() > 0 ? " up to " + definition.shieldCap() : "")));
-        }
-        tooltip.accept(Component.literal("Source: " + definition.sourceItemId()));
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

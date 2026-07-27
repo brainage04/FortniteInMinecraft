@@ -5,13 +5,11 @@ import io.github.brainage04.fortniteinminecraft.core.model.PieceType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.item.component.ItemLore;
 
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.function.Consumer;
 
 public final class BuildPieceItem extends Item {
     private final PieceType pieceType;
@@ -24,7 +22,7 @@ public final class BuildPieceItem extends Item {
             Item stoneClientItem,
             Item metalClientItem
     ) {
-        super(settings);
+        super(ItemTooltips.withLore(settings, lore(MaterialType.WOOD)));
         this.pieceType = Objects.requireNonNull(pieceType, "pieceType");
         clientItemsByMaterial.put(MaterialType.WOOD, Objects.requireNonNull(woodClientItem, "woodClientItem"));
         clientItemsByMaterial.put(MaterialType.STONE, Objects.requireNonNull(stoneClientItem, "stoneClientItem"));
@@ -35,12 +33,6 @@ public final class BuildPieceItem extends Item {
         return pieceType;
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Material: " + label(ModItems.selectedMaterialFor(stack))));
-        tooltip.accept(Component.literal("Left-click: place / hold turbo"));
-        tooltip.accept(Component.literal("Right-click: cycle material"));
-    }
 
     @Override
     public Component getName(ItemStack stack) {
@@ -49,6 +41,14 @@ public final class BuildPieceItem extends Item {
 
     Item clientItemFor(MaterialType material) {
         return clientItemsByMaterial.get(Objects.requireNonNull(material, "material"));
+    }
+
+    static ItemLore lore(MaterialType material) {
+        return ItemTooltips.lore(
+                Component.literal("Material: " + label(material)),
+                Component.literal("Left-click: place / hold turbo"),
+                Component.literal("Right-click: cycle material")
+        );
     }
 
     private static String label(Enum<?> value) {

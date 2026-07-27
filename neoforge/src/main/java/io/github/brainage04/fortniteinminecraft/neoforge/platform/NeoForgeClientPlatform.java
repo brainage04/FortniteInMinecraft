@@ -38,7 +38,7 @@ public final class NeoForgeClientPlatform implements ClientPlatform {
 
     @Override
     public KeyMapping.Category registerKeyCategory(Identifier id) {
-        KeyMapping.Category category = KeyMapping.Category.register(id);
+        KeyMapping.Category category = new KeyMapping.Category(id);
         modBus.addListener((RegisterKeyMappingsEvent event) -> event.registerCategory(category));
         return category;
     }

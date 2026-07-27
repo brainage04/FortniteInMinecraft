@@ -39,11 +39,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
-import net.minecraft.world.item.TooltipFlag;
+
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.item.component.TooltipDisplay;
+
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -53,7 +53,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.function.Consumer;
+
 import java.util.Optional;
 
 public final class WeaponItem extends Item {
@@ -82,7 +82,16 @@ public final class WeaponItem extends Item {
     private final WeaponDefinition definition;
 
     public WeaponItem(WeaponDefinition definition, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings,
+                Component.literal(definition.category().label() + " / " + definition.rarity().label()),
+                Component.literal("Damage: " + format(definition.stats().damage())
+                        + (definition.stats().pellets() > 1 ? " x" + definition.stats().pellets() : "")),
+                Component.literal("Fire rate: " + format(definition.stats().fireRatePerSecond())
+                        + "/s; magazine: " + definition.stats().magazineSize()),
+                Component.literal("Reload: " + format(definition.stats().reloadSeconds())
+                        + "s; crit: " + format(definition.stats().criticalMultiplier()) + "x"),
+                Component.literal("Source: " + definition.sourceStatRow())
+        ));
         this.definition = Objects.requireNonNull(definition, "definition");
         Objects.requireNonNull(clientItem, "clientItem");
     }
@@ -142,16 +151,7 @@ public final class WeaponItem extends Item {
         };
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        WeaponStats stats = definition.stats();
-        tooltip.accept(Component.literal(definition.category().label() + " / " + definition.rarity().label()));
-        tooltip.accept(Component.literal("Damage: " + format(stats.damage())
-                + (stats.pellets() > 1 ? " x" + stats.pellets() : "")));
-        tooltip.accept(Component.literal("Fire rate: " + format(stats.fireRatePerSecond()) + "/s; magazine: " + stats.magazineSize()));
-        tooltip.accept(Component.literal("Reload: " + format(stats.reloadSeconds()) + "s; crit: " + format(stats.criticalMultiplier()) + "x"));
-        tooltip.accept(Component.literal("Source: " + definition.sourceStatRow()));
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

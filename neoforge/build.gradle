@@ -65,7 +65,7 @@ modPublishing.curseforge.enabled.set(false)
 dependencies {
 	minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
 	neoForge "net.neoforged:neoforge:${rootProject.neoforge_version}"
-	common(project(':common')) { transitive false }
+	common(project(':common')) { transitive = false }
 	implementation "io.github.brainage04:hudrendererlib-neoforge:${rootProject.hudrendererlib_version}"
 }
 

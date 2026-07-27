@@ -10,12 +10,12 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
+
 import net.minecraft.world.level.Level;
-import net.minecraft.world.item.component.TooltipDisplay;
+
 
 import java.util.Objects;
-import java.util.function.Consumer;
+
 
 public final class PickupItem extends Item {
     private final String displayName;
@@ -23,7 +23,7 @@ public final class PickupItem extends Item {
     private final Item clientItem;
 
     public PickupItem(String displayName, PickupPayload payload, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings, Component.literal("Pickup: " + payload.label())));
         this.displayName = Objects.requireNonNull(displayName, "displayName");
         this.payload = Objects.requireNonNull(payload, "payload");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
@@ -38,10 +38,7 @@ public final class PickupItem extends Item {
         return Component.literal(displayName);
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Pickup: " + payload.label()));
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

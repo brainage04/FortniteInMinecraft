@@ -4,18 +4,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
+
+
 import net.minecraft.world.level.block.Block;
 
 import java.util.Objects;
-import java.util.function.Consumer;
+
 
 public final class LootContainerItem extends BlockItem {
     private final String displayName;
 
     public LootContainerItem(Block block, String displayName, Item.Properties settings) {
-        super(block, settings);
+        super(block, ItemTooltips.withLore(settings, Component.literal("Hold Interact to open.")));
         this.displayName = Objects.requireNonNull(displayName, "displayName");
     }
 
@@ -24,8 +24,5 @@ public final class LootContainerItem extends BlockItem {
         return Component.literal(displayName);
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Hold Interact to open."));
-    }
+    
 }

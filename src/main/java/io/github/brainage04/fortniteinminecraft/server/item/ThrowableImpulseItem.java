@@ -22,18 +22,19 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
+
 import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.item.component.TooltipDisplay;
+
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
+
 import java.util.Optional;
 
 public final class ThrowableImpulseItem extends Item {
@@ -48,7 +49,7 @@ public final class ThrowableImpulseItem extends Item {
     private final Item clientItem;
 
     public ThrowableImpulseItem(Definition definition, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings, lore(definition)));
         this.definition = Objects.requireNonNull(definition, "definition");
         this.clientItem = Objects.requireNonNull(clientItem, "clientItem");
         registerTicker();
@@ -66,23 +67,27 @@ public final class ThrowableImpulseItem extends Item {
         )));
     }
 
+    private static List<Component> lore(Definition definition) {
+        Objects.requireNonNull(definition, "definition");
+        List<Component> lines = new ArrayList<>(5);
+        lines.add(Component.literal("Radius: " + format(definition.radius()) + " blocks"));
+        lines.add(Component.literal("Impulse: " + format(definition.horizontalStrength())
+                + " horizontal / " + format(definition.verticalStrength()) + " vertical"));
+        lines.add(Component.literal("Fuse: " + format(definition.fuseTicks() / 20.0D) + "s; cooldown: "
+                + format(definition.cooldownTicks() / 20.0D) + "s"));
+        lines.add(Component.literal("Sticks for 0.5s after impact before exploding"));
+        if (definition.resetsFallDistance()) {
+            lines.add(Component.literal("Cancels fall distance on launch"));
+        }
+        return lines;
+    }
+
     @Override
     public Component getName(ItemStack stack) {
         return displayNameComponent();
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Radius: " + format(definition.radius()) + " blocks"));
-        tooltip.accept(Component.literal("Impulse: " + format(definition.horizontalStrength())
-                + " horizontal / " + format(definition.verticalStrength()) + " vertical"));
-        tooltip.accept(Component.literal("Fuse: " + format(definition.fuseTicks() / 20.0D) + "s; cooldown: "
-                + format(definition.cooldownTicks() / 20.0D) + "s"));
-        tooltip.accept(Component.literal("Sticks for 0.5s after impact before exploding"));
-        if (definition.resetsFallDistance()) {
-            tooltip.accept(Component.literal("Cancels fall distance on launch"));
-        }
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

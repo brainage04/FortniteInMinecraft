@@ -12,15 +12,15 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
+
+
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
+
 
 public final class LaunchPadItem extends Item {
     private static BlockState placedState() {
@@ -31,7 +31,7 @@ public final class LaunchPadItem extends Item {
     private final long redeployTicks;
 
     public LaunchPadItem(String displayName, int cooldownTicks, long redeployTicks, Item.Properties settings, Item clientItem) {
-        super(settings);
+        super(ItemTooltips.withLore(settings, Component.literal("Places a floor launch pad that fires on contact.")));
         this.displayName = requireText(displayName, "displayName");
         if (cooldownTicks < 0 || redeployTicks < 0L) {
             throw new IllegalArgumentException("cooldown/redeploy ticks cannot be negative");
@@ -46,10 +46,7 @@ public final class LaunchPadItem extends Item {
         return Component.literal(displayName);
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay tooltipDisplay, Consumer<Component> tooltip, TooltipFlag flag) {
-        tooltip.accept(Component.literal("Places a floor launch pad that fires on contact."));
-    }
+    
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

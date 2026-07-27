@@ -232,7 +232,7 @@ public final class NeoForgeLoaderPlatform implements LoaderPlatform {
             List<? extends Item> tabItems
     ) {
         requireModNamespace(id);
-        CreativeModeTab tab = CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
+        CreativeModeTab tab = CreativeModeTab.builder()
                 .title(title)
                 .icon(icon)
                 .displayItems((parameters, output) -> tabItems.forEach(output::accept))
