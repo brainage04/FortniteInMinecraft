@@ -95,23 +95,20 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
 
         Properties serverProperties = ClientGameTestServers.flatServerProperties();
 
-        try (TestDedicatedServerContext server = context.worldBuilder().createServer(serverProperties)) {
-            ClientGameTestServers.connectToDedicatedServer(context, server, "FortniteInMinecraft GameTest");
-            ClientGameTestServers.assertClientWorldAndPlayerAvailable(context);
-            assertPreviewCellsUseExactBlockSize();
-            ClientGameTestRecorder.startRecording(context);
-            try {
-                demonstrateBuildPreviewAndHolographicPieces(context, server);
-                demonstrateBuildGrowthGallery(context, server);
-                demonstrateHudLayerParity(context);
-                demonstrateBuildDamageAndCollapse(context, server);
-                demonstrateDeployableTrapTriggers(context, server);
-                demonstrateMotionItems(context, server);
-                demonstrateGliderRedeploy(context, server);
-            } finally {
-                ClientGameTestServers.disconnectFromDedicatedServer(context);
-            }
-        }
+        ClientGameTestServers.withDedicatedServer(context, serverProperties, "FortniteInMinecraft GameTest", server -> { ClientGameTestServers.assertClientWorldAndPlayerAvailable(context);
+        assertPreviewCellsUseExactBlockSize();
+        ClientGameTestRecorder.startRecording(context);
+        try {
+            demonstrateBuildPreviewAndHolographicPieces(context, server);
+            demonstrateBuildGrowthGallery(context, server);
+            demonstrateHudLayerParity(context);
+            demonstrateBuildDamageAndCollapse(context, server);
+            demonstrateDeployableTrapTriggers(context, server);
+            demonstrateMotionItems(context, server);
+            demonstrateGliderRedeploy(context, server);
+        } finally {
+            ;
+        } });
     }
 
     private static void assertClientInitializerRan(ClientGameTestContext context) {
