@@ -11,7 +11,7 @@ base {
 
 sourceSets {
 	gametest {
-		java.srcDirs = [project(':common').file('src/gametest/java'), project.file('src/gametest/java')]
+		java.srcDir project(':common').file('src/gametest/java')
 		compileClasspath += sourceSets.main.output + configurations.compileClasspath
 		runtimeClasspath += output + compileClasspath + configurations.runtimeClasspath
 	}
