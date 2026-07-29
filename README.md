@@ -3,8 +3,8 @@
 Server-authoritative Minecraft mechanics prototype generated from `brainage04/ModernMinecraftModTemplate`, now targeting both Fabric and NeoForge from one shared implementation.
 
 Project layout:
-- `src/main` and `src/client` contain loader-neutral server and client gameplay.
-- `common` compiles the shared source and resources.
+- `common/src/main` and `common/src/test` contain loader-neutral server and client gameplay plus unit tests.
+- `common/src/gametest` contains loader-neutral GameTest scenarios consumed by both loaders.
 - `fabric` and `neoforge` own their loader entrypoints, metadata, platform adapters, loader-specific access rules, run configurations, and production JARs; the gameplay mixins remain shared.
 - Every module targets Java 25 and Minecraft 26.2.
 - Core build data/state records.

@@ -568,9 +568,9 @@ class BuildPieceItemTest {
 
     @Test
     void everyRegisteredItemHasGeneratedClientAssets() {
-        Path itemDefinitionDir = Path.of("../src/main/resources/assets/fortniteinminecraft/items");
-        Path itemModelDir = Path.of("../src/main/resources/assets/fortniteinminecraft/models/item");
-        Path textureDir = Path.of("../src/main/resources/assets/fortniteinminecraft/textures/item");
+        Path itemDefinitionDir = Path.of("../common/src/main/resources/assets/fortniteinminecraft/items");
+        Path itemModelDir = Path.of("../common/src/main/resources/assets/fortniteinminecraft/models/item");
+        Path textureDir = Path.of("../common/src/main/resources/assets/fortniteinminecraft/textures/item");
 
         for (Item item : ModItems.ALL_ITEMS) {
             String path = BuiltInRegistries.ITEM.getKey(item).getPath();

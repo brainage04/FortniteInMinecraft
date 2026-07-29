@@ -8,19 +8,9 @@ base {
 	archivesName = "${rootProject.archives_base_name}-common"
 }
 
-sourceSets {
-	main {
-		java.srcDirs = [rootProject.file('src/main/java'), rootProject.file('src/client/java')]
-		resources.srcDirs = [rootProject.file('src/main/resources'), rootProject.file('src/client/resources')]
-	}
-	test {
-		java.srcDir rootProject.file('src/test/java')
-		resources.srcDir rootProject.file('src/test/resources')
-	}
-}
 
 loom {
-	accessWidenerPath = rootProject.file('src/main/resources/fortniteinminecraft.accesswidener')
+	accessWidenerPath = project.file('src/main/resources/fortniteinminecraft.accesswidener')
 }
 
 workspaceDependencies {
