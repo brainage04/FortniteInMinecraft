@@ -53,7 +53,7 @@ public final class WorldBuildMaterializer {
     public static WorldBuildMaterializer defaults(BuildRules rules) {
         EnumMap<MaterialType, List<BlockState>> palettes = new EnumMap<>(MaterialType.class);
         palettes.put(MaterialType.WOOD, List.of(Blocks.OAK_PLANKS.defaultBlockState()));
-        palettes.put(MaterialType.STONE, List.of(Blocks.STONE_BRICKS.defaultBlockState()));
+        palettes.put(MaterialType.STONE, List.of(Blocks.BRICKS.defaultBlockState()));
         palettes.put(MaterialType.METAL, List.of(Blocks.COPPER_BLOCK.waxed().unaffected().defaultBlockState()));
         return new WorldBuildMaterializer(rules, palettes);
     }

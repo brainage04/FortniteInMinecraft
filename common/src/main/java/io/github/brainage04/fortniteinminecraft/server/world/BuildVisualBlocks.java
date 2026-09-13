@@ -18,11 +18,11 @@ import java.util.Objects;
 
 public final class BuildVisualBlocks {
     public static final Block HOLOGRAM_WOOD = registerHologramBlock("build_hologram_wood", DyeColor.LIGHT_BLUE, Blocks.OAK_PLANKS);
-    public static final Block HOLOGRAM_STONE = registerHologramBlock("build_hologram_stone", DyeColor.LIGHT_BLUE, Blocks.STONE_BRICKS);
+    public static final Block HOLOGRAM_STONE = registerHologramBlock("build_hologram_stone", DyeColor.LIGHT_BLUE, Blocks.BRICKS);
     public static final Block HOLOGRAM_METAL = registerHologramBlock("build_hologram_metal", DyeColor.LIGHT_BLUE, Blocks.COPPER_BLOCK.waxed().unaffected());
 
     public static final Block INVALID_HOLOGRAM_WOOD = registerHologramBlock("build_hologram_invalid_wood", DyeColor.RED, Blocks.OAK_PLANKS);
-    public static final Block INVALID_HOLOGRAM_STONE = registerHologramBlock("build_hologram_invalid_stone", DyeColor.RED, Blocks.STONE_BRICKS);
+    public static final Block INVALID_HOLOGRAM_STONE = registerHologramBlock("build_hologram_invalid_stone", DyeColor.RED, Blocks.BRICKS);
     public static final Block INVALID_HOLOGRAM_METAL = registerHologramBlock("build_hologram_invalid_metal", DyeColor.RED, Blocks.COPPER_BLOCK.waxed().unaffected());
 
     private static final EnumMap<MaterialType, Block> HOLOGRAMS = new EnumMap<>(MaterialType.class);
