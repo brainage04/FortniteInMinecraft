@@ -1,0 +1,35 @@
+{
+  "writeBoundary": "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final",
+  "startedResources": [
+    "fortnite-final-smoke (systemd transient scope; headless Java and Python)",
+    "fortnite-final-render (systemd transient scope; headless Java and Python)"
+  ],
+  "resourceStatus": "Both exited successfully and were explicitly stopped with hub stop. All recorded renderer/compiler PIDs are absent.",
+  "systemdState": "ActiveState=inactive\nSubState=dead\n\nActiveState=inactive\nSubState=dead",
+  "stillRunningPids": [],
+  "displayResources": "None started; no Xvfb, GUI, primary desktop interaction, or GPU rendering.",
+  "audioResources": "None started; no audio sink or audio interaction, so no sink-input verification was needed.",
+  "cpuLimits": "Every scoped render/compiler observed cpu.max=400000 100000 and cpu.weight=20; four Chunky threads and ActiveProcessorCount=4. No existing user or render service limits changed.",
+  "removedGeneratedDuplicates": [
+    "scenes/probe-before.json.backup",
+    "scenes/fortnite-b.json.backup",
+    "scenes/fortnite-empty.json.backup",
+    "scenes/probe-after-a.json.backup",
+    "scenes/fortnite-a.json.backup",
+    "scenes/probe-after-b.json.backup",
+    "scenes/probe-after-a.dump",
+    "scenes/probe-after-b.dump",
+    "scenes/probe-before.dump",
+    "scenes/snapshots/fortnite-a-130.png",
+    "scenes/snapshots/probe-before-40.png",
+    "scenes/snapshots/probe-after-b-40.png",
+    "scenes/snapshots/fortnite-empty-10.png",
+    "scenes/snapshots/fortnite-b-130.png",
+    "scenes/snapshots/probe-after-a-40.png",
+    "tools/__pycache__/anvil.cpython-313.pyc",
+    "tools/__pycache__/nbt.cpython-313.pyc"
+  ],
+  "retained": "Two final PNGs, full-resolution render/control PNGs, smoke comparison images and logs, final scene dumps/octrees, scene JSONs, copied byte-identical inputs, compiled adapter, render/probe/finalizer scripts and exact upstream source/patch for reproduction.",
+  "repositories": "No tracked portfolio edits, no mod repository edits, no commits, no pushes.",
+  "sharedKernelIncident": "Two early javac attempts used another task's overwritten generic Python D variable and failed with file-not-found before compiling. A subsequent log write to that nonexistent other directory also failed. No file was created there. All task state thereafter used fort_ prefixes and an explicit path assertion."
+}

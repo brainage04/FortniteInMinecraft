@@ -1,0 +1,18 @@
+[
+  [
+    "/nix/store/b7hzgfqk2jfcbncp0vpabf73j0riqgq4-openjdk-25.0.4.1+1/bin/javac",
+    "-cp",
+    "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/chunky-core-2.5.0-SNAPSHOT.478.g527cb4a.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/commons-math3-3.2.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/fastutil-8.4.4.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/gson-2.9.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/lz4-java-1.8.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/maven-artifact-3.9.9.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/plexus-utils-3.5.1.jar",
+    "-d",
+    "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/classes",
+    "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/tools/MaterialProbe.java"
+  ],
+  [
+    "/nix/store/b7hzgfqk2jfcbncp0vpabf73j0riqgq4-openjdk-25.0.4.1+1/bin/java",
+    "-Djava.awt.headless=true",
+    "-cp",
+    "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/classes:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/chunky-core-2.5.0-SNAPSHOT.478.g527cb4a.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/commons-math3-3.2.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/fastutil-8.4.4.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/gson-2.9.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/lz4-java-1.8.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/maven-artifact-3.9.9.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/plexus-utils-3.5.1.jar",
+    "MaterialProbe",
+    "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/textures"
+  ]
+]

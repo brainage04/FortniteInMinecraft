@@ -1,0 +1,10 @@
+{
+  "source": "https://github.com/chunky-dev/chunky/blob/527cb4a/chunky/src/java/se/llbit/chunky/renderer/scene/PathTracer.java",
+  "evidence": [
+    "renderer-bytecode.txt",
+    "../logs/material-probe-1.log"
+  ],
+  "cause": "Approved hologram IOR 1.0 does not equal Chunky Air.INSTANCE.ior 1.000293016. PathTracer chooses doRefraction on any unequal IOR. The refractive=false flag disables ray bending, not its independent Schlick-Fresnel reflection branch. specular=0 does not disable this branch. At the approved isometric surface angle the measured Fresnel probability is 0.013486637; multiplied by the 1-alpha transmission branch it is 0.005553321 per front surface. Fancier translucency was already false. The residual glass-like appearance also contains layered RGB-filtered transmission and diffusely lit cubic faces, not exclusively reflection.",
+  "measuredAlpha": 0.5882352941176471,
+  "plannedFix": "Match the actual air IOR, plus use a hologram-only flat alpha/emissive shading branch with straight untinted transmission and no reflected/scattered paths; preserve solid materials and original scene."
+}

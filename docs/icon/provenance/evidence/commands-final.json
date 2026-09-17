@@ -1,0 +1,130 @@
+[
+  {
+    "name": "compile-adapter-final",
+    "argv": [
+      "/nix/store/b7hzgfqk2jfcbncp0vpabf73j0riqgq4-openjdk-25.0.4.1+1/bin/javac",
+      "-cp",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/chunky-core-2.5.0-SNAPSHOT.478.g527cb4a.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/commons-math3-3.2.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/fastutil-8.4.4.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/gson-2.9.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/lz4-java-1.8.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/maven-artifact-3.9.9.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/plexus-utils-3.5.1.jar",
+      "-d",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/classes",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/tools/FortniteChunky.java",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/tools/PathTracer.java"
+    ],
+    "pid": 1858125,
+    "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/fortnite-final-render.scope",
+    "cpuMax": "400000 100000",
+    "cpuWeight": "20",
+    "exitCode": 0
+  },
+  {
+    "name": "fortnite-empty",
+    "argv": [
+      "/nix/store/b7hzgfqk2jfcbncp0vpabf73j0riqgq4-openjdk-25.0.4.1+1/bin/java",
+      "-Xmx4G",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.awt.headless=true",
+      "-Dchunky.home=/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/chunky-home",
+      "-Dfim.textures=/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/textures",
+      "-Dfim.baseline=false",
+      "-cp",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/classes:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/chunky-core-2.5.0-SNAPSHOT.478.g527cb4a.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/commons-math3-3.2.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/fastutil-8.4.4.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/gson-2.9.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/lz4-java-1.8.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/maven-artifact-3.9.9.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/plexus-utils-3.5.1.jar",
+      "FortniteChunky",
+      "-texture",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/textures/real-fortnite.zip",
+      "-render",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/scenes/fortnite-empty.json",
+      "-reload-chunks",
+      "-f",
+      "-target",
+      "8",
+      "-threads",
+      "4"
+    ],
+    "pid": 1858152,
+    "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/render-chunky.service",
+    "cpuMax": "400000 100000",
+    "cpuWeight": "20",
+    "exitCode": 0,
+    "shading": {
+      "flatPanels": "true",
+      "panelHits": "0",
+      "hologramFresnel": "0",
+      "hologramRefractions": "0",
+      "hologramDiffuse": "0"
+    }
+  },
+  {
+    "name": "fortnite-a",
+    "argv": [
+      "/nix/store/b7hzgfqk2jfcbncp0vpabf73j0riqgq4-openjdk-25.0.4.1+1/bin/java",
+      "-Xmx4G",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.awt.headless=true",
+      "-Dchunky.home=/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/chunky-home",
+      "-Dfim.textures=/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/textures",
+      "-Dfim.baseline=false",
+      "-cp",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/classes:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/chunky-core-2.5.0-SNAPSHOT.478.g527cb4a.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/commons-math3-3.2.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/fastutil-8.4.4.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/gson-2.9.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/lz4-java-1.8.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/maven-artifact-3.9.9.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/plexus-utils-3.5.1.jar",
+      "FortniteChunky",
+      "-texture",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/textures/real-fortnite.zip",
+      "-render",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/scenes/fortnite-a.json",
+      "-reload-chunks",
+      "-f",
+      "-target",
+      "128",
+      "-threads",
+      "4"
+    ],
+    "pid": 1858214,
+    "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/fortnite-final-render.scope",
+    "cpuMax": "400000 100000",
+    "cpuWeight": "20",
+    "exitCode": 0,
+    "shading": {
+      "flatPanels": "true",
+      "panelHits": "27724610",
+      "hologramFresnel": "0",
+      "hologramRefractions": "0",
+      "hologramDiffuse": "0"
+    }
+  },
+  {
+    "name": "fortnite-b",
+    "argv": [
+      "/nix/store/b7hzgfqk2jfcbncp0vpabf73j0riqgq4-openjdk-25.0.4.1+1/bin/java",
+      "-Xmx4G",
+      "-XX:ActiveProcessorCount=4",
+      "-Djava.awt.headless=true",
+      "-Dchunky.home=/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/chunky-home",
+      "-Dfim.textures=/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/textures",
+      "-Dfim.baseline=false",
+      "-cp",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/classes:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/chunky-core-2.5.0-SNAPSHOT.478.g527cb4a.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/commons-math3-3.2.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/fastutil-8.4.4.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/gson-2.9.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/lz4-java-1.8.0.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/maven-artifact-3.9.9.jar:/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/lib/plexus-utils-3.5.1.jar",
+      "FortniteChunky",
+      "-texture",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/textures/real-fortnite.zip",
+      "-render",
+      "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/scenes/fortnite-b.json",
+      "-reload-chunks",
+      "-f",
+      "-target",
+      "128",
+      "-threads",
+      "4"
+    ],
+    "pid": 1859433,
+    "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/fortnite-final-render.scope",
+    "cpuMax": "400000 100000",
+    "cpuWeight": "20",
+    "exitCode": 0,
+    "shading": {
+      "flatPanels": "true",
+      "panelHits": "27725769",
+      "hologramFresnel": "0",
+      "hologramRefractions": "0",
+      "hologramDiffuse": "0"
+    }
+  }
+]

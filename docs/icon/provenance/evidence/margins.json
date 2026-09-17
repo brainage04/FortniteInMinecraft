@@ -1,0 +1,48 @@
+[
+  {
+    "path": "captures-fortnite-final/renders/fortnite-a.png",
+    "dimensions": [
+      1236,
+      1236
+    ],
+    "contentBoundsExclusive": [
+      126,
+      50,
+      1110,
+      1186
+    ],
+    "topMarginPx": 50,
+    "bottomMarginPx": 50,
+    "cropFrom1600": [
+      182,
+      182,
+      1418,
+      1418
+    ],
+    "method": "Luminance difference >3 from separately rendered identical empty-world control; native crop only, no scaling, padding, or pixel retouching.",
+    "sha256": "97e79dc176b26277b4a2c88fd0dda9f1f9926e2d93b3ef109d28ce480021644c"
+  },
+  {
+    "path": "captures-fortnite-final/renders/fortnite-b.png",
+    "dimensions": [
+      1236,
+      1236
+    ],
+    "contentBoundsExclusive": [
+      126,
+      50,
+      1110,
+      1186
+    ],
+    "topMarginPx": 50,
+    "bottomMarginPx": 50,
+    "cropFrom1600": [
+      182,
+      182,
+      1418,
+      1418
+    ],
+    "method": "Luminance difference >3 from separately rendered identical empty-world control; native crop only, no scaling, padding, or pixel retouching.",
+    "sha256": "b14a91a5998b31ecda6f4b00e36e248b851c23d1f62092b0dcf1f476fafbf1c4"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "project": "FortniteInMinecraft",
+    "label": "Flat-alpha holograms \u2014 neutral emission",
+    "path": "captures-fortnite-final/renders/fortnite-a.png",
+    "method": "Headless Chunky CPU path trace; scene-local flat-alpha/emissive hologram shader, native square crop.",
+    "source": "captures-fortnite-fix/renders/fortnite-a.png; byte-identical approved void world, corrected mod hologram textures, and Minecraft 26.2 solid textures; exact Chunky 527cb4a PathTracer with local hologram-only shading branch.",
+    "notes": "Hologram gain 1.0, original texture alpha 150/255, no reflected/scattered/refracted hologram paths. Same approved camera, directional sun, sky, geometry, and solid materials. Wood 48%, brick 50%, copper 50% built. 1236 square; exactly 50 px top and bottom margins. Re-output at SQUARE 1024x1024 by cropping the native 1600x1600 render to the approved box (182, 182, 1418, 1418) (same composition and margins) and Lanczos-resampling to 1024."
+  },
+  {
+    "project": "FortniteInMinecraft",
+    "label": "Flat-alpha holograms \u2014 softer emission",
+    "path": "captures-fortnite-final/renders/fortnite-b.png",
+    "method": "Headless Chunky CPU path trace; scene-local flat-alpha/emissive hologram shader, native square crop.",
+    "source": "captures-fortnite-fix/renders/fortnite-a.png; byte-identical approved void world, corrected mod hologram textures, and Minecraft 26.2 solid textures; exact Chunky 527cb4a PathTracer with local hologram-only shading branch.",
+    "notes": "Hologram gain 0.8, original texture alpha 150/255, no reflected/scattered/refracted hologram paths. Same approved camera, directional sun, sky, geometry, and solid materials. Wood 48%, brick 50%, copper 50% built. 1236 square; exactly 50 px top and bottom margins."
+  }
+]

@@ -1,0 +1,136 @@
+{
+  "rootCause": "The approved adapter and material JSON used hologram IOR 1.0, but actual Chunky Air.INSTANCE.ior is 1.0002930164337158. Any IOR inequality sends a transmitted ray into PathTracer.doRefraction. Its Schlick-Fresnel reflection branch runs independently of both material.specular=0 and material.refractive=false. Thus literal IOR 1.0 is not optically matched to Chunky air. Fancier translucency was already disabled and was not the cause.",
+  "evidenceBeforeEditing": {
+    "materialProbe": "logs/material-probe-1.log",
+    "runtimeBytecode": "evidence/renderer-bytecode.txt",
+    "preEditDiagnosis": "evidence/root-cause-before-edit.json",
+    "source": "https://github.com/chunky-dev/chunky/blob/527cb4a/chunky/src/java/se/llbit/chunky/renderer/scene/PathTracer.java",
+    "frontFaceFresnelAtApprovedIsometricAngle": 0.013486637,
+    "withTextureTransparencyBranch": 0.005553321
+  },
+  "importantDistinction": "Baseline instrumentation counted real Fresnel reflections but zero bent refracted rays: refractive=false already prevented ray bending. The glass-like appearance also included lit cubic faces and colored multilayer transmission. It would be inaccurate to claim the baseline had measured refraction, or that disabling fancier translucency fixed it.",
+  "fix": "Use the exact air IOR, retain specular=0, metalness=0, refractive=false and fancierTranslucency=false. A hologram-only branch replaces the lit/transmissive BSDF with linear-light source-over: alpha * textureRGB * emissionGain + (1-alpha) * straight-through scene radiance. No Fresnel, reflected radiance, refraction, normal-dependent lighting, or RGB filtering is sampled by holograms. Cubes, UVs, and source alpha are unchanged. Ordinary materials continue through the unmodified upstream paths.",
+  "candidateDifference": "Only hologram emissionGain differs: A=1.0, B=0.8. Both use the exact approved A camera, sun and sky, not the old B lighting variant.",
+  "baseline320px40sppTarget32": {
+    "flatPanels": "false",
+    "panelHits": "0",
+    "hologramFresnel": "10521",
+    "hologramRefractions": "0",
+    "hologramDiffuse": "574340"
+  },
+  "final1600px130sppTarget128": {
+    "fortnite-a": {
+      "flatPanels": "true",
+      "panelHits": "27724610",
+      "hologramFresnel": "0",
+      "hologramRefractions": "0",
+      "hologramDiffuse": "0"
+    },
+    "fortnite-b": {
+      "flatPanels": "true",
+      "panelHits": "27725769",
+      "hologramFresnel": "0",
+      "hologramRefractions": "0",
+      "hologramDiffuse": "0"
+    }
+  },
+  "measuredMargins": [
+    {
+      "path": "captures-fortnite-final/renders/fortnite-a.png",
+      "dimensions": [
+        1236,
+        1236
+      ],
+      "contentBoundsExclusive": [
+        126,
+        50,
+        1110,
+        1186
+      ],
+      "topMarginPx": 50,
+      "bottomMarginPx": 50,
+      "cropFrom1600": [
+        182,
+        182,
+        1418,
+        1418
+      ],
+      "method": "Luminance difference >3 from separately rendered identical empty-world control; native crop only, no scaling, padding, or pixel retouching.",
+      "sha256": "97e79dc176b26277b4a2c88fd0dda9f1f9926e2d93b3ef109d28ce480021644c"
+    },
+    {
+      "path": "captures-fortnite-final/renders/fortnite-b.png",
+      "dimensions": [
+        1236,
+        1236
+      ],
+      "contentBoundsExclusive": [
+        126,
+        50,
+        1110,
+        1186
+      ],
+      "topMarginPx": 50,
+      "bottomMarginPx": 50,
+      "cropFrom1600": [
+        182,
+        182,
+        1418,
+        1418
+      ],
+      "method": "Luminance difference >3 from separately rendered identical empty-world control; native crop only, no scaling, padding, or pixel retouching.",
+      "sha256": "b14a91a5998b31ecda6f4b00e36e248b851c23d1f62092b0dcf1f476fafbf1c4"
+    }
+  ],
+  "scenePreservation": {
+    "allCopiedInputsByteIdentical": true,
+    "census": {
+      "minecraft:waxed_copper_block": 8,
+      "fortniteinminecraft:build_hologram_metal": 8,
+      "minecraft:bricks": 10,
+      "fortniteinminecraft:build_hologram_stone": 10,
+      "minecraft:oak_planks": 12,
+      "fortniteinminecraft:build_hologram_wood": 13
+    },
+    "solidFractions": {
+      "wood": "12/25 = 48%",
+      "brick": "10/20 = 50%",
+      "copper": "8/16 = 50%"
+    },
+    "voidOnly": true,
+    "sha256": {
+      "worlds/fortnite/level.dat": "8687ecafe456336aee2472b04479b871b30ee445170fcb3fa7f55b49e74c6269",
+      "worlds/empty/level.dat": "8687ecafe456336aee2472b04479b871b30ee445170fcb3fa7f55b49e74c6269",
+      "worlds/fortnite/region/r.-1.-1.mca": "b495af03a23dd1c5699b736985e231aa79489222f8b010e6f772429c79d3d16c",
+      "worlds/fortnite/region/r.-1.0.mca": "8cdba2d692732d817083ceaef7679c355af1cef9868ad789f04b1db2bbaca021",
+      "worlds/fortnite/region/r.0.-1.mca": "863a819a384cd12fba53029f6893e7999ae661667fcc83eb9a869808d4ab4079",
+      "worlds/fortnite/region/r.0.0.mca": "49fb2c9ab873ba06125af0afb465a07e553c12ddd8571e44b3d011d19e3c7333",
+      "textures/real-fortnite.zip": "21d0575e1054e2a9f861935aae38d98cb1b11d5f1737f6c474de4c2ac603fea7",
+      "textures/build_hologram_metal.png": "4ff6e86444de9ac91d5fe72589e1977657c4258094ae2526e1e71aea7d982f3a",
+      "textures/build_hologram_wood.png": "464b40d53cf0829322f4def452e8e9f505eed8d9a83e707cdeb82e9167057187",
+      "textures/build_hologram_stone.png": "425397e657e6b427a3d048e750c7f43dc27f7baed084f6b89c745763f0050ab4",
+      "lib/commons-math3-3.2.jar": "6268a9a0ea3e769fc493a21446664c0ef668e48c93d126791f6f3f757978fee2",
+      "lib/plexus-utils-3.5.1.jar": "86e0255d4c879c61b4833ed7f13124e8bb679df47debb127326e7db7dd49a07b",
+      "lib/fastutil-8.4.4.jar": "3d7981b838c8fe8d8f1ef93c9ee4ebf6bd1091cc1c5847fe41db22d1648081e3",
+      "lib/gson-2.9.0.jar": "c96d60551331a196dac54b745aa642cd078ef89b6f267146b705f2c2cbef052d",
+      "lib/lz4-java-1.8.0.jar": "d74a3334fb35195009b338a951f918203d6bbca3d1d359033dc33edd1cadc9ef",
+      "lib/chunky-core-2.5.0-SNAPSHOT.478.g527cb4a.jar": "da9cf71082ec364b4fe58cd2b0c4e2f4feb7a4bf67d3890f2496a0b9db7e367d",
+      "lib/maven-artifact-3.9.9.jar": "30f015d1c1a393e19c18cd4f43532089c36d4ca328608ce3dda78b74d3d31515"
+    }
+  },
+  "scope": "All changes and generated files are confined to captures-fortnite-final. No mod repository, tracked portfolio file, commit, or remote changed.",
+  "commands": {
+    "cwd": "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final",
+    "pillowEnvironment": "PYTHONPATH=/nix/store/4v9j9wbzyhrlx9980ygbr812313mazy0-python3.13-pillow-12.3.0/lib/python3.13/site-packages",
+    "smoke": "systemd-run --user --scope --unit=fortnite-final-smoke -p CPUQuota=400% -p CPUWeight=20 python3 tools/render.py smoke",
+    "final": "systemd-run --user --scope --unit=fortnite-final-render -p CPUQuota=400% -p CPUWeight=20 python3 tools/render.py final",
+    "verification": "python3 tools/finalize.py",
+    "exactJavacAndJavaArgv": [
+      "evidence/material-probe-commands.json",
+      "evidence/commands-smoke.json",
+      "evidence/commands-final.json"
+    ]
+  },
+  "startupCacheNote": "On the initial render of each new scene name, Chunky reported a missing local .octree2 cache, then successfully loaded all 25 chunks from the byte-identical approved world and regenerated the cache. The original logs preserve this recovery. No missing texture errors. Final images and nonzero hologram path counts empirically verify the world was rendered.",
+  "imageVerification": "Both final PNGs were visually inspected. Native crop pixel identity and margins were independently recomputed here from the empty-world control. Contact sheet and approved/final close-up comparison are evidence-only derivatives, not candidate retouching."
+}

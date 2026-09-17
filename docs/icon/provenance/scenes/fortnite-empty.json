@@ -1,0 +1,292 @@
+{
+  "sdfVersion": 10,
+  "name": "fortnite-empty",
+  "width": 1600,
+  "height": 1600,
+  "fullWidth": 0,
+  "fullHeight": 0,
+  "cropX": 0,
+  "cropY": 0,
+  "yClipMin": -64,
+  "yClipMax": 320,
+  "yMin": -64,
+  "yMax": 320,
+  "exposure": 1.0,
+  "postprocess": "GAMMA",
+  "outputMode": "PNG",
+  "renderTime": 797,
+  "spp": 10,
+  "sppTarget": 8,
+  "branchCount": 10,
+  "rayDepth": 12,
+  "pathTrace": true,
+  "dumpFrequency": 0,
+  "saveSnapshots": false,
+  "emittersEnabled": true,
+  "emitterIntensity": 1.0,
+  "fancierTranslucency": false,
+  "transmissivityCap": 1.0,
+  "sunSamplingStrategy": "FAST",
+  "waterShadingStrategy": "TILED_NORMALMAP",
+  "waterOpacity": 0.42,
+  "waterVisibility": 9.0,
+  "useCustomWaterColor": false,
+  "fog": {
+    "mode": "UNIFORM",
+    "uniformDensity": 0.0,
+    "skyFogDensity": 0.0,
+    "layers": [],
+    "color": {
+      "red": 0.0,
+      "green": 0.0,
+      "blue": 0.0
+    },
+    "fastFog": true
+  },
+  "biomeColorsEnabled": true,
+  "biomeBlendingRadius": 2,
+  "transparentSky": false,
+  "waterWorldEnabled": false,
+  "waterWorldHeight": 63.0,
+  "waterWorldHeightOffsetEnabled": true,
+  "waterWorldClipEnabled": true,
+  "hideUnknownBlocks": false,
+  "world": {
+    "path": "/home/thomas/01_TM/Coding/Websites/brainage04.github.io/.local-icon-variants/round3/captures-fortnite-final/worlds/empty",
+    "dimension": "minecraft:overworld"
+  },
+  "camera": {
+    "name": "camera",
+    "lockCamera": false,
+    "position": {
+      "x": 1.5,
+      "y": -58.5,
+      "z": 1.5
+    },
+    "orientation": {
+      "roll": 0.0,
+      "pitch": -0.9553166181245093,
+      "yaw": 2.356194490192345
+    },
+    "projectionMode": "PARALLEL",
+    "fov": 11.5,
+    "dof": "Infinity",
+    "focalOffset": 20.0,
+    "shift": {
+      "x": 0.0,
+      "y": 0.0
+    },
+    "apertureShape": "CIRCLE"
+  },
+  "sun": {
+    "altitude": 0.8726646259971648,
+    "azimuth": 3.9269908169872414,
+    "intensity": 1.25,
+    "luminosity": 100.0,
+    "apparentBrightness": 1.25,
+    "radius": 0.03,
+    "modifySunTexture": false,
+    "color": {
+      "red": 1.0,
+      "green": 1.0,
+      "blue": 1.0
+    },
+    "apparentColor": {
+      "red": 1.0,
+      "green": 1.0,
+      "blue": 1.0
+    },
+    "importanceSampling": {
+      "chance": 0.1,
+      "radius": 1.2
+    },
+    "drawTexture": true
+  },
+  "sky": {
+    "skyYaw": 0.0,
+    "skyPitch": 0.0,
+    "skyRoll": 0.0,
+    "skyMirrored": true,
+    "skyExposure": 1.0,
+    "skyLight": 1.0,
+    "apparentSkyLight": 1.0,
+    "mode": "SOLID_COLOR",
+    "horizonOffset": 0.0,
+    "cloudsEnabled": false,
+    "cloudSize": 12.0,
+    "cloudOffset": {
+      "x": 0.0,
+      "y": 128.0,
+      "z": 0.0
+    },
+    "gradient": [
+      {
+        "color": {
+          "red": 0.043137254901960784,
+          "green": 0.6705882352941176,
+          "blue": 0.7803921568627451
+        },
+        "pos": 0.0
+      },
+      {
+        "color": {
+          "red": 0.4588235294117647,
+          "green": 0.6666666666666666,
+          "blue": 1.0
+        },
+        "pos": 1.0
+      }
+    ],
+    "color": {
+      "red": 0.32,
+      "green": 0.4,
+      "blue": 0.47
+    }
+  },
+  "cameraPresets": {},
+  "materials": {
+    "fortniteinminecraft:build_hologram_stone": {
+      "ior": 1.0002930164337158,
+      "specular": 0.0,
+      "emittance": 1.0,
+      "metalness": 0.0
+    },
+    "fortniteinminecraft:build_hologram_wood": {
+      "ior": 1.0002930164337158,
+      "specular": 0.0,
+      "emittance": 1.0,
+      "metalness": 0.0
+    },
+    "fortniteinminecraft:build_hologram_metal": {
+      "ior": 1.0002930164337158,
+      "specular": 0.0,
+      "emittance": 1.0,
+      "metalness": 0.0
+    }
+  },
+  "chunkList": [
+    [
+      0,
+      -1
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      0,
+      -2
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      -1,
+      2
+    ],
+    [
+      -1,
+      1
+    ],
+    [
+      1,
+      -2
+    ],
+    [
+      -1,
+      0
+    ],
+    [
+      1,
+      -1
+    ],
+    [
+      -1,
+      -1
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      -1,
+      -2
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      -2,
+      2
+    ],
+    [
+      -2,
+      1
+    ],
+    [
+      2,
+      -2
+    ],
+    [
+      -2,
+      0
+    ],
+    [
+      2,
+      -1
+    ],
+    [
+      -2,
+      -1
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      -2,
+      -2
+    ],
+    [
+      2,
+      1
+    ]
+  ],
+  "octreeImplementation": "PACKED",
+  "emitterSamplingStrategy": "NONE",
+  "preventNormalEmitterWithSampling": false,
+  "animationTime": 0.0,
+  "renderer": "PathTracingRenderer",
+  "previewRenderer": "PreviewRenderer",
+  "renderActors": true,
+  "entityLoadingPreferences": {
+    "se.llbit.chunky.entity.PlayerEntity": true,
+    "se.llbit.chunky.entity.SquidEntity": true,
+    "se.llbit.chunky.entity.CowEntity": true,
+    "se.llbit.chunky.entity.BeaconBeam": true,
+    "se.llbit.chunky.entity.MooshroomEntity": true,
+    "se.llbit.chunky.entity.SheepEntity": true,
+    "se.llbit.chunky.entity.PaintingEntity": true,
+    "se.llbit.chunky.entity.PigEntity": true,
+    "se.llbit.chunky.entity.ArmorStand": true,
+    "se.llbit.chunky.entity.Book": true,
+    "se.llbit.chunky.entity.ChickenEntity": true,
+    "other": true
+  },
+  "bvhImplementation": "SAH_MA",
+  "additionalData": {}
+}

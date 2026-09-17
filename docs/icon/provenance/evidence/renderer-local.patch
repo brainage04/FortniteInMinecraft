@@ -1,0 +1,72 @@
+--- Chunky-527cb4a/PathTracer.java
++++ scene-local/PathTracer.java
+@@ -34,6 +34,22 @@
+  * @author Jesper Öqvist <jesper@llbit.se>
+  */
+ public class PathTracer implements RayTracer {
++  // Scene-local alpha-panel shading; vanilla material paths remain upstream.
++  private static final boolean FLAT_PANELS = !Boolean.getBoolean("fim.baseline");
++  private static final java.util.concurrent.atomic.LongAdder panelHits = new java.util.concurrent.atomic.LongAdder();
++  private static final java.util.concurrent.atomic.LongAdder hologramFresnel = new java.util.concurrent.atomic.LongAdder();
++  private static final java.util.concurrent.atomic.LongAdder hologramRefractions = new java.util.concurrent.atomic.LongAdder();
++  private static final java.util.concurrent.atomic.LongAdder hologramDiffuse = new java.util.concurrent.atomic.LongAdder();
++
++  static {
++    Runtime.getRuntime().addShutdownHook(new Thread(() -> System.out.printf(
++      "FIM_SHADING flatPanels=%s panelHits=%d hologramFresnel=%d hologramRefractions=%d hologramDiffuse=%d%n",
++      FLAT_PANELS, panelHits.sum(), hologramFresnel.sum(), hologramRefractions.sum(), hologramDiffuse.sum())));
++  }
++
++  private static boolean hologram(Material material) {
++    return material.name.startsWith("fortniteinminecraft:build_hologram_");
++  }
+ 
+   /**
+    * Path trace the ray.
+@@ -93,6 +109,22 @@
+       Material currentMat = ray.getCurrentMaterial();
+       Material prevMat = ray.getPrevMaterial();
+ 
++      if (FLAT_PANELS && hologram(currentMat)) {
++        // Linear-light source-over: no BSDF, Fresnel, bending, or RGB filter.
++        double alpha = ray.color.w;
++        double red = ray.color.x * currentMat.emittance;
++        double green = ray.color.y * currentMat.emittance;
++        double blue = ray.color.z * currentMat.emittance;
++        Ray through = new Ray(ray);
++        through.o.scaleAdd(Ray.OFFSET, through.d);
++        pathTrace(scene, through, state, firstReflection);
++        ray.color.set(alpha * red + (1 - alpha) * through.color.x,
++          alpha * green + (1 - alpha) * through.color.y,
++          alpha * blue + (1 - alpha) * through.color.z, 1);
++        panelHits.increment();
++        return true;
++      }
++
+       if (!(scene.getCurrentWaterShader() instanceof StillWaterShader) && ray.getNormal().y != 0 &&
+           ((currentMat.isWater() && prevMat == Air.INSTANCE)
+               || (currentMat == Air.INSTANCE && prevMat.isWater()))) {
+@@ -143,6 +175,7 @@
+         if (doMetal || (pSpecular > Ray.EPSILON && random.nextFloat() < pSpecular)) {
+           hit |= doSpecularReflection(ray, next, cumulativeColor, doMetal, random, state, scene);
+         } else if(random.nextFloat() < pDiffuse) {
++          if (hologram(currentMat)) hologramDiffuse.increment();
+           hit |= doDiffuseReflection(ray, next, currentMat, cumulativeColor, random, state, scene);
+         } else if (n1 != n2) {
+           hit |= doRefraction(ray, next, currentMat, prevMat, cumulativeColor, n1, n2, pAbsorb, random, state, scene);
+@@ -355,6 +388,7 @@
+       double Rtheta = R0 + (1 - R0) * c * c * c * c * c;
+ 
+       if (random.nextFloat() < Rtheta) {
++        if (hologram(currentMat) || hologram(prevMat)) hologramFresnel.increment();
+         next.specularReflection(ray, random);
+         if (pathTrace(scene, next, state, false)) {
+ 
+@@ -365,6 +399,7 @@
+         }
+       } else {
+         if (doRefraction) {
++          if (hologram(currentMat) || hologram(prevMat)) hologramRefractions.increment();
+ 
+           double t2 = FastMath.sqrt(radicand);
+           Vector3 n = ray.getNormal();
