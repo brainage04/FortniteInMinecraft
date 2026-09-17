@@ -1260,7 +1260,7 @@ public final class FortniteInMinecraftClientGameTest implements FabricClientGame
 
     private static boolean isSolidBuildBlock(Block block) {
         return block == Blocks.OAK_PLANKS
-                || block == Blocks.STONE_BRICKS
+                || block == Blocks.BRICKS
                 || block == Blocks.COPPER_BLOCK.waxed().unaffected();
     }
 
