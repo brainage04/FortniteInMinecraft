@@ -43,7 +43,7 @@ class WorldBuildMaterializerTest {
         WorldBuildMaterializer materializer = WorldBuildMaterializer.defaults(BuildRules.defaults());
 
         assertSame(Blocks.OAK_PLANKS, materializer.blockStateFor(MaterialType.WOOD).getBlock());
-        assertSame(Blocks.STONE_BRICKS, materializer.blockStateFor(MaterialType.STONE).getBlock());
+        assertSame(Blocks.BRICKS, materializer.blockStateFor(MaterialType.STONE).getBlock());
         assertSame(Blocks.COPPER_BLOCK.waxed().unaffected(), materializer.blockStateFor(MaterialType.METAL).getBlock());
     }
 
@@ -128,7 +128,7 @@ class WorldBuildMaterializerTest {
         assertEquals(2, materializer.ownedBlockCount("overworld", shared));
         assertEquals(secondSlot, materializer.topOwnerAt("overworld", shared));
         assertTrue(materializer.isTrackedBlock("overworld", shared.getX(), shared.getY(), shared.getZ()));
-        assertEquals(Blocks.STONE_BRICKS.defaultBlockState(), blocks.stateAt(shared));
+        assertEquals(Blocks.BRICKS.defaultBlockState(), blocks.stateAt(shared));
 
         WorldBuildWriteResult firstCleared = materializer.clear(firstPiece, blocks);
 
@@ -138,7 +138,7 @@ class WorldBuildMaterializerTest {
         assertEquals(25, materializer.trackedBlockCount(secondSlot));
         assertEquals(1, materializer.ownedBlockCount("overworld", shared));
         assertEquals(secondSlot, materializer.topOwnerAt("overworld", shared));
-        assertEquals(Blocks.STONE_BRICKS.defaultBlockState(), blocks.stateAt(shared));
+        assertEquals(Blocks.BRICKS.defaultBlockState(), blocks.stateAt(shared));
 
         WorldBuildWriteResult secondCleared = materializer.clear(secondPiece, blocks);
 
@@ -199,7 +199,7 @@ class WorldBuildMaterializerTest {
 
         assertSame(Blocks.OAK_PLANKS, materializer.blockStateFor(piece(slot, MaterialType.WOOD, MaterialType.WOOD.finalHealth()), pos).getBlock());
         assertSame(BuildVisualBlocks.HOLOGRAM_WOOD, materializer.blockStateFor(piece(slot, MaterialType.WOOD, 0), pos).getBlock());
-        assertSame(Blocks.STONE_BRICKS, materializer.blockStateFor(piece(slot, MaterialType.STONE, MaterialType.STONE.finalHealth()), pos).getBlock());
+        assertSame(Blocks.BRICKS, materializer.blockStateFor(piece(slot, MaterialType.STONE, MaterialType.STONE.finalHealth()), pos).getBlock());
         assertSame(BuildVisualBlocks.HOLOGRAM_STONE, materializer.blockStateFor(piece(slot, MaterialType.STONE, 0), pos).getBlock());
         assertSame(Blocks.COPPER_BLOCK.waxed().unaffected(), materializer.blockStateFor(piece(slot, MaterialType.METAL, MaterialType.METAL.finalHealth()), pos).getBlock());
         assertSame(BuildVisualBlocks.HOLOGRAM_METAL, materializer.blockStateFor(piece(slot, MaterialType.METAL, 0), pos).getBlock());
