@@ -8,4 +8,7 @@ workspaceDependencies {
 dependencies {
 	implementation "io.github.brainage04:hudrendererlib:${project.hudrendererlib_version}"
 	productionRuntimeMods "io.github.brainage04:hudrendererlib:${project.hudrendererlib_version}"
+	productionRuntimeMods("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") {
+		exclude(group: 'net.fabricmc.fabric-api')
+	}
 }
