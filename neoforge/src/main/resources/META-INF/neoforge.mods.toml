@@ -6,6 +6,7 @@ license="MIT"
 modId="fortniteinminecraft"
 version="${version}"
 displayName="Fortnite In Minecraft"
+logoFile="assets/fortniteinminecraft/icon.png"
 authors="brainage04"
 description='''Server and client Fortnite building and combat mechanics prototype.'''
 
